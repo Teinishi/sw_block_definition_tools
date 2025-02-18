@@ -1,4 +1,4 @@
-use crate::ui::DefinitionSelectPanel;
+use super::{DefinitionDetailPanel, DefinitionSelectPanel, State};
 use raw_window_handle;
 use rfd::FileDialog;
 use std::path::Path;
@@ -6,15 +6,18 @@ use std::path::Path;
 const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks\\rom\\data";
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-#[serde(default)]
 pub struct MainApp {
+    state: State,
     definition_select_panel: DefinitionSelectPanel,
+    definition_detail_panel: DefinitionDetailPanel,
 }
 
 impl MainApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            if let Some(app) = eframe::get_value(storage, eframe::APP_KEY) {
+                return app;
+            }
         }
 
         Default::default()
@@ -56,11 +59,16 @@ impl eframe::App for MainApp {
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                    self.definition_select_panel.ui(ui);
+                    self.definition_select_panel.ui(ui, &mut self.state);
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |_ui| {});
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
+                self.definition_detail_panel.ui(ui, &mut self.state);
+            });
+        });
     }
 }
 
@@ -79,7 +87,7 @@ impl MainApp {
             dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
         }
         if let Some(pathbuf) = dialog.pick_folder() {
-            let _ = self.definition_select_panel.set_directory(&pathbuf);
+            let _ = self.state.open_directory(&pathbuf);
         }
     }
 }

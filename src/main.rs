@@ -20,7 +20,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Stormworks Block Definition Tools",
         native_options,
-        Box::new(|cc| Ok(Box::new(sw_block_definition_tools::MainApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(sw_block_definition_tools::ui::MainApp::new(cc)))),
     )
 }
 

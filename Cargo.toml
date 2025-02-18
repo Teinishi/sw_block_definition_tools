@@ -25,6 +25,7 @@ log = "0.4"
 serde = { version = "1", features = ["derive"] }
 rfd = "0.15.2"
 raw-window-handle = "0.6.2"
+quick-xml = { version = "0.37.2", features = ["serialize", "overlapped-lists"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
