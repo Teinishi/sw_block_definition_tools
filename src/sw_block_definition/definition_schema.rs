@@ -147,7 +147,7 @@ pub struct Definition {
     #[serde(rename = "@door_upper_limit")]
     pub door_upper_limit: Option<f32>,
     #[serde(rename = "@door_flipped")]
-    pub door_flipped: bool,
+    pub door_flipped: Option<bool>,
     #[serde(rename = "@custom_door_type")]
     pub custom_door_type: Option<i32>,
     #[serde(rename = "@door_side_dist")]
@@ -221,7 +221,7 @@ pub struct Definition {
     #[serde(rename = "@weapon_ammo_capacity")]
     pub weapon_ammo_capacity: Option<i32>,
     #[serde(rename = "@weapon_ammo_feed")]
-    pub weapon_ammo_feed: bool,
+    pub weapon_ammo_feed: Option<bool>,
     #[serde(rename = "@weapon_barrel_length_voxels")]
     pub weapon_barrel_length_voxels: Option<i32>,
     #[serde(rename = "@rx_range")]
@@ -333,7 +333,7 @@ pub struct SfxData {
     #[serde(rename = "@sfx_priority")]
     pub sfx_priority: Option<f32>,
     #[serde(rename = "@sfx_is_underwater_affected")]
-    pub sfx_is_underwater_affected: bool,
+    pub sfx_is_underwater_affected: Option<bool>,
 
     pub sfx_layers: Vec<SfxLayers>,
 }
@@ -394,9 +394,9 @@ pub struct Surface {
     #[serde(rename = "@flags")]
     pub flags: Option<u64>,
     #[serde(rename = "@is_reverse_normals")]
-    pub is_reverse_normals: bool,
+    pub is_reverse_normals: Option<bool>,
     #[serde(rename = "@is_two_sided")]
-    pub is_two_sided: bool,
+    pub is_two_sided: Option<bool>,
 
     pub position: Vec<Position>,
 }
@@ -448,9 +448,9 @@ pub struct Coupling {
     #[serde(rename = "@coupling_gender")]
     pub coupling_gender: Option<i32>,
     #[serde(rename = "@alignment_required")]
-    pub alignment_required: bool,
+    pub alignment_required: Option<bool>,
     #[serde(rename = "@allow_bipolar_alignment")]
-    pub allow_bipolar_alignment: bool,
+    pub allow_bipolar_alignment: Option<bool>,
 
     pub position: Vec<Position>,
 }
@@ -476,7 +476,7 @@ pub struct Voxel {
     pub physics_shape_rotation: Vec<PhysicsShapeRotation>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(default)]
 pub struct PhysicsShapeRotation {
     #[serde(rename = "@00", default = "one")]
@@ -497,6 +497,22 @@ pub struct PhysicsShapeRotation {
     pub r21: i32,
     #[serde(rename = "@22", default = "one")]
     pub r22: i32,
+}
+
+impl Default for PhysicsShapeRotation {
+    fn default() -> Self {
+        Self {
+            r00: 1,
+            r01: 0,
+            r02: 0,
+            r10: 0,
+            r11: 1,
+            r12: 0,
+            r20: 0,
+            r21: 0,
+            r22: 1,
+        }
+    }
 }
 
 define_vec3!(Position, i32);
