@@ -1,9 +1,7 @@
 use super::definition_schema::Definition;
 use quick_xml;
 use std::{
-    fmt,
-    fs::File,
-    io,
+    fmt, io,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -32,9 +30,33 @@ impl SwBlockDefinition {
     }
 
     fn open_file(&self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
-        let file = File::open(self.path.clone())?;
-        let data: Definition = quick_xml::de::from_reader(io::BufReader::new(file))?;
-        Ok(Rc::new(data))
+        let xml = std::fs::read_to_string(self.path.clone())?;
+        let mut xml_reader = quick_xml::Reader::from_str(&xml);
+        xml_reader.config_mut().trim_text(true);
+
+        loop {
+            if let Ok(event) = xml_reader.read_event() {
+                match event {
+                    quick_xml::events::Event::Start(ref e) => {
+                        if e.name().as_ref() == b"definition" {
+                            let data: Definition = quick_xml::de::from_str(&xml)?;
+                            return Ok(Rc::new(data));
+                        } else {
+                            return Err(SwBlockDefinitionDataError::XmlError(format!(
+                                "Unexpected root element: {:?}",
+                                std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                            )));
+                        }
+                    }
+                    _ => {}
+                }
+            } else {
+                break;
+            }
+        }
+        Err(SwBlockDefinitionDataError::XmlError(
+            "Could not find root element".to_string(),
+        ))
     }
 
     pub fn data(&mut self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
@@ -57,6 +79,7 @@ impl PartialEq for SwBlockDefinition {
 pub enum SwBlockDefinitionDataError {
     IoError(String),
     DeError(String),
+    XmlError(String),
 }
 
 impl From<io::Error> for SwBlockDefinitionDataError {
@@ -76,6 +99,7 @@ impl fmt::Display for SwBlockDefinitionDataError {
         match self {
             Self::IoError(mes) => write!(f, "IoError: {}", mes),
             Self::DeError(mes) => write!(f, "DeError: {}", mes),
+            Self::XmlError(mes) => write!(f, "XmlError: {}", mes),
         }
     }
 }

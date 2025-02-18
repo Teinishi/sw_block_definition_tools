@@ -2,36 +2,36 @@ use serde::{Deserialize, Serialize};
 
 macro_rules! define_vec3 {
     ($name:ident, $type:ty) => {
-        #[derive(Serialize, Deserialize, Debug)]
-        #[serde(deny_unknown_fields)]
+        #[derive(Serialize, Deserialize, Default, Debug)]
+        #[serde(default)]
         pub struct $name {
-            #[serde(rename = "@x", default)]
+            #[serde(rename = "@x")]
             pub x: $type,
-            #[serde(rename = "@y", default)]
+            #[serde(rename = "@y")]
             pub y: $type,
-            #[serde(rename = "@z", default)]
+            #[serde(rename = "@z")]
             pub z: $type,
         }
     };
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename = "definition", default, deny_unknown_fields)]
 pub struct Definition {
     #[serde(rename = "@name")]
-    pub name: String,
-    #[serde(rename = "@category", default)]
-    pub category: i32,
+    pub name: Option<String>,
+    #[serde(rename = "@category")]
+    pub category: Option<i32>,
     #[serde(rename = "@type")]
-    pub definition_type: i32,
+    pub definition_type: Option<i32>,
     #[serde(rename = "@mass")]
-    pub mass: f32,
+    pub mass: Option<f32>,
     #[serde(rename = "@value")]
-    pub value: f32,
-    #[serde(rename = "@flags", default)]
-    pub flags: u64,
-    #[serde(rename = "@tags", default)]
-    pub tags: String,
+    pub value: Option<f32>,
+    #[serde(rename = "@flags")]
+    pub flags: Option<u64>,
+    #[serde(rename = "@tags")]
+    pub tags: Option<String>,
     #[serde(rename = "@phys_collision_dampen")]
     pub phys_collision_dampen: Option<String>,
     #[serde(rename = "@audio_filename_start")]
@@ -146,7 +146,7 @@ pub struct Definition {
     pub door_lower_limit: Option<f32>,
     #[serde(rename = "@door_upper_limit")]
     pub door_upper_limit: Option<f32>,
-    #[serde(rename = "@door_flipped", default)]
+    #[serde(rename = "@door_flipped")]
     pub door_flipped: bool,
     #[serde(rename = "@custom_door_type")]
     pub custom_door_type: Option<i32>,
@@ -220,7 +220,7 @@ pub struct Definition {
     pub weapon_belt_type: Option<i32>,
     #[serde(rename = "@weapon_ammo_capacity")]
     pub weapon_ammo_capacity: Option<i32>,
-    #[serde(rename = "@weapon_ammo_feed", default)]
+    #[serde(rename = "@weapon_ammo_feed")]
     pub weapon_ammo_feed: bool,
     #[serde(rename = "@weapon_barrel_length_voxels")]
     pub weapon_barrel_length_voxels: Option<i32>,
@@ -256,68 +256,73 @@ pub struct Definition {
     pub oil_component_type: Option<i32>,
     #[serde(rename = "@tool_type")]
     pub tool_type: Option<i32>,
-    pub sfx_datas: Option<SfxDatas>,
-    pub surfaces: Option<Surfaces>,
-    pub buoyancy_surfaces: Option<BuoyancySurfaces>,
-    pub logic_nodes: Option<LogicNodes>,
-    pub couplings: Option<Couplings>,
-    pub voxels: Option<Voxels>,
-    pub voxel_min: Option<VoxelMin>,
-    pub voxel_max: Option<VoxelMax>,
-    pub voxel_physics_min: Option<VoxelPhysicsMin>,
-    pub voxel_physics_max: Option<VoxelPhysicsMax>,
-    pub compartment_sample_pos: Option<CompartmentSamplePos>,
-    pub bb_physics_min: Option<BbPhysicsMin>,
-    pub bb_physics_max: Option<BbPhysicsMax>,
-    pub constraint_pos_parent: Option<ConstraintPosParent>,
-    pub constraint_pos_child: Option<ConstraintPosChild>,
-    pub voxel_location_child: Option<VoxelLocationChild>,
-    pub seat_offset: Option<SeatOffset>,
-    pub seat_front: Option<SeatFront>,
-    pub seat_up: Option<SeatUp>,
-    pub seat_camera: Option<SeatCamera>,
-    pub seat_render: Option<SeatRender>,
-    pub force_dir: Option<ForceDir>,
-    pub light_position: Option<LightPosition>,
-    pub light_color: Option<LightColor>,
-    pub light_forward: Option<LightForward>,
-    pub door_size: Option<DoorSize>,
-    pub door_normal: Option<DoorNormal>,
-    pub door_side: Option<DoorSide>,
-    pub door_up: Option<DoorUp>,
-    pub door_base_pos: Option<DoorBasePos>,
-    pub dynamic_body_position: Option<DynamicBodyPosition>,
-    pub dynamic_rotation_axes: Option<DynamicRotationAxes>,
-    pub dynamic_side_axis: Option<DynamicSideAxis>,
-    pub magnet_offset: Option<MagnetOffset>,
-    pub connector_axis: Option<ConnectorAxis>,
-    pub connector_up: Option<ConnectorUp>,
-    pub tooltip_properties: Option<TooltipProperties>,
-    pub jet_engine_connections_prev: Option<JetEngineConnectionsPrev>,
-    pub jet_engine_connections_next: Option<JetEngineConnectionsNext>,
-    pub particle_direction: Option<ParticleDirection>,
-    #[serde(default)]
+
+    pub sfx_datas: Vec<SfxDatas>,
+    pub surfaces: Vec<Surfaces>,
+    pub buoyancy_surfaces: Vec<BuoyancySurfaces>,
+    pub logic_nodes: Vec<LogicNodes>,
+    pub couplings: Vec<Couplings>,
+    pub voxels: Vec<Voxels>,
+    pub voxel_min: Vec<VoxelMin>,
+    pub voxel_max: Vec<VoxelMax>,
+    pub voxel_physics_min: Vec<VoxelPhysicsMin>,
+    pub voxel_physics_max: Vec<VoxelPhysicsMax>,
+    pub compartment_sample_pos: Vec<CompartmentSamplePos>,
+    pub bb_physics_min: Vec<BbPhysicsMin>,
+    pub bb_physics_max: Vec<BbPhysicsMax>,
+    pub constraint_pos_parent: Vec<ConstraintPosParent>,
+    pub constraint_pos_child: Vec<ConstraintPosChild>,
+    pub voxel_location_child: Vec<VoxelLocationChild>,
+    pub seat_offset: Vec<SeatOffset>,
+    pub seat_front: Vec<SeatFront>,
+    pub seat_up: Vec<SeatUp>,
+    pub seat_camera: Vec<SeatCamera>,
+    pub seat_render: Vec<SeatRender>,
+    pub force_dir: Vec<ForceDir>,
+    pub light_position: Vec<LightPosition>,
+    pub light_color: Vec<LightColor>,
+    pub light_forward: Vec<LightForward>,
+    pub door_size: Vec<DoorSize>,
+    pub door_normal: Vec<DoorNormal>,
+    pub door_side: Vec<DoorSide>,
+    pub door_up: Vec<DoorUp>,
+    pub door_base_pos: Vec<DoorBasePos>,
+    pub dynamic_body_position: Vec<DynamicBodyPosition>,
+    pub dynamic_rotation_axes: Vec<DynamicRotationAxes>,
+    pub dynamic_side_axis: Vec<DynamicSideAxis>,
+    pub magnet_offset: Vec<MagnetOffset>,
+    pub connector_axis: Vec<ConnectorAxis>,
+    pub connector_up: Vec<ConnectorUp>,
+    pub tooltip_properties: Vec<TooltipProperties>,
+    pub jet_engine_connections_prev: Vec<JetEngineConnectionsPrev>,
+    pub jet_engine_connections_next: Vec<JetEngineConnectionsNext>,
+    pub particle_direction: Vec<ParticleDirection>,
     pub particle_offset: Vec<ParticleOffset>,
-    #[serde(default)]
     pub particle_bounds: Vec<ParticleBounds>,
-    pub reward_properties: Option<RewardProperties>,
-    pub seat_exit_position: Option<SeatExitPosition>,
-    pub weapon_breech_position: Option<WeaponBreechPosition>,
-    pub weapon_breech_normal: Option<WeaponBreechNormal>,
-    pub weapon_cart_position: Option<WeaponCartPosition>,
-    pub weapon_cart_velocity: Option<WeaponCartVelocity>,
-    pub rope_hook_offset: Option<RopeHookOffset>,
+    pub reward_properties: Vec<RewardProperties>,
+    pub seat_exit_position: Vec<SeatExitPosition>,
+    pub weapon_breech_position: Vec<WeaponBreechPosition>,
+    pub weapon_breech_normal: Vec<WeaponBreechNormal>,
+    pub weapon_cart_position: Vec<WeaponCartPosition>,
+    pub weapon_cart_velocity: Vec<WeaponCartVelocity>,
+    pub rope_hook_offset: Vec<RopeHookOffset>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+impl Definition {
+    pub fn rope_hook_offset_last(&self) -> Option<&RopeHookOffset> {
+        self.rope_hook_offset.last()
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct SfxDatas {
     #[serde(default)]
     pub sfx_data: Vec<SfxData>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct SfxData {
     #[serde(rename = "@sfx_name")]
     pub sfx_name: Option<String>,
@@ -327,20 +332,21 @@ pub struct SfxData {
     pub sfx_range_outer: Option<f32>,
     #[serde(rename = "@sfx_priority")]
     pub sfx_priority: Option<f32>,
-    #[serde(rename = "@sfx_is_underwater_affected", default)]
+    #[serde(rename = "@sfx_is_underwater_affected")]
     pub sfx_is_underwater_affected: bool,
-    pub sfx_layers: Option<SfxLayers>,
+
+    pub sfx_layers: Vec<SfxLayers>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct SfxLayers {
     #[serde(default)]
     pub sfx_layer: Vec<SfxLayer>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct SfxLayer {
     #[serde(rename = "@sfx_filename_start")]
     pub sfx_filename_start: Option<String>,
@@ -360,22 +366,22 @@ pub struct SfxLayer {
     pub sfx_pitch_fade_speed: Option<f32>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Surfaces {
     #[serde(default)]
     pub surface: Vec<Surface>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct BuoyancySurfaces {
     #[serde(default)]
     pub surface: Vec<Surface>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Surface {
     #[serde(rename = "@orientation")]
     pub orientation: Option<i32>,
@@ -385,24 +391,25 @@ pub struct Surface {
     pub shape: Option<i32>,
     #[serde(rename = "@trans_type")]
     pub trans_type: Option<i32>,
-    #[serde(rename = "@flags", default)]
-    pub flags: u64,
-    #[serde(rename = "@is_reverse_normals", default)]
+    #[serde(rename = "@flags")]
+    pub flags: Option<u64>,
+    #[serde(rename = "@is_reverse_normals")]
     pub is_reverse_normals: bool,
-    #[serde(rename = "@is_two_sided", default)]
+    #[serde(rename = "@is_two_sided")]
     pub is_two_sided: bool,
-    pub position: Position,
+
+    pub position: Vec<Position>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct LogicNodes {
     #[serde(default)]
     pub logic_node: Vec<LogicNode>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct LogicNode {
     #[serde(rename = "@orientation")]
     pub orientation: Option<i32>,
@@ -414,20 +421,21 @@ pub struct LogicNode {
     pub node_type: Option<i32>,
     #[serde(rename = "@description")]
     pub description: Option<String>,
-    #[serde(rename = "@flags", default)]
-    pub flags: u64,
-    pub position: Position,
+    #[serde(rename = "@flags")]
+    pub flags: Option<u64>,
+
+    pub position: Vec<Position>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Couplings {
     #[serde(default)]
     pub coupling: Vec<Coupling>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Coupling {
     #[serde(rename = "@orientation")]
     pub orientation: Option<i32>,
@@ -439,55 +447,53 @@ pub struct Coupling {
     pub coupling_name: Option<String>,
     #[serde(rename = "@coupling_gender")]
     pub coupling_gender: Option<i32>,
-    #[serde(rename = "@alignment_required", default)]
+    #[serde(rename = "@alignment_required")]
     pub alignment_required: bool,
-    #[serde(rename = "@allow_bipolar_alignment", default)]
+    #[serde(rename = "@allow_bipolar_alignment")]
     pub allow_bipolar_alignment: bool,
-    pub position: Position,
+
+    pub position: Vec<Position>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Voxels {
     #[serde(default)]
     pub voxel: Vec<Voxel>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Voxel {
-    #[serde(rename = "@flags", default)]
-    pub flags: i32,
+    #[serde(rename = "@flags")]
+    pub flags: Option<i32>,
     #[serde(rename = "@physics_shape")]
     pub physics_shape: Option<i32>,
     #[serde(rename = "@buoy_pipes")]
     pub buoy_pipes: Option<i32>,
-    pub position: Position,
-    pub physics_shape_rotation: Option<PhysicsShapeRotation>,
+
+    pub position: Vec<Position>,
+    pub physics_shape_rotation: Vec<PhysicsShapeRotation>,
 }
 
-fn one() -> i32 {
-    1
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct PhysicsShapeRotation {
     #[serde(rename = "@00", default = "one")]
     pub r00: i32,
-    #[serde(rename = "@01", default)]
+    #[serde(rename = "@01")]
     pub r01: i32,
-    #[serde(rename = "@02", default)]
+    #[serde(rename = "@02")]
     pub r02: i32,
-    #[serde(rename = "@10", default)]
+    #[serde(rename = "@10")]
     pub r10: i32,
     #[serde(rename = "@11", default = "one")]
     pub r11: i32,
-    #[serde(rename = "@12", default)]
+    #[serde(rename = "@12")]
     pub r12: i32,
-    #[serde(rename = "@20", default)]
+    #[serde(rename = "@20")]
     pub r20: i32,
-    #[serde(rename = "@21", default)]
+    #[serde(rename = "@21")]
     pub r21: i32,
     #[serde(rename = "@22", default = "one")]
     pub r22: i32,
@@ -535,8 +541,8 @@ define_vec3!(WeaponCartPosition, f32);
 define_vec3!(WeaponCartVelocity, f32);
 define_vec3!(RopeHookOffset, f32);
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct TooltipProperties {
     #[serde(rename = "@description")]
     pub description: Option<String>,
@@ -544,32 +550,36 @@ pub struct TooltipProperties {
     pub short_description: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct JetEngineConnectionsPrev {
     #[serde(default)]
     pub j: Vec<JetEngineConnection>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct JetEngineConnectionsNext {
     #[serde(default)]
     pub j: Vec<JetEngineConnection>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct JetEngineConnection {
-    pub pos: Position,
-    pub normal: Normal,
+    pub pos: Vec<Position>,
+    pub normal: Vec<Normal>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct RewardProperties {
-    #[serde(rename = "@tier", default)]
-    pub tier: i32,
-    #[serde(rename = "@number_rewarded", default)]
-    pub number_rewarded: i32,
+    #[serde(rename = "@tier")]
+    pub tier: Option<i32>,
+    #[serde(rename = "@number_rewarded")]
+    pub number_rewarded: Option<i32>,
+}
+
+fn one() -> i32 {
+    1
 }
