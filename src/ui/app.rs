@@ -14,6 +14,27 @@ pub struct MainApp {
 
 impl MainApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "noto_sans_jp_regular".to_owned(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../../fonts/NotoSansJP-Regular.ttf"
+            ))),
+        );
+        fonts.font_data.insert(
+            "roboto_regular".to_owned(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../../fonts/Roboto-Regular.ttf"
+            ))),
+        );
+        let font_families = fonts
+            .families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap();
+        font_families.insert(0, "roboto_regular".to_owned());
+        font_families.insert(1, "noto_sans_jp_regular".to_owned());
+        cc.egui_ctx.set_fonts(fonts);
+
         let mut state: Option<State> = None;
         if let Some(storage) = cc.storage {
             state = eframe::get_value(storage, eframe::APP_KEY);

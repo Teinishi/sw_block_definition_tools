@@ -2,7 +2,7 @@ use super::State;
 use crate::gl_renderer::SceneRenderer;
 use eframe::egui_glow;
 use egui::vec2;
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
