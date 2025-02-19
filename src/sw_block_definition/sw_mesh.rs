@@ -9,14 +9,14 @@ use std::{
 
 #[derive(Debug)]
 pub struct SwMesh {
-    mesh_type: SwMeshType,
-    vertex_count: u16,
+    _mesh_type: SwMeshType,
+    _vertex_count: u16,
     vertices: Vec<SwMeshVertex>,
-    index_count: u32,
-    triangle_count: u32,
+    _index_count: u32,
+    _triangle_count: u32,
     triangles: Vec<SwMeshTriangle>,
-    submesh_count: u16,
-    submeshes: Vec<SwSubmesh>,
+    _submesh_count: u16,
+    _submeshes: Vec<SwSubmesh>,
 }
 
 impl SwMesh {
@@ -66,42 +66,18 @@ impl SwMesh {
         }
 
         Ok(Self {
-            mesh_type: mesh_type.unwrap(),
-            vertex_count,
+            _mesh_type: mesh_type.unwrap(),
+            _vertex_count: vertex_count,
             vertices,
-            index_count,
-            triangle_count,
+            _index_count: index_count,
+            _triangle_count: triangle_count,
             triangles,
-            submesh_count,
-            submeshes,
+            _submesh_count: submesh_count,
+            _submeshes: submeshes,
         })
     }
-}
 
-impl Into<gl_renderer::Mesh> for SwMesh {
-    fn into(self) -> gl_renderer::Mesh {
-        /*let vertex_count = (self.triangle_count * 3) as usize;
-        let mut vertex_positions = Vec::with_capacity(vertex_count);
-        let mut vertex_colors = Vec::with_capacity(vertex_count);
-        let mut vertex_normals = Vec::with_capacity(vertex_count);
-        let mut triangles = Vec::with_capacity(self.triangle_count as usize);
-
-        for triangle in self.triangles {
-            let indices = triangle.indices;
-            for i in indices {
-                let v = self.vertices[i as usize];
-                vertex_positions.push(v.position());
-            }
-            triangles.push(indices.map(|i| i as usize));
-        }
-
-        gl_renderer::Mesh {
-            vertex_positions,
-            vertex_colors,
-            vertex_normals,
-            triangles,
-        }*/
-
+    pub fn into_mesh(&self) -> gl_renderer::Mesh {
         let vertices: Vec<gl_renderer::MeshVertex> =
             self.vertices.iter().map(|v| v.into_mesh_vertex()).collect();
         let triangles = self.triangles.iter().map(|t| t.into_usize_arr()).collect();
@@ -167,18 +143,6 @@ impl SwMeshVertex {
         })
     }
 
-    pub fn position(&self) -> &SwMeshVec3 {
-        &self.position
-    }
-
-    pub fn color(&self) -> &SwMeshColor4 {
-        &self.color
-    }
-
-    pub fn normal(&self) -> &SwMeshVec3 {
-        &self.normal
-    }
-
     pub fn into_mesh_vertex(&self) -> gl_renderer::MeshVertex {
         gl_renderer::MeshVertex {
             position: self.position.into_vec3(),
@@ -210,13 +174,13 @@ impl SwMeshTriangle {
 
 #[derive(Debug)]
 pub struct SwSubmesh {
-    index_buffer_start: u32,
-    index_buffer_length: u32,
-    shader_id: u16,
-    bounds_min: SwMeshVec3,
-    bounds_max: SwMeshVec3,
-    name_len: u16,
-    name: Result<String, std::string::FromUtf8Error>,
+    _index_buffer_start: u32,
+    _index_buffer_length: u32,
+    _shader_id: u16,
+    _bounds_min: SwMeshVec3,
+    _bounds_max: SwMeshVec3,
+    _name_len: u16,
+    _name: Result<String, std::string::FromUtf8Error>,
 }
 
 impl SwSubmesh {
@@ -235,13 +199,13 @@ impl SwSubmesh {
         }
         let _header8 = SwMeshVec3::from_binary(cur)?;
         Ok(Self {
-            index_buffer_start,
-            index_buffer_length,
-            shader_id,
-            bounds_min,
-            bounds_max,
-            name_len,
-            name: String::from_utf8(name),
+            _index_buffer_start: index_buffer_start,
+            _index_buffer_length: index_buffer_length,
+            _shader_id: shader_id,
+            _bounds_min: bounds_min,
+            _bounds_max: bounds_max,
+            _name_len: name_len,
+            _name: String::from_utf8(name),
         })
     }
 }
@@ -259,10 +223,6 @@ impl SwMeshVec3 {
         let y = cur.read_f32::<LittleEndian>()?;
         let z = cur.read_f32::<LittleEndian>()?;
         Ok(Self { x, y, z })
-    }
-
-    fn get_values(&self) -> [f32; 3] {
-        [self.x, self.y, self.z]
     }
 
     fn into_vec3(&self) -> glam::Vec3 {
@@ -287,21 +247,12 @@ impl SwMeshColor4 {
         Ok(Self { r, g, b, a })
     }
 
-    fn get_values_as_f32(&self) -> [f32; 4] {
-        [
-            self.r as f32 / 255.0,
-            self.g as f32 / 255.0,
-            self.b as f32 / 255.0,
-            self.a as f32 / 255.0,
-        ]
-    }
-
     fn into_color4(&self) -> gl_renderer::Color4 {
         gl_renderer::Color4 {
-            r: self.r,
-            g: self.g,
-            b: self.b,
-            a: self.a,
+            r: self.r as f32 / 255.0,
+            g: self.g as f32 / 255.0,
+            b: self.b as f32 / 255.0,
+            a: self.a as f32 / 255.0,
         }
     }
 }

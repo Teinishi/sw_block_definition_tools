@@ -1,18 +1,22 @@
 use super::Scene;
-use eframe::{egui_glow, glow};
+use eframe::{
+    egui_glow,
+    glow::{self, HasContext},
+};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
 
 const VERTEX_SHADER: &str = r#"
 in vec3 position;
 in vec4 color;
+//in vec3 normal;
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 pv_mat;
 out vec4 v_color;
 void main() {
     v_color = color;
-    gl_Position = projection * view * model * vec4(position, 1.0);
+    gl_Position = pv_mat * model * vec4(position, 1.0);
+    //gl_Position = vec4(position, 1.0);
 }
 "#;
 
@@ -33,7 +37,6 @@ pub struct SceneRenderer {
     gl: Arc<glow::Context>,
     program: glow::Program,
     vaos: Vec<VaoContainer>,
-    scene: Scene,
 }
 
 #[allow(unsafe_code)]
@@ -46,7 +49,6 @@ impl SceneRenderer {
                 gl,
                 program,
                 vaos: Vec::new(),
-                scene: Scene::default(),
             }
         }
     }
@@ -61,9 +63,12 @@ impl SceneRenderer {
         }
     }
 
-    pub fn update_vertex_buffer(&mut self) -> Result<(), String> {
+    pub fn update_vertex_buffer(&mut self, scene: &Scene) -> Result<(), String> {
         unsafe {
-            self.vaos = create_vertex_buffer(&self.gl, &self.program, &self.scene)?;
+            for vao_container in &self.vaos {
+                self.gl.delete_vertex_array(vao_container.vao);
+            }
+            self.vaos = create_vertex_buffer(&self.gl, &self.program, scene)?;
         }
         Ok(())
     }
@@ -71,9 +76,9 @@ impl SceneRenderer {
     pub fn paint(&self, gl: &glow::Context) {
         use glow::HasContext as _;
 
-        let view = Mat4::look_at_rh(Vec3::new(0.0, 0.3, 0.4), Vec3::ZERO, Vec3::Y);
+        let view = Mat4::look_at_rh(Vec3::new(0.5, 1.0, 2.0), Vec3::ZERO, Vec3::Y);
         let projection = Mat4::perspective_rh(60f32.to_radians(), 1.0, 0.001, 100.0);
-        let vp_mat = view.mul_mat4(&projection);
+        let pv_mat = projection.mul_mat4(&view);
 
         unsafe {
             gl.clear(glow::DEPTH_BUFFER_BIT);
@@ -89,9 +94,9 @@ impl SceneRenderer {
 
             gl.use_program(Some(self.program));
             gl.uniform_matrix_4_f32_slice(
-                gl.get_uniform_location(self.program, "vp_mat").as_ref(),
+                gl.get_uniform_location(self.program, "pv_mat").as_ref(),
                 false,
-                &vp_mat.to_cols_array(),
+                &pv_mat.to_cols_array(),
             );
 
             for vao_container in &self.vaos {
@@ -136,7 +141,7 @@ unsafe fn create_program(gl: &glow::Context) -> Option<glow::NativeProgram> {
         gl.compile_shader(shader);
         assert!(
             gl.get_shader_compile_status(shader),
-            "Failed to compile custom_3d_glow {shader_type}: {}",
+            "Failed to compile shader {shader_type}: {}",
             gl.get_shader_info_log(shader)
         );
 
@@ -175,12 +180,12 @@ unsafe fn create_vertex_buffer(
         let vertex_count = positions.len();
         let positions_u8 = to_byte_slice(&positions[..]);
         let colors_u8 = to_byte_slice(&colors[..]);
-        let normals_u8 = to_byte_slice(&normals[..]);
+        let _normals_u8 = to_byte_slice(&normals[..]);
 
         let attributes = [
             ("position", positions_u8, 3),
             ("color", colors_u8, 4),
-            ("normals", normals_u8, 3),
+            //("normal", normals_u8, 3),
         ];
 
         let vao = gl.create_vertex_array()?;

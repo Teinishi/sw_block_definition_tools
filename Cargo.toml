@@ -29,6 +29,7 @@ quick-xml = { version = "0.37.2", features = ["serialize", "overlapped-lists"] }
 glam = "0.30.0"
 image = "0.25.5"
 byteorder = "1.5.0"
+enum-map = { version = "2.7.3", features = ["serde"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

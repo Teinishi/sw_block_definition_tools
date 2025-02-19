@@ -4,12 +4,13 @@ use super::{
 };
 use quick_xml;
 use std::{
+    collections::BTreeMap,
     fmt, io,
     path::{Path, PathBuf},
     rc::Rc,
 };
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct SwBlockDefinition {
     rom_path: PathBuf,
     path: PathBuf,
@@ -128,51 +129,62 @@ impl std::error::Error for SwBlockDefinitionDataError {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(
+    serde::Deserialize, serde::Serialize, enum_map::Enum, Clone, PartialEq, PartialOrd, Eq, Ord,
+)]
+pub enum SwBlockDefinitionMeshKey {
+    MeshData,
+    Mesh0,
+    Mesh1,
+    Mesh2,
+    MeshEditorOnly,
+}
+
+impl SwBlockDefinitionMeshKey {
+    pub fn xml_name(&self) -> &str {
+        match self {
+            Self::MeshData => "mesh_data_name",
+            Self::Mesh0 => "mesh_0_name",
+            Self::Mesh1 => "mesh_1_name",
+            Self::Mesh2 => "mesh_2_name",
+            Self::MeshEditorOnly => "mesh_editor_only_name",
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct SwBlockDefinitionMeshes {
-    mesh_data: Option<Result<SwMesh, SwMeshFromFileError>>,
-    mesh_0: Option<Result<SwMesh, SwMeshFromFileError>>,
-    mesh_1: Option<Result<SwMesh, SwMeshFromFileError>>,
-    mesh_2: Option<Result<SwMesh, SwMeshFromFileError>>,
-    mesh_editor_only: Option<Result<SwMesh, SwMeshFromFileError>>,
+    meshes: BTreeMap<SwBlockDefinitionMeshKey, Result<SwMesh, SwMeshFromFileError>>,
 }
 
 impl SwBlockDefinitionMeshes {
     pub fn new<P: AsRef<Path>>(data: &Definition, rom_path: P) -> Self {
-        let mesh_from_file = |name: &Option<String>| {
+        let mut meshes = BTreeMap::new();
+
+        for (key, name) in [
+            (SwBlockDefinitionMeshKey::MeshData, &data.mesh_data_name),
+            (SwBlockDefinitionMeshKey::Mesh0, &data.mesh_0_name),
+            (SwBlockDefinitionMeshKey::Mesh1, &data.mesh_1_name),
+            (SwBlockDefinitionMeshKey::Mesh2, &data.mesh_2_name),
+            (
+                SwBlockDefinitionMeshKey::MeshEditorOnly,
+                &data.mesh_editor_only_name,
+            ),
+        ] {
             if let Some(name) = name {
                 if name.len() > 0 {
-                    return Some(SwMesh::from_file(rom_path.as_ref().join(name)));
+                    meshes.insert(key, SwMesh::from_file(rom_path.as_ref().join(name)));
                 }
             }
-            None
-        };
-        Self {
-            mesh_data: mesh_from_file(&data.mesh_data_name),
-            mesh_0: mesh_from_file(&data.mesh_0_name),
-            mesh_1: mesh_from_file(&data.mesh_1_name),
-            mesh_2: mesh_from_file(&data.mesh_2_name),
-            mesh_editor_only: mesh_from_file(&data.mesh_editor_only_name),
         }
+
+        Self { meshes }
     }
 
-    pub fn mesh_data(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
-        &self.mesh_data
-    }
-
-    pub fn mesh_0(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
-        &self.mesh_0
-    }
-
-    pub fn mesh_1(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
-        &self.mesh_1
-    }
-
-    pub fn mesh_2(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
-        &self.mesh_2
-    }
-
-    pub fn mesh_editor_only(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
-        &self.mesh_editor_only
+    pub fn get_mesh(
+        &self,
+        key: &SwBlockDefinitionMeshKey,
+    ) -> Option<&Result<SwMesh, SwMeshFromFileError>> {
+        self.meshes.get(key)
     }
 }

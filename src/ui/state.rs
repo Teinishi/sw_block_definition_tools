@@ -1,32 +1,66 @@
-use crate::sw_block_definition::SwBlockDefinition;
+use crate::sw_block_definition::{SwBlockDefinition, SwBlockDefinitionMeshKey};
+use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
+
+type StateChangeCallback = Box<dyn FnMut()>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
-    pub definitions: Vec<SwBlockDefinition>,
-    pub selected_definition_index: Option<usize>,
-    pub show_mesh_data: bool,
-    pub show_mesh_0: bool,
-    pub show_mesh_1: bool,
-    pub show_mesh_2: bool,
-    pub show_mesh_editor_only: bool,
+    definitions: Vec<SwBlockDefinition>,
+    selected_definition_index: Option<usize>,
+    //show_mesh: BTreeMap<SwBlockDefinitionMeshKey, bool>,
+    show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    #[serde(skip)]
+    callbacks: Vec<StateChangeCallback>,
 }
 
 impl Default for State {
     fn default() -> Self {
+        let mut show_mesh = EnumMap::default();
+        for (key, _) in show_mesh {
+            show_mesh[key] = true;
+        }
         Self {
             definitions: Vec::new(),
             selected_definition_index: None,
-            show_mesh_data: true,
-            show_mesh_0: true,
-            show_mesh_1: true,
-            show_mesh_2: true,
-            show_mesh_editor_only: true,
+            show_mesh,
+            callbacks: Vec::new(),
         }
     }
 }
 
 impl State {
+    fn call_callbacks(&mut self) {
+        for callback in &mut self.callbacks {
+            callback();
+        }
+    }
+
+    pub fn definitions(&self) -> &Vec<SwBlockDefinition> {
+        &self.definitions
+    }
+
+    pub fn selected_definition_index(&self) -> &Option<usize> {
+        &self.selected_definition_index
+    }
+
+    pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
+        if self.selected_definition_index != value {
+            self.selected_definition_index = value;
+            self.call_callbacks();
+        }
+    }
+
+    pub fn show_mesh(&self) -> &EnumMap<SwBlockDefinitionMeshKey, bool> {
+        &self.show_mesh
+    }
+
+    pub fn set_show_mesh(&mut self, key: SwBlockDefinitionMeshKey, value: bool) {
+        if self.show_mesh[key.clone()] != value {
+            self.show_mesh[key] = value;
+        }
+    }
+
     pub fn selected_definition(&mut self) -> Option<&mut SwBlockDefinition> {
         self.definitions.get_mut(self.selected_definition_index?)
     }

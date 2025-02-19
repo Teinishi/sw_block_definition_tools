@@ -1,10 +1,11 @@
 use super::State;
-use crate::gl_renderer::SceneRenderer;
+use crate::gl_renderer::{Scene, SceneObject, SceneRenderer};
 use eframe::egui_glow;
 use egui::vec2;
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
+    scene: Scene,
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     //framebuffer: Option<MultisampleFramebuffer>,
 }
@@ -12,10 +13,11 @@ pub struct Definition3dPanel {
 impl Definition3dPanel {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
-        let mut renderer = SceneRenderer::new(gl.clone());
-        let _ = renderer.update_vertex_buffer();
+        let scene = Scene::default();
+        let renderer = SceneRenderer::new(gl.clone());
 
         Some(Self {
+            scene,
             renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
             //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
         })
@@ -35,29 +37,29 @@ impl Definition3dPanel {
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
 
-            let mesh_checkboxes = [
-                ("mesh_data", &mut state.show_mesh_data, meshes.mesh_data()),
-                ("mesh_0", &mut state.show_mesh_0, meshes.mesh_0()),
-                ("mesh_1", &mut state.show_mesh_1, meshes.mesh_1()),
-                ("mesh_2", &mut state.show_mesh_2, meshes.mesh_2()),
-                (
-                    "mesh_editor_only",
-                    &mut state.show_mesh_editor_only,
-                    meshes.mesh_editor_only(),
-                ),
-            ];
-
-            for (name, checked, mesh) in mesh_checkboxes {
-                if let Some(r) = mesh {
-                    if let Err(err) = r {
+            let mut change = None;
+            for (key, show) in state.show_mesh() {
+                if let Some(mesh) = meshes.get_mesh(&key) {
+                    let name = key.xml_name();
+                    if let Err(err) = mesh {
                         ui.collapsing(format!("{}: Error", name), |ui| {
                             ui.label(format!("{}", err));
                         });
                     } else {
-                        ui.checkbox(checked, name);
+                        let mut c = *show;
+                        ui.checkbox(&mut c, name);
+                        if c != *show {
+                            change = Some((key, c));
+                        }
                     }
                 }
             }
+            if let Some((key, value)) = change {
+                state.set_show_mesh(key, value);
+            }
+
+            // TODO
+            self.update_scene(state);
         }
     }
 
@@ -75,6 +77,29 @@ impl Definition3dPanel {
                 callback: Arc::new(cb),
             };
             ui.painter().add(callback);
+        }
+    }
+
+    fn update_scene(&mut self, state: &mut State) {
+        self.scene.clear();
+        if let Some(definition) = state.selected_definition() {
+            let meshes = definition.meshes();
+
+            for (key, show) in state.show_mesh() {
+                if !*show {
+                    continue;
+                }
+                if let Some(mesh) = meshes.get_mesh(&key) {
+                    if let Ok(mesh) = mesh {
+                        self.scene.add_object(SceneObject::new(mesh.into_mesh()));
+                    }
+                }
+            }
+        }
+        if let Some(renderer) = &self.renderer {
+            if let Err(mes) = renderer.lock().update_vertex_buffer(&self.scene) {
+                println!("update vertex buffer error: {mes}");
+            }
         }
     }
 }

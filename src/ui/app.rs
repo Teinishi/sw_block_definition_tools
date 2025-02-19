@@ -107,7 +107,7 @@ impl eframe::App for MainApp {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
+            egui::ScrollArea::both().show(ui, |ui| {
                 ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
                 self.definition_detail_panel.ui(ui, &mut self.state);
             });
