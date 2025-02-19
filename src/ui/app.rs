@@ -3,7 +3,7 @@ use raw_window_handle;
 use rfd::FileDialog;
 use std::path::Path;
 
-const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks\\rom\\data";
+const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
 
 pub struct MainApp {
     state: State,
@@ -43,8 +43,8 @@ impl eframe::App for MainApp {
                 let is_web = cfg!(target_arch = "wasm32");
                 if !is_web {
                     ui.menu_button("File", |ui| {
-                        if ui.button("Open Definitions Folder").clicked() {
-                            self.open_definitions_folder(Some(frame));
+                        if ui.button("Open Rom Folder").clicked() {
+                            self.open_rom_folder(Some(frame));
                             ui.close_menu();
                         }
 
@@ -76,7 +76,7 @@ impl eframe::App for MainApp {
         egui::SidePanel::right("right_panel")
             .resizable(true)
             .default_width(300.0)
-            .width_range(80.0..=400.0)
+            .width_range(80.0..=500.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
@@ -95,7 +95,7 @@ impl eframe::App for MainApp {
 }
 
 impl MainApp {
-    fn open_definitions_folder<
+    fn open_rom_folder<
         W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
     >(
         &mut self,
@@ -109,7 +109,7 @@ impl MainApp {
             dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
         }
         if let Some(pathbuf) = dialog.pick_folder() {
-            let _ = self.state.open_directory(&pathbuf);
+            let _ = self.state.open_rom_directory(&pathbuf);
         }
     }
 }

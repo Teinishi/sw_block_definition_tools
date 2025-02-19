@@ -6,22 +6,15 @@ pub struct DefinitionSelectPanel {}
 
 impl DefinitionSelectPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
-        let selected_index = state.selected_definition_index();
-        let mut select = None;
-
         ui.with_layout(Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            for (i, entry) in state.definitions().iter().enumerate() {
+            for (i, entry) in state.definitions.iter().enumerate() {
                 if ui
-                    .selectable_label(Some(i) == selected_index, entry.filename())
+                    .selectable_label(Some(i) == state.selected_definition_index, entry.filename())
                     .clicked()
                 {
-                    select = Some(i);
+                    state.selected_definition_index = Some(i);
                 }
             }
         });
-
-        if select.is_some() {
-            state.set_selected_definition_index(select);
-        }
     }
 }

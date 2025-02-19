@@ -1,4 +1,7 @@
-use super::definition_schema::Definition;
+use super::{
+    definition_schema::Definition,
+    sw_mesh::{SwMesh, SwMeshFromFileError},
+};
 use quick_xml;
 use std::{
     fmt, io,
@@ -8,20 +11,25 @@ use std::{
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct SwBlockDefinition {
+    rom_path: PathBuf,
     path: PathBuf,
     filename: String,
     #[serde(skip)]
     data: Option<Result<Rc<Definition>, SwBlockDefinitionDataError>>,
+    #[serde(skip)]
+    meshes: Option<Rc<SwBlockDefinitionMeshes>>,
 }
 
 impl SwBlockDefinition {
-    pub fn new<P: AsRef<Path>>(path: P) -> Option<Self> {
+    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(rom_path: P, path: Q) -> Option<Self> {
         let pathbuf = path.as_ref().to_path_buf();
         let filename = pathbuf.file_name()?.to_os_string().into_string().ok()?;
         Some(Self {
+            rom_path: rom_path.as_ref().to_path_buf(),
             path: pathbuf,
             filename,
             data: None,
+            meshes: Default::default(),
         })
     }
 
@@ -29,49 +37,59 @@ impl SwBlockDefinition {
         self.filename.clone()
     }
 
-    fn open_file(&self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
+    fn open_file(&mut self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
         let xml = std::fs::read_to_string(self.path.clone())?;
-        let mut xml_reader = quick_xml::Reader::from_str(&xml);
-        xml_reader.config_mut().trim_text(true);
 
-        loop {
-            if let Ok(event) = xml_reader.read_event() {
-                match event {
-                    quick_xml::events::Event::Start(ref e) => {
-                        if e.name().as_ref() == b"definition" {
-                            let data: Definition = quick_xml::de::from_str(&xml)?;
-                            return Ok(Rc::new(data));
-                        } else {
-                            return Err(SwBlockDefinitionDataError::XmlError(format!(
-                                "Unexpected root element: {:?}",
-                                std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
-                            )));
+        // ルート要素が  <definition> であるかチェック
+        let is_definition: Result<(), String> = {
+            let mut xml_reader = quick_xml::Reader::from_str(&xml);
+            xml_reader.config_mut().trim_text(true);
+            loop {
+                if let Ok(event) = xml_reader.read_event() {
+                    match event {
+                        quick_xml::events::Event::Start(ref e) => {
+                            if e.name().as_ref() == b"definition" {
+                                break Ok(());
+                            } else {
+                                break Err(format!(
+                                    "Unexpected root element: {:?}",
+                                    std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                                ));
+                            }
                         }
+                        _ => {}
                     }
-                    _ => {}
+                } else {
+                    break Err("Could not find root element".to_string());
                 }
-            } else {
-                break;
             }
+        };
+
+        if let Err(mes) = is_definition {
+            Err(SwBlockDefinitionDataError::XmlError(mes))
+        } else {
+            let data: Definition = quick_xml::de::from_str(&xml)?;
+            self.meshes = Some(Rc::new(SwBlockDefinitionMeshes::new(
+                &data,
+                self.rom_path.clone(),
+            )));
+            Ok(Rc::new(data))
         }
-        Err(SwBlockDefinitionDataError::XmlError(
-            "Could not find root element".to_string(),
-        ))
     }
 
     pub fn data(&mut self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
         if let Some(data) = &self.data {
-            return data.clone();
+            data.clone()
+        } else {
+            let data = self.open_file();
+            self.data = Some(data.clone());
+            data
         }
-        let data = self.open_file();
-        self.data = Some(data.clone());
-        data
     }
-}
 
-impl PartialEq for SwBlockDefinition {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
+    pub fn meshes(&mut self) -> Rc<SwBlockDefinitionMeshes> {
+        let _ = self.data();
+        self.meshes.clone().unwrap()
     }
 }
 
@@ -107,5 +125,54 @@ impl fmt::Display for SwBlockDefinitionDataError {
 impl std::error::Error for SwBlockDefinitionDataError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct SwBlockDefinitionMeshes {
+    mesh_data: Option<Result<SwMesh, SwMeshFromFileError>>,
+    mesh_0: Option<Result<SwMesh, SwMeshFromFileError>>,
+    mesh_1: Option<Result<SwMesh, SwMeshFromFileError>>,
+    mesh_2: Option<Result<SwMesh, SwMeshFromFileError>>,
+    mesh_editor_only: Option<Result<SwMesh, SwMeshFromFileError>>,
+}
+
+impl SwBlockDefinitionMeshes {
+    pub fn new<P: AsRef<Path>>(data: &Definition, rom_path: P) -> Self {
+        let mesh_from_file = |name: &Option<String>| {
+            if let Some(name) = name {
+                if name.len() > 0 {
+                    return Some(SwMesh::from_file(rom_path.as_ref().join(name)));
+                }
+            }
+            None
+        };
+        Self {
+            mesh_data: mesh_from_file(&data.mesh_data_name),
+            mesh_0: mesh_from_file(&data.mesh_0_name),
+            mesh_1: mesh_from_file(&data.mesh_1_name),
+            mesh_2: mesh_from_file(&data.mesh_2_name),
+            mesh_editor_only: mesh_from_file(&data.mesh_editor_only_name),
+        }
+    }
+
+    pub fn mesh_data(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
+        &self.mesh_data
+    }
+
+    pub fn mesh_0(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
+        &self.mesh_0
+    }
+
+    pub fn mesh_1(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
+        &self.mesh_1
+    }
+
+    pub fn mesh_2(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
+        &self.mesh_2
+    }
+
+    pub fn mesh_editor_only(&self) -> &Option<Result<SwMesh, SwMeshFromFileError>> {
+        &self.mesh_editor_only
     }
 }
