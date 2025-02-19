@@ -1,7 +1,7 @@
 use super::State;
 use std::fmt::Debug;
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(Default)]
 pub struct DefinitionDetailPanel {}
 
 impl DefinitionDetailPanel {

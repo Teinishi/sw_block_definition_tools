@@ -1,32 +1,40 @@
-use super::{DefinitionDetailPanel, DefinitionSelectPanel, State};
+use super::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, State};
 use raw_window_handle;
 use rfd::FileDialog;
 use std::path::Path;
 
 const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks\\rom\\data";
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct MainApp {
     state: State,
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
+    definition_3d_panel: Definition3dPanel,
 }
 
 impl MainApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let mut state: Option<State> = None;
         if let Some(storage) = cc.storage {
-            if let Some(app) = eframe::get_value(storage, eframe::APP_KEY) {
-                return app;
-            }
+            state = eframe::get_value(storage, eframe::APP_KEY);
         }
 
-        Default::default()
+        Self {
+            state: state.unwrap_or_default(),
+            definition_select_panel: DefinitionSelectPanel::default(),
+            definition_detail_panel: DefinitionDetailPanel::default(),
+            definition_3d_panel: Definition3dPanel::new(cc).unwrap(),
+        }
     }
 }
 
 impl eframe::App for MainApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
+        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.definition_3d_panel.destroy();
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
@@ -58,8 +66,22 @@ impl eframe::App for MainApp {
             .width_range(80.0..=300.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.add_space(4.0);
                     ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
                     self.definition_select_panel.ui(ui, &mut self.state);
+                    ui.add_space(4.0);
+                });
+            });
+
+        egui::SidePanel::right("right_panel")
+            .resizable(true)
+            .default_width(300.0)
+            .width_range(80.0..=400.0)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.add_space(4.0);
+                    self.definition_3d_panel.ui(ui, &mut self.state);
+                    ui.add_space(4.0);
                 });
             });
 

@@ -1,7 +1,7 @@
 use super::State;
 use egui::Layout;
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(Default)]
 pub struct DefinitionSelectPanel {}
 
 impl DefinitionSelectPanel {
@@ -10,7 +10,6 @@ impl DefinitionSelectPanel {
         let mut select = None;
 
         ui.with_layout(Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            ui.add_space(4.0);
             for (i, entry) in state.definitions().iter().enumerate() {
                 if ui
                     .selectable_label(Some(i) == selected_index, entry.filename())
@@ -19,7 +18,6 @@ impl DefinitionSelectPanel {
                     select = Some(i);
                 }
             }
-            ui.add_space(4.0);
         });
 
         if select.is_some() {
