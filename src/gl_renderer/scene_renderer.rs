@@ -9,14 +9,17 @@ use std::sync::Arc;
 const VERTEX_SHADER: &str = r#"
 in vec3 position;
 in vec4 color;
-//in vec3 normal;
-uniform mat4 model;
-uniform mat4 pv_mat;
+in vec3 normal;
+uniform vec3 light_dir;
+uniform vec3 diffuse_color;
+uniform vec3 ambient_color;
+uniform mat4 mat_model;
+uniform mat4 mat_view_proj;
 out vec4 v_color;
 void main() {
-    v_color = color;
-    gl_Position = pv_mat * model * vec4(position, 1.0);
-    //gl_Position = vec4(position, 1.0);
+    float power = clamp(dot(normalize((mat_model * vec4(normal, 0.0)).xyz), light_dir), 0.0, 1.0);
+    v_color = vec4(color.rgb * diffuse_color * power + ambient_color, color.a);
+    gl_Position = mat_view_proj * mat_model * vec4(position, 1.0);
 }
 "#;
 
@@ -76,9 +79,14 @@ impl SceneRenderer {
     pub fn paint(&self, gl: &glow::Context) {
         use glow::HasContext as _;
 
-        let view = Mat4::look_at_rh(Vec3::new(0.5, 1.0, 2.0), Vec3::ZERO, Vec3::Y);
+        let directional_light = Vec3::new(-0.5, -1.0, -0.25).normalize();
+        let directional_light_color = Vec3::ONE;
+
+        let ambient_light_color = Vec3::new(0.15, 0.15, 0.15);
+
+        let view = Mat4::look_at_rh(Vec3::new(1.0, 0.75, -0.5), Vec3::new(0.0, 0.1, 0.0), Vec3::Y);
         let projection = Mat4::perspective_rh(60f32.to_radians(), 1.0, 0.001, 100.0);
-        let pv_mat = projection.mul_mat4(&view);
+        let mat_view_proj = projection.mul_mat4(&view);
 
         unsafe {
             gl.clear(glow::DEPTH_BUFFER_BIT);
@@ -94,14 +102,34 @@ impl SceneRenderer {
 
             gl.use_program(Some(self.program));
             gl.uniform_matrix_4_f32_slice(
-                gl.get_uniform_location(self.program, "pv_mat").as_ref(),
+                gl.get_uniform_location(self.program, "mat_view_proj").as_ref(),
                 false,
-                &pv_mat.to_cols_array(),
+                &mat_view_proj.to_cols_array(),
+            );
+            gl.uniform_3_f32(
+                gl.get_uniform_location(self.program, "light_dir").as_ref(),
+                -directional_light.x,
+                -directional_light.y,
+                -directional_light.z,
+            );
+            gl.uniform_3_f32(
+                gl.get_uniform_location(self.program, "diffuse_color")
+                    .as_ref(),
+                directional_light_color.x,
+                directional_light_color.y,
+                directional_light_color.z,
+            );
+            gl.uniform_3_f32(
+                gl.get_uniform_location(self.program, "ambient_color")
+                    .as_ref(),
+                ambient_light_color.x,
+                ambient_light_color.y,
+                ambient_light_color.z,
             );
 
             for vao_container in &self.vaos {
                 gl.uniform_matrix_4_f32_slice(
-                    gl.get_uniform_location(self.program, "model").as_ref(),
+                    gl.get_uniform_location(self.program, "mat_model").as_ref(),
                     false,
                     &vao_container.transform.to_cols_array(),
                 );
@@ -180,12 +208,12 @@ unsafe fn create_vertex_buffer(
         let vertex_count = positions.len();
         let positions_u8 = to_byte_slice(&positions[..]);
         let colors_u8 = to_byte_slice(&colors[..]);
-        let _normals_u8 = to_byte_slice(&normals[..]);
+        let normals_u8 = to_byte_slice(&normals[..]);
 
         let attributes = [
             ("position", positions_u8, 3),
             ("color", colors_u8, 4),
-            //("normal", normals_u8, 3),
+            ("normal", normals_u8, 3),
         ];
 
         let vao = gl.create_vertex_array()?;
