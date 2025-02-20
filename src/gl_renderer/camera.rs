@@ -5,7 +5,7 @@ pub trait Camera {
     fn mat_view(&self) -> Mat4;
     fn mat_proj(&self) -> Mat4;
     fn mat_view_proj(&self) -> Mat4 {
-        self.mat_proj().mul_mat4(&&self.mat_view())
+        self.mat_proj().mul_mat4(&self.mat_view())
     }
 }
 

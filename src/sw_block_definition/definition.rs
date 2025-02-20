@@ -2,7 +2,6 @@ use super::{
     definition_schema::Definition,
     sw_mesh::{SwMesh, SwMeshFromFileError},
 };
-use quick_xml;
 use std::{
     collections::BTreeMap,
     fmt, io,
@@ -47,18 +46,15 @@ impl SwBlockDefinition {
             xml_reader.config_mut().trim_text(true);
             loop {
                 if let Ok(event) = xml_reader.read_event() {
-                    match event {
-                        quick_xml::events::Event::Start(ref e) => {
-                            if e.name().as_ref() == b"definition" {
-                                break Ok(());
-                            } else {
-                                break Err(format!(
-                                    "Unexpected root element: {:?}",
-                                    std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
-                                ));
-                            }
+                    if let quick_xml::events::Event::Start(ref e) = event {
+                        if e.name().as_ref() == b"definition" {
+                            break Ok(());
+                        } else {
+                            break Err(format!(
+                                "Unexpected root element: {:?}",
+                                std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                            ));
                         }
-                        _ => {}
                     }
                 } else {
                     break Err("Could not find root element".to_string());
@@ -67,7 +63,7 @@ impl SwBlockDefinition {
         };
 
         if let Err(mes) = is_definition {
-            Err(SwBlockDefinitionDataError::XmlError(mes))
+            Err(SwBlockDefinitionDataError::Xml(mes))
         } else {
             let data: Definition = quick_xml::de::from_str(&xml)?;
             self.meshes = Some(Rc::new(SwBlockDefinitionMeshes::new(
@@ -96,29 +92,29 @@ impl SwBlockDefinition {
 
 #[derive(Debug, Clone)]
 pub enum SwBlockDefinitionDataError {
-    IoError(String),
-    DeError(String),
-    XmlError(String),
+    Io(String),
+    De(String),
+    Xml(String),
 }
 
 impl From<io::Error> for SwBlockDefinitionDataError {
     fn from(value: io::Error) -> Self {
-        Self::IoError(value.to_string())
+        Self::Io(value.to_string())
     }
 }
 
 impl From<quick_xml::DeError> for SwBlockDefinitionDataError {
     fn from(value: quick_xml::DeError) -> Self {
-        Self::DeError(value.to_string())
+        Self::De(value.to_string())
     }
 }
 
 impl fmt::Display for SwBlockDefinitionDataError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IoError(mes) => write!(f, "IoError: {}", mes),
-            Self::DeError(mes) => write!(f, "DeError: {}", mes),
-            Self::XmlError(mes) => write!(f, "XmlError: {}", mes),
+            Self::Io(mes) => write!(f, "IoError: {}", mes),
+            Self::De(mes) => write!(f, "DeError: {}", mes),
+            Self::Xml(mes) => write!(f, "XmlError: {}", mes),
         }
     }
 }
@@ -172,7 +168,7 @@ impl SwBlockDefinitionMeshes {
             ),
         ] {
             if let Some(name) = name {
-                if name.len() > 0 {
+                if !name.is_empty() {
                     meshes.insert(key, SwMesh::from_file(rom_path.as_ref().join(name)));
                 }
             }

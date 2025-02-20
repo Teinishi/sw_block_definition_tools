@@ -291,16 +291,16 @@ fn create_vertex_buffer(
 
         Ok(VaoContainer {
             vao,
-            transform: object.transform_matrix().clone(),
+            transform: *object.transform_matrix(),
             vertex_count: vertex_count as i32,
         })
     }
 }
 
-unsafe fn to_byte_slice<'a, T>(values: &'a [T]) -> &'a [u8] {
+unsafe fn to_byte_slice<T>(values: &[T]) -> &[u8] {
     std::slice::from_raw_parts(
         values.as_ptr() as *const _,
-        values.len() * core::mem::size_of::<T>(),
+        std::mem::size_of_val(values),
     )
 }
 

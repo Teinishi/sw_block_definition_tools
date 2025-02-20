@@ -99,12 +99,10 @@ impl Definition3dPanel {
                 if !*show {
                     continue;
                 }
-                if let Some(mesh) = meshes.get_mesh(&key) {
-                    if let Ok(mesh) = mesh {
-                        self.scene
-                            .lock()
-                            .add_object(SceneObject::new(mesh.into_mesh()));
-                    }
+                if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
+                    self.scene
+                        .lock()
+                        .add_object(SceneObject::new(mesh.to_mesh()));
                 }
             }
         }

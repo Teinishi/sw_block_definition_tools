@@ -11,9 +11,9 @@ impl DefinitionDetailPanel {
             return;
         }
         let data = definition.unwrap().data();
-        if data.is_err() {
+        if let Err(err) = data {
             ui.collapsing("Error", |ui| {
-                ui.label(data.unwrap_err().to_string());
+                ui.label(err.to_string());
             });
             return;
         }
@@ -63,7 +63,7 @@ impl DefinitionDetailPanel {
                     "audio_filename_end_b",
                     data.audio_filename_end_b.clone(),
                 );
-                add_attr_row_if_some(ui, "audio_gain", data.audio_gain.clone());
+                add_attr_row_if_some(ui, "audio_gain", data.audio_gain);
                 add_attr_row_if_some(ui, "mesh_data_name", data.mesh_data_name.clone());
                 add_attr_row_if_some(ui, "mesh_0_name", data.mesh_0_name.clone());
                 add_attr_row_if_some(ui, "mesh_1_name", data.mesh_1_name.clone());
@@ -73,7 +73,7 @@ impl DefinitionDetailPanel {
                     "mesh_editor_only_name",
                     data.mesh_editor_only_name.clone(),
                 );
-                add_attr_row_if_some(ui, "block_type", data.block_type.clone());
+                add_attr_row_if_some(ui, "block_type", data.block_type);
                 add_attr_row_if_some(ui, "child_name", data.child_name.clone());
                 add_attr_row_if_some(ui, "extender_name", data.extender_name.clone());
                 add_attr_row_if_some(ui, "constraint_type", data.constraint_type);

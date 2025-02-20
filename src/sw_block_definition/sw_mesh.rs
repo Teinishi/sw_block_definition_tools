@@ -34,7 +34,7 @@ impl SwMesh {
         };
 
         if mesh_type.is_none() {
-            return Err(SwMeshFromFileError::ParseError(
+            return Err(SwMeshFromFileError::Parse(
                 "File is beginning with unexpected bytes.".to_string(),
             ));
         }
@@ -77,10 +77,10 @@ impl SwMesh {
         })
     }
 
-    pub fn into_mesh(&self) -> gl_renderer::Mesh {
+    pub fn to_mesh(&self) -> gl_renderer::Mesh {
         let vertices: Vec<gl_renderer::MeshVertex> =
-            self.vertices.iter().map(|v| v.into_mesh_vertex()).collect();
-        let triangles = self.triangles.iter().map(|t| t.into_usize_arr()).collect();
+            self.vertices.iter().map(|v| v.to_mesh_vertex()).collect();
+        let triangles = self.triangles.iter().map(|t| t.to_usize_arr()).collect();
 
         gl_renderer::Mesh {
             vertices,
@@ -97,30 +97,30 @@ pub enum SwMeshType {
 
 #[derive(Debug)]
 pub enum SwMeshFromFileError {
-    IoError(io::Error),
-    Utf8Error(std::str::Utf8Error),
-    ParseError(String),
+    Io(io::Error),
+    Utf8(std::str::Utf8Error),
+    Parse(String),
 }
 
 impl fmt::Display for SwMeshFromFileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IoError(err) => err.fmt(f),
-            Self::Utf8Error(err) => err.fmt(f),
-            Self::ParseError(message) => write!(f, "{}", message),
+            Self::Io(err) => err.fmt(f),
+            Self::Utf8(err) => err.fmt(f),
+            Self::Parse(message) => write!(f, "{}", message),
         }
     }
 }
 
 impl From<io::Error> for SwMeshFromFileError {
     fn from(err: io::Error) -> Self {
-        SwMeshFromFileError::IoError(err)
+        SwMeshFromFileError::Io(err)
     }
 }
 
 impl From<std::str::Utf8Error> for SwMeshFromFileError {
     fn from(err: std::str::Utf8Error) -> Self {
-        SwMeshFromFileError::Utf8Error(err)
+        SwMeshFromFileError::Utf8(err)
     }
 }
 
@@ -143,11 +143,11 @@ impl SwMeshVertex {
         })
     }
 
-    pub fn into_mesh_vertex(&self) -> gl_renderer::MeshVertex {
+    pub fn to_mesh_vertex(&self) -> gl_renderer::MeshVertex {
         gl_renderer::MeshVertex {
-            position: self.position.into_vec3(),
-            color: self.color.into_color4(),
-            normal: self.normal.into_vec3(),
+            position: self.position.to_vec3(),
+            color: self.color.to_color4(),
+            normal: self.normal.to_vec3(),
         }
     }
 }
@@ -167,7 +167,7 @@ impl SwMeshTriangle {
         Ok(Self { indices })
     }
 
-    pub fn into_usize_arr(&self) -> [usize; 3] {
+    pub fn to_usize_arr(&self) -> [usize; 3] {
         self.indices.map(|i| i as usize)
     }
 }
@@ -225,7 +225,7 @@ impl SwMeshVec3 {
         Ok(Self { x, y, z })
     }
 
-    fn into_vec3(&self) -> glam::Vec3 {
+    fn to_vec3(&self) -> glam::Vec3 {
         glam::Vec3::new(self.x, self.y, self.z)
     }
 }
@@ -247,7 +247,7 @@ impl SwMeshColor4 {
         Ok(Self { r, g, b, a })
     }
 
-    fn into_color4(&self) -> gl_renderer::Color4 {
+    fn to_color4(&self) -> gl_renderer::Color4 {
         gl_renderer::Color4 {
             r: self.r as f32 / 255.0,
             g: self.g as f32 / 255.0,
