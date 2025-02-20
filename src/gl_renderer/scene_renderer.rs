@@ -1,8 +1,9 @@
-use super::Scene;
+use super::{Camera, Scene};
 use eframe::{
     egui_glow,
     glow::{self, HasContext},
 };
+use egui::mutex::Mutex;
 use glam::{Mat4, Vec3, Vec4};
 use std::sync::Arc;
 
@@ -141,7 +142,7 @@ impl SceneRenderer {
         Ok(())
     }
 
-    pub fn paint(&self, gl: &glow::Context) {
+    pub fn paint(&self, gl: &glow::Context, camera: Arc<Mutex<impl Camera>>) {
         use glow::HasContext as _;
 
         let override_color_1 = Vec4::ONE;
@@ -153,13 +154,16 @@ impl SceneRenderer {
 
         let _ambient_light_color = Vec3::new(0.15, 0.15, 0.15);
 
-        let view = Mat4::look_at_rh(
+        /*let view = Mat4::look_at_rh(
             Vec3::new(1.0, 0.75, -0.5),
-            Vec3::new(0.0, 0.1, 0.0),
+            Vec3::new(0.0, 0.0, 0.0),
             Vec3::Y,
         );
-        let projection = Mat4::perspective_rh(60f32.to_radians(), 1.0, 0.001, 100.0);
-        let mat_view_proj = projection.mul_mat4(&view);
+        let projection = Mat4::perspective_rh(60f32.to_radians(), 1.0, 0.001, 100.0);*/
+        /*let view = camera.lock().mat_view();
+        let projection = camera.lock().mat_proj();
+        let mat_view_proj = projection.mul_mat4(&view);*/
+        let mat_view_proj = camera.lock().mat_view_proj();
 
         unsafe {
             gl.clear(glow::DEPTH_BUFFER_BIT);

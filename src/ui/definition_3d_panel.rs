@@ -1,11 +1,12 @@
 use super::State;
-use crate::gl_renderer::{Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{OrbitCamera, Scene, SceneObject, SceneRenderer};
 use eframe::egui_glow;
-use egui::vec2;
+use egui::{mutex::Mutex, vec2};
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
     scene: Scene,
+    camera: Arc<Mutex<OrbitCamera>>,
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     //framebuffer: Option<MultisampleFramebuffer>,
 }
@@ -14,10 +15,12 @@ impl Definition3dPanel {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
         let scene = Scene::default();
+        let camera = Arc::new(Mutex::new(OrbitCamera::default()));
         let renderer = SceneRenderer::new(gl.clone());
 
         Some(Self {
             scene,
+            camera,
             renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
             //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
         })
@@ -66,11 +69,14 @@ impl Definition3dPanel {
 
     fn custom_painting(&mut self, ui: &mut egui::Ui) {
         let size = ui.available_width();
-        let (rect, _response) = ui.allocate_exact_size(vec2(size, size), egui::Sense::drag());
+        let (rect, response) = ui.allocate_exact_size(vec2(size, size), egui::Sense::drag());
+
+        self.camera.lock().control(ui, response);
+        let camera = self.camera.clone();
 
         if let Some(renderer) = self.renderer.clone() {
             let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-                renderer.lock().paint(painter.gl());
+                renderer.lock().paint(painter.gl(), camera.clone());
             });
 
             let callback = egui::PaintCallback {

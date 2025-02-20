@@ -1,7 +1,7 @@
 use super::Mesh;
 use glam::Mat4;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Scene {
     objects: Vec<SceneObject>,
 }

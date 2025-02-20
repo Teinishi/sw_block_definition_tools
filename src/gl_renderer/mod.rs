@@ -4,3 +4,5 @@ mod scene;
 pub use scene::{Scene, SceneObject};
 mod mesh;
 pub use mesh::{Color4, Mesh, MeshVertex};
+mod camera;
+pub use camera::{Camera, OrbitCamera};
