@@ -2,8 +2,6 @@ use crate::sw_block_definition::{SwBlockDefinition, SwBlockDefinitionMeshKey};
 use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
 
-type StateChangeCallback = Box<dyn FnMut()>;
-
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
     definitions: Vec<SwBlockDefinition>,
@@ -11,7 +9,7 @@ pub struct State {
     //show_mesh: BTreeMap<SwBlockDefinitionMeshKey, bool>,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     #[serde(skip)]
-    callbacks: Vec<StateChangeCallback>,
+    changed: Option<bool>,
 }
 
 impl Default for State {
@@ -24,16 +22,23 @@ impl Default for State {
             definitions: Vec::new(),
             selected_definition_index: None,
             show_mesh,
-            callbacks: Vec::new(),
+            changed: None,
         }
     }
 }
 
 impl State {
-    fn call_callbacks(&mut self) {
-        for callback in &mut self.callbacks {
-            callback();
-        }
+    pub fn update(&mut self) {
+        // 描画フレームごとに1回呼ぶ
+        self.changed = Some(false);
+    }
+
+    fn changed(&mut self) {
+        self.changed = Some(true);
+    }
+
+    pub fn is_changed(&self) -> bool {
+        self.changed.is_none() || self.changed.unwrap()
     }
 
     pub fn definitions(&self) -> &Vec<SwBlockDefinition> {
@@ -47,7 +52,7 @@ impl State {
     pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
         if self.selected_definition_index != value {
             self.selected_definition_index = value;
-            self.call_callbacks();
+            self.changed();
         }
     }
 
@@ -58,6 +63,7 @@ impl State {
     pub fn set_show_mesh(&mut self, key: SwBlockDefinitionMeshKey, value: bool) {
         if self.show_mesh[key.clone()] != value {
             self.show_mesh[key] = value;
+            self.changed();
         }
     }
 
@@ -82,6 +88,7 @@ impl State {
                     })
                     .collect();
                 self.selected_definition_index = None;
+                self.changed();
                 Ok(())
             }
             Err(err) => {

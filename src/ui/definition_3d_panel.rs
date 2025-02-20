@@ -58,8 +58,9 @@ impl Definition3dPanel {
                 state.set_show_mesh(key, value);
             }
 
-            // TODO
-            self.update_scene(state);
+            if state.is_changed() {
+                self.update_scene(state);
+            }
         }
     }
 

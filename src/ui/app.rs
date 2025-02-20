@@ -39,9 +39,10 @@ impl MainApp {
         if let Some(storage) = cc.storage {
             state = eframe::get_value(storage, eframe::APP_KEY);
         }
+        let state = state.unwrap_or_default();
 
         Self {
-            state: state.unwrap_or_default(),
+            state,
             definition_select_panel: DefinitionSelectPanel::default(),
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel: Definition3dPanel::new(cc).unwrap(),
@@ -112,6 +113,8 @@ impl eframe::App for MainApp {
                 self.definition_detail_panel.ui(ui, &mut self.state);
             });
         });
+
+        self.state.update();
     }
 }
 
