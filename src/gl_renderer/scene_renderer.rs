@@ -298,10 +298,7 @@ fn create_vertex_buffer(
 }
 
 unsafe fn to_byte_slice<T>(values: &[T]) -> &[u8] {
-    std::slice::from_raw_parts(
-        values.as_ptr() as *const _,
-        std::mem::size_of_val(values),
-    )
+    std::slice::from_raw_parts(values.as_ptr() as *const _, std::mem::size_of_val(values))
 }
 
 struct VaoContainer {
