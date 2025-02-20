@@ -33,9 +33,11 @@ impl Definition3dPanel {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
-        egui::Frame::canvas(ui.style()).show(ui, |ui| {
-            self.custom_painting(ui);
-        });
+        egui::Frame::canvas(ui.style())
+            .fill(egui::Color32::TRANSPARENT)
+            .show(ui, |ui| {
+                self.custom_painting(ui);
+            });
 
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
