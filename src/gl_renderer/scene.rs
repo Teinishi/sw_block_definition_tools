@@ -4,23 +4,26 @@ use glam::Mat4;
 #[derive(Default)]
 pub struct Scene {
     objects: Vec<SceneObject>,
+    is_changed: bool,
 }
 
 impl Scene {
+    pub fn is_changed(&self) -> bool {
+        self.is_changed
+    }
+
     pub fn add_object(&mut self, object: SceneObject) {
         self.objects.push(object);
+        self.is_changed = true;
     }
 
     pub fn clear(&mut self) {
         self.objects.clear();
+        self.is_changed = true;
     }
 
     pub fn objects(&self) -> &Vec<SceneObject> {
         &self.objects
-    }
-
-    pub fn object_count(&self) -> usize {
-        self.objects.len()
     }
 }
 

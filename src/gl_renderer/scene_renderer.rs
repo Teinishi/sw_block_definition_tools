@@ -1,4 +1,4 @@
-use super::{Camera, Scene};
+use super::{Camera, Scene, SceneObject};
 use eframe::{
     egui_glow,
     glow::{self, HasContext},
@@ -84,6 +84,10 @@ void main()
 "#;
 
 const BASIC_FRAGMENT_SHADER: &str = r#"
+#ifdef GL_ES
+precision highp float;
+#endif
+
 in vec4 vertexColor_out;
 in vec3 vertexNormal_out;
 
@@ -103,66 +107,66 @@ const SHADER_SOURCES: [(u32, &str); 2] = [
 ];
 
 pub struct SceneRenderer {
-    gl: Arc<glow::Context>,
     program: glow::Program,
     vaos: Vec<VaoContainer>,
+    render_error: Option<String>,
+    scene: Arc<Mutex<Scene>>,
 }
 
 #[allow(unsafe_code)]
 impl SceneRenderer {
-    pub fn new(gl: Arc<glow::Context>) -> Self {
+    pub fn new(gl: Arc<glow::Context>, scene: Arc<Mutex<Scene>>) -> Self {
         unsafe {
             let program = create_program(&gl).unwrap();
 
             Self {
-                gl,
                 program,
                 vaos: Vec::new(),
+                render_error: None,
+                scene,
             }
         }
     }
 
-    pub fn destroy(&self) {
+    pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
         use glow::HasContext as _;
-        unsafe {
-            self.gl.delete_program(self.program);
-            for vao_container in &self.vaos {
-                self.gl.delete_vertex_array(vao_container.vao);
+
+        if let Some(gl) = gl {
+            unsafe {
+                gl.delete_program(self.program);
+                for vao_container in &self.vaos {
+                    gl.delete_vertex_array(vao_container.vao);
+                }
             }
         }
     }
 
-    pub fn update_vertex_buffer(&mut self, scene: &Scene) -> Result<(), String> {
-        unsafe {
-            for vao_container in &self.vaos {
-                self.gl.delete_vertex_array(vao_container.vao);
-            }
-            self.vaos = create_vertex_buffer(&self.gl, &self.program, scene)?;
-        }
-        Ok(())
-    }
-
-    pub fn paint(&self, gl: &glow::Context, camera: Arc<Mutex<impl Camera>>) {
+    pub fn paint(&mut self, gl: &glow::Context, camera: Arc<Mutex<impl Camera>>) {
         use glow::HasContext as _;
+
+        if self.scene.lock().is_changed() {
+            let vaos: Result<Vec<VaoContainer>, String> = self
+                .scene
+                .lock()
+                .objects()
+                .iter()
+                .map(|object| create_vertex_buffer(gl, &self.program, object))
+                .collect();
+
+            match vaos {
+                Ok(vaos) => self.vaos = vaos,
+                Err(mes) => self.render_error = Some(mes),
+            }
+        }
 
         let override_color_1 = Vec4::ONE;
         let override_color_2 = Vec4::ONE;
         let override_color_3 = Vec4::ONE;
 
-        let _directional_light = Vec3::new(-0.5, -1.0, -0.25).normalize();
-        let _directional_light_color = Vec3::ONE;
+        /*let directional_light = Vec3::new(-0.5, -1.0, -0.25).normalize();
+        let directional_light_color = Vec3::ONE;
+        let ambient_light_color = Vec3::new(0.15, 0.15, 0.15);*/
 
-        let _ambient_light_color = Vec3::new(0.15, 0.15, 0.15);
-
-        /*let view = Mat4::look_at_rh(
-            Vec3::new(1.0, 0.75, -0.5),
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::Y,
-        );
-        let projection = Mat4::perspective_rh(60f32.to_radians(), 1.0, 0.001, 100.0);*/
-        /*let view = camera.lock().mat_view();
-        let projection = camera.lock().mat_proj();
-        let mat_view_proj = projection.mul_mat4(&view);*/
         let mat_view_proj = camera.lock().mat_view_proj();
 
         unsafe {
@@ -175,6 +179,7 @@ impl SceneRenderer {
             gl.cull_face(glow::BACK);
             gl.front_face(glow::CW);
 
+            #[cfg(not(target_arch = "wasm32"))]
             gl.enable(glow::MULTISAMPLE);
 
             gl.use_program(Some(self.program));
@@ -198,7 +203,7 @@ impl SceneRenderer {
     }
 }
 
-unsafe fn create_program(gl: &glow::Context) -> Option<glow::NativeProgram> {
+unsafe fn create_program(gl: &glow::Context) -> Option<glow::Program> {
     use glow::HasContext as _;
 
     let shader_version = egui_glow::ShaderVersion::get(gl);
@@ -250,20 +255,18 @@ unsafe fn create_program(gl: &glow::Context) -> Option<glow::NativeProgram> {
     Some(program)
 }
 
-unsafe fn create_vertex_buffer(
+fn create_vertex_buffer(
     gl: &glow::Context,
-    program: &glow::NativeProgram,
-    scene: &Scene,
-) -> Result<Vec<VaoContainer>, String> {
+    program: &glow::Program,
+    object: &SceneObject,
+) -> Result<VaoContainer, String> {
     use glow::HasContext as _;
 
-    let mut vaos = Vec::with_capacity(scene.object_count());
+    let mesh = object.mesh();
 
-    for object in scene.objects() {
-        let mesh = object.mesh();
-
-        let (positions, colors, normals) = mesh.get_flat_vertices();
-        let vertex_count = positions.len();
+    let (positions, colors, normals) = mesh.get_flat_vertices();
+    let vertex_count = positions.len();
+    unsafe {
         let positions_u8 = to_byte_slice(&positions[..]);
         let colors_u8 = to_byte_slice(&colors[..]);
         let normals_u8 = to_byte_slice(&normals[..]);
@@ -286,14 +289,12 @@ unsafe fn create_vertex_buffer(
             gl.vertex_attrib_pointer_f32(attrib_position, size, glow::FLOAT, false, size * 4, 0);
         }
 
-        vaos.push(VaoContainer {
+        Ok(VaoContainer {
             vao,
             transform: object.transform_matrix().clone(),
             vertex_count: vertex_count as i32,
-        });
+        })
     }
-
-    Ok(vaos)
 }
 
 unsafe fn to_byte_slice<'a, T>(values: &'a [T]) -> &'a [u8] {
@@ -304,17 +305,12 @@ unsafe fn to_byte_slice<'a, T>(values: &'a [T]) -> &'a [u8] {
 }
 
 struct VaoContainer {
-    vao: glow::NativeVertexArray,
+    vao: glow::VertexArray,
     transform: Mat4,
     vertex_count: i32,
 }
 
-unsafe fn _set_uniform_vec3(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    name: &str,
-    value: Vec3,
-) {
+unsafe fn _set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {
     gl.uniform_3_f32(
         gl.get_uniform_location(program, name).as_ref(),
         value.x,
@@ -322,12 +318,7 @@ unsafe fn _set_uniform_vec3(
         value.z,
     );
 }
-unsafe fn set_uniform_color4(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    name: &str,
-    value: Vec4,
-) {
+unsafe fn set_uniform_color4(gl: &glow::Context, program: glow::Program, name: &str, value: Vec4) {
     gl.uniform_4_f32(
         gl.get_uniform_location(program, name).as_ref(),
         value.x,
@@ -337,12 +328,7 @@ unsafe fn set_uniform_color4(
     );
 }
 
-unsafe fn set_uniform_mat4(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    name: &str,
-    value: Mat4,
-) {
+unsafe fn set_uniform_mat4(gl: &glow::Context, program: glow::Program, name: &str, value: Mat4) {
     gl.uniform_matrix_4_f32_slice(
         gl.get_uniform_location(program, name).as_ref(),
         false,
@@ -350,11 +336,6 @@ unsafe fn set_uniform_mat4(
     );
 }
 
-unsafe fn set_uniform_i32(
-    gl: &glow::Context,
-    program: glow::NativeProgram,
-    name: &str,
-    value: i32,
-) {
+unsafe fn set_uniform_i32(gl: &glow::Context, program: glow::Program, name: &str, value: i32) {
     gl.uniform_1_i32(gl.get_uniform_location(program, name).as_ref(), value);
 }

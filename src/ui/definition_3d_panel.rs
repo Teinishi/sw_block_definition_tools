@@ -5,7 +5,7 @@ use egui::{mutex::Mutex, vec2};
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
-    scene: Scene,
+    scene: Arc<Mutex<Scene>>,
     camera: Arc<Mutex<OrbitCamera>>,
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     //framebuffer: Option<MultisampleFramebuffer>,
@@ -14,21 +14,21 @@ pub struct Definition3dPanel {
 impl Definition3dPanel {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
-        let scene = Scene::default();
+        let scene = Arc::new(Mutex::new(Scene::default()));
         let camera = Arc::new(Mutex::new(OrbitCamera::default()));
-        let renderer = SceneRenderer::new(gl.clone());
+        let renderer = SceneRenderer::new(gl.clone(), scene.clone());
 
         Some(Self {
-            scene,
+            scene: scene.clone(),
             camera,
             renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
             //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
         })
     }
 
-    pub fn destroy(&self) {
+    pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
         if let Some(renderer) = &self.renderer {
-            renderer.lock().destroy();
+            renderer.lock().destroy(gl);
         }
     }
 
@@ -90,7 +90,8 @@ impl Definition3dPanel {
     }
 
     fn update_scene(&mut self, state: &mut State) {
-        self.scene.clear();
+        self.scene.lock().clear();
+
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
 
@@ -100,14 +101,11 @@ impl Definition3dPanel {
                 }
                 if let Some(mesh) = meshes.get_mesh(&key) {
                     if let Ok(mesh) = mesh {
-                        self.scene.add_object(SceneObject::new(mesh.into_mesh()));
+                        self.scene
+                            .lock()
+                            .add_object(SceneObject::new(mesh.into_mesh()));
                     }
                 }
-            }
-        }
-        if let Some(renderer) = &self.renderer {
-            if let Err(mes) = renderer.lock().update_vertex_buffer(&self.scene) {
-                println!("update vertex buffer error: {mes}");
             }
         }
     }

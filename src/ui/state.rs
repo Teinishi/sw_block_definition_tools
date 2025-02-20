@@ -6,7 +6,6 @@ use std::{fs, io, path::Path};
 pub struct State {
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
-    //show_mesh: BTreeMap<SwBlockDefinitionMeshKey, bool>,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     #[serde(skip)]
     changed: Option<bool>,

@@ -1,9 +1,4 @@
 use super::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, State};
-use raw_window_handle;
-use rfd::FileDialog;
-use std::path::Path;
-
-const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
 
 pub struct MainApp {
     state: State,
@@ -55,15 +50,16 @@ impl eframe::App for MainApp {
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
     }
 
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        self.definition_3d_panel.destroy();
+    fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
+        self.definition_3d_panel.destroy(gl);
     }
 
+    #[allow(unused_variables)]
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
                     ui.menu_button("File", |ui| {
                         if ui.button("Open Rom Folder").clicked() {
                             self.open_rom_folder(Some(frame));
@@ -74,9 +70,9 @@ impl eframe::App for MainApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
-                }
 
-                ui.separator();
+                    ui.separator();
+                }
 
                 egui::widgets::global_theme_preference_buttons(ui);
             });
@@ -118,6 +114,13 @@ impl eframe::App for MainApp {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+use raw_window_handle;
+
+#[cfg(not(target_arch = "wasm32"))]
+const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
+
+#[cfg(not(target_arch = "wasm32"))]
 impl MainApp {
     fn open_rom_folder<
         W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
@@ -125,6 +128,9 @@ impl MainApp {
         &mut self,
         parent: Option<&W>,
     ) {
+        use rfd::FileDialog;
+        use std::path::Path;
+
         let mut dialog = FileDialog::new();
         if let Some(p) = parent {
             dialog = dialog.set_parent(p)
