@@ -62,7 +62,7 @@ impl SceneRenderer {
 
             gl.enable(glow::CULL_FACE);
             gl.cull_face(glow::BACK);
-            gl.front_face(glow::CW);
+            gl.front_face(glow::CCW);
 
             #[cfg(not(target_arch = "wasm32"))]
             gl.enable(glow::MULTISAMPLE);

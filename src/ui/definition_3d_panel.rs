@@ -113,7 +113,11 @@ impl Definition3dPanel {
                 (Vec3::Z, Color4::BLUE),
             ] {
                 self.scene.lock().add_object(SceneObject::from_line(
-                    Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
+                    Lines::single_color_lh(
+                        vec![vec3(0.0, 0.0, 0.0), 100.0 * direction],
+                        color,
+                        2.0,
+                    ),
                     None,
                 ));
             }
@@ -149,20 +153,6 @@ impl Definition3dPanel {
 }
 
 fn create_surface_object(surface: &definition_schema::Surface) -> SceneObject {
-    let rotation = match surface.orientation {
-        Some(1) => Quat::from_rotation_z(PI),
-        Some(2) => Quat::from_rotation_z(PI / 2.0),
-        Some(3) => Quat::from_rotation_z(-PI / 2.0),
-        Some(4) => Quat::from_rotation_y(PI / 2.0),
-        Some(5) => Quat::from_rotation_y(-PI / 2.0),
-        _ => Quat::IDENTITY,
-    };
-
-    let translation = match surface.position.last() {
-        Some(position) => 0.25 * Vec3::new(position.x as f32, position.y as f32, position.z as f32),
-        None => Vec3::ZERO,
-    };
-
     let (vertices, triangles) = match surface.shape {
         Some(1) => (
             vec![
@@ -176,8 +166,29 @@ fn create_surface_object(surface: &definition_schema::Surface) -> SceneObject {
         _ => (Vec::new(), Vec::new()),
     };
 
+    let rotation = Quat::from_rotation_x(PI / 2.0 * surface.rotation.unwrap_or(0) as f32);
+
+    let orientation = match surface.orientation {
+        Some(1) => Quat::from_rotation_z(PI),
+        Some(2) => Quat::from_rotation_z(PI / 2.0),
+        Some(3) => Quat::from_rotation_z(-PI / 2.0),
+        Some(4) => Quat::from_rotation_x(PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
+        Some(5) => Quat::from_rotation_x(-PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
+        _ => Quat::IDENTITY,
+    };
+
+    let translation = match surface.position.last() {
+        Some(position) => {
+            0.25 * Vec3::new(position.x as f32, position.y as f32, -position.z as f32)
+        }
+        None => Vec3::ZERO,
+    };
+
     SceneObject::from_mesh(
-        Mesh::signle_color(vertices, triangles, Color4::WHITE),
-        Some(Mat4::from_rotation_translation(rotation, translation)),
+        Mesh::signle_color_lh(vertices, triangles, Color4::WHITE),
+        Some(Mat4::from_rotation_translation(
+            orientation.mul_quat(rotation),
+            translation,
+        )),
     )
 }

@@ -9,11 +9,11 @@ pub struct Lines {
 }
 
 impl Lines {
-    pub fn single_color(positions: Vec<Vec3>, color: Color4, line_width: f32) -> Self {
+    pub fn single_color_lh(positions: Vec<Vec3>, color: Color4, line_width: f32) -> Self {
         let vertices = positions
             .iter()
             .map(|p| LineVertex {
-                position: *p,
+                position: Vec3::new(p.x, p.y, -p.z),
                 color,
             })
             .collect();

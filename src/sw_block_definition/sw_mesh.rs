@@ -1,5 +1,6 @@
 use crate::gl_renderer;
 use byteorder::{LittleEndian, ReadBytesExt};
+use glam::Vec3;
 use core::fmt;
 use std::{
     fs,
@@ -145,9 +146,9 @@ impl SwMeshVertex {
 
     pub fn as_mesh_vertex(&self) -> gl_renderer::MeshVertex {
         gl_renderer::MeshVertex {
-            position: self.position.as_vec3(),
+            position: Vec3::new(self.position.x, self.position.y, -self.position.z),
             color: self.color.as_color4(),
-            normal: self.normal.as_vec3(),
+            normal: Vec3::new(self.normal.x, self.normal.y, -self.normal.z),
         }
     }
 }
@@ -223,10 +224,6 @@ impl SwMeshVec3 {
         let y = cur.read_f32::<LittleEndian>()?;
         let z = cur.read_f32::<LittleEndian>()?;
         Ok(Self { x, y, z })
-    }
-
-    fn as_vec3(&self) -> glam::Vec3 {
-        glam::Vec3::new(self.x, self.y, self.z)
     }
 }
 

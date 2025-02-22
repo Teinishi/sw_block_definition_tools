@@ -41,16 +41,25 @@ impl GetShaderAttributeData for Mesh {
 }
 
 impl Mesh {
-    pub fn signle_color(positions: Vec<Vec3>, triangles: Vec<[usize; 3]>, color: Color4) -> Self {
+    pub fn signle_color_lh(
+        positions: Vec<Vec3>,
+        triangles: Vec<[usize; 3]>,
+        color: Color4,
+    ) -> Self {
         let mut vertices = Vec::with_capacity(triangles.len() * 3);
         let mut new_triangles = Vec::with_capacity(triangles.len());
 
         for indices in triangles {
             let i0 = vertices.len();
+
             let p0 = positions[indices[0]];
+            let p0 = Vec3::new(p0.x, p0.y, -p0.z);
             let p1 = positions[indices[1]];
+            let p1 = Vec3::new(p1.x, p1.y, -p1.z);
             let p2 = positions[indices[2]];
-            let normal = (p2 - p0).cross(p1 - p0).normalize();
+            let p2 = Vec3::new(p2.x, p2.y, -p2.z);
+
+            let normal = (p1 - p0).cross(p2 - p0).normalize();
             for position in [p0, p1, p2] {
                 vertices.push(MeshVertex {
                     position,
