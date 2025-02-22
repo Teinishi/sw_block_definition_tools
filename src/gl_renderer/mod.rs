@@ -1,5 +1,5 @@
 mod scene_renderer;
-pub use scene_renderer::SceneRenderer;
+pub use scene_renderer::{GlConfig, SceneRenderer};
 mod scene;
 pub use scene::{Scene, SceneObject};
 mod color4;
@@ -7,7 +7,7 @@ pub use color4::Color4;
 mod mesh;
 pub use mesh::{Mesh, MeshVertex};
 mod line;
-pub use line::Line;
+pub use line::Lines;
 mod camera;
 pub use camera::{Camera, OrbitCamera};
 mod shader_type;

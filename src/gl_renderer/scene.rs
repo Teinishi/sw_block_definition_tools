@@ -1,4 +1,4 @@
-use super::{GetShaderAttributeData, Line, Mesh, ShaderType};
+use super::{GetShaderAttributeData, GlConfig, Lines, Mesh};
 use eframe::glow;
 use glam::Mat4;
 
@@ -46,7 +46,7 @@ impl SceneObject {
         }
     }
 
-    pub fn from_line(line: Line, transform_matrix: Option<Mat4>) -> Self {
+    pub fn from_line(line: Lines, transform_matrix: Option<Mat4>) -> Self {
         Self {
             content: Box::new(line),
             transform_matrix: transform_matrix.unwrap_or_default(),
@@ -57,8 +57,8 @@ impl SceneObject {
         &self.transform_matrix
     }
 
-    pub fn shader_type(&self) -> ShaderType {
-        self.content.shader_type()
+    pub fn gl_config(&self) -> GlConfig {
+        self.content.gl_config()
     }
 
     pub fn create_vertex_buffer(

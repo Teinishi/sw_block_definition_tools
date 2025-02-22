@@ -68,24 +68,23 @@ impl SceneRenderer {
             gl.enable(glow::MULTISAMPLE);
 
             for vao_container in &self.vaos {
-                let program = self.programs[vao_container.shader_type];
+                let program = self.programs[vao_container.config.shader_type];
 
                 gl.use_program(Some(program));
 
-                set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);
+                if let Some(line_width) = vao_container.config.line_width {
+                    gl.line_width(line_width);
+                }
 
+                set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);
+                set_uniform_mat4(gl, program, "mat_world", vao_container.transform);
                 set_uniform_vec4(gl, program, "override_color_1", override_color_1);
                 set_uniform_vec4(gl, program, "override_color_2", override_color_2);
                 set_uniform_vec4(gl, program, "override_color_3", override_color_3);
                 set_uniform_i32(gl, program, "is_preview", 1);
 
-                set_uniform_mat4(gl, program, "mat_world", vao_container.transform);
                 gl.bind_vertex_array(Some(vao_container.vao));
-                gl.draw_arrays(
-                    vao_container.shader_type.mode(),
-                    0,
-                    vao_container.vertex_count,
-                );
+                gl.draw_arrays(vao_container.config.mode, 0, vao_container.vertex_count);
             }
         }
     }
@@ -100,16 +99,24 @@ fn update_vaos(
         .objects()
         .iter()
         .map(|object| {
+            let config = object.gl_config();
             let (vao, vertex_count) =
-                object.create_vertex_buffer(gl, &programs[object.shader_type()])?;
+                object.create_vertex_buffer(gl, &programs[config.shader_type])?;
             Ok(VaoContainer {
                 vao,
                 transform: *object.transform_matrix(),
                 vertex_count: vertex_count as i32,
-                shader_type: object.shader_type(),
+                config,
             })
         })
         .collect()
+}
+
+#[derive(Debug)]
+pub struct GlConfig {
+    pub shader_type: ShaderType,
+    pub mode: u32,
+    pub line_width: Option<f32>,
 }
 
 #[derive(Debug)]
@@ -117,7 +124,7 @@ struct VaoContainer {
     vao: glow::VertexArray,
     transform: Mat4,
     vertex_count: i32,
-    shader_type: ShaderType,
+    config: GlConfig,
 }
 
 unsafe fn _set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {

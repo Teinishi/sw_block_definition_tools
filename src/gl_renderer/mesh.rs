@@ -1,4 +1,5 @@
-use super::{Color4, GetShaderAttributeData, ShaderAttributeData, ShaderType};
+use super::{Color4, GetShaderAttributeData, GlConfig, ShaderAttributeData, ShaderType};
+use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
@@ -30,8 +31,12 @@ impl GetShaderAttributeData for Mesh {
         }
     }
 
-    fn shader_type(&self) -> ShaderType {
-        ShaderType::Basic
+    fn gl_config(&self) -> super::GlConfig {
+        GlConfig {
+            shader_type: ShaderType::Basic,
+            mode: glow::TRIANGLES,
+            line_width: None,
+        }
     }
 }
 

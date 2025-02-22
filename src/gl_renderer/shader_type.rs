@@ -1,6 +1,8 @@
 use eframe::{egui_glow, glow};
 use enum_map::{enum_map, Enum, EnumMap};
 
+use super::GlConfig;
+
 const BASIC_SHADER_SOURCES: [(u32, &str); 2] = [
     (glow::VERTEX_SHADER, include_str!("./shaders/basic.vert")),
     (glow::FRAGMENT_SHADER, include_str!("./shaders/basic.frag")),
@@ -18,13 +20,6 @@ pub enum ShaderType {
 }
 
 impl ShaderType {
-    pub fn create_programs(gl: &glow::Context) -> EnumMap<Self, glow::Program> {
-        enum_map! {
-            Self::Basic => Self::Basic.create_program(gl).expect("Failed to create shader program"),
-            Self::Line => Self::Line.create_program(gl).expect("Failed to create shader program"),
-        }
-    }
-
     pub fn create_program(&self, gl: &glow::Context) -> Option<glow::Program> {
         use glow::HasContext as _;
 
@@ -85,10 +80,10 @@ impl ShaderType {
         }
     }
 
-    pub fn mode(&self) -> u32 {
-        match self {
-            Self::Basic => glow::TRIANGLES,
-            Self::Line => glow::LINES,
+    pub fn create_programs(gl: &glow::Context) -> EnumMap<Self, glow::Program> {
+        enum_map! {
+            Self::Basic => Self::Basic.create_program(gl).expect("Failed to create shader program"),
+            Self::Line => Self::Line.create_program(gl).expect("Failed to create shader program"),
         }
     }
 }
@@ -158,5 +153,5 @@ impl<'a> Iterator for ShaderAttributeDataIter<'a> {
 
 pub trait GetShaderAttributeData: Send + Sync {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData;
-    fn shader_type(&self) -> ShaderType;
+    fn gl_config(&self) -> GlConfig;
 }

@@ -1,13 +1,15 @@
-use super::{Color4, GetShaderAttributeData, ShaderAttributeData, ShaderType};
+use super::{Color4, GetShaderAttributeData, GlConfig, ShaderAttributeData, ShaderType};
+use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
-pub struct Line {
+pub struct Lines {
     pub vertices: Vec<LineVertex>,
+    pub line_width: f32,
 }
 
-impl Line {
-    pub fn single_color(positions: Vec<Vec3>, color: Color4) -> Self {
+impl Lines {
+    pub fn single_color(positions: Vec<Vec3>, color: Color4, line_width: f32) -> Self {
         let vertices = positions
             .iter()
             .map(|p| LineVertex {
@@ -15,11 +17,14 @@ impl Line {
                 color,
             })
             .collect();
-        Self { vertices }
+        Self {
+            vertices,
+            line_width,
+        }
     }
 }
 
-impl GetShaderAttributeData for Line {
+impl GetShaderAttributeData for Lines {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData {
         let vertex_count = self.vertices.len();
         let mut positions: Vec<f32> = Vec::with_capacity(vertex_count * 3);
@@ -37,8 +42,12 @@ impl GetShaderAttributeData for Line {
         }
     }
 
-    fn shader_type(&self) -> ShaderType {
-        ShaderType::Line
+    fn gl_config(&self) -> GlConfig {
+        GlConfig {
+            shader_type: ShaderType::Line,
+            mode: glow::LINES,
+            line_width: Some(self.line_width),
+        }
     }
 }
 

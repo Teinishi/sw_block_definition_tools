@@ -1,5 +1,5 @@
 use super::State;
-use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{Color4, Lines, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use eframe::egui_glow;
 use egui::{mutex::Mutex, vec2};
 use glam::{vec3, Vec3};
@@ -117,7 +117,7 @@ impl Definition3dPanel {
             (Vec3::Z, Color4::BLUE),
         ] {
             self.scene.lock().add_object(SceneObject::from_line(
-                Line::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color),
+                Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
                 None,
             ));
         }
