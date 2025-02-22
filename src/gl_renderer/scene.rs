@@ -1,4 +1,5 @@
-use super::Mesh;
+use super::{GetShaderAttributeData, Line, Mesh, ShaderType};
+use eframe::glow;
 use glam::Mat4;
 
 #[derive(Default)]
@@ -8,8 +9,13 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn is_changed(&self) -> bool {
-        self.is_changed
+    pub fn paint(&mut self) -> Option<&Self> {
+        if self.is_changed {
+            self.is_changed = false;
+            Some(self)
+        } else {
+            None
+        }
     }
 
     pub fn add_object(&mut self, object: SceneObject) {
@@ -27,25 +33,72 @@ impl Scene {
     }
 }
 
-#[derive(Debug)]
 pub struct SceneObject {
-    mesh: Mesh,
+    content: Box<dyn GetShaderAttributeData>,
     transform_matrix: Mat4,
 }
 
 impl SceneObject {
-    pub fn new(mesh: Mesh) -> Self {
+    pub fn from_mesh(mesh: Mesh, transform_matrix: Option<Mat4>) -> Self {
         Self {
-            mesh,
-            transform_matrix: Mat4::IDENTITY,
+            content: Box::new(mesh),
+            transform_matrix: transform_matrix.unwrap_or_default(),
         }
     }
 
-    pub fn mesh(&self) -> &Mesh {
-        &self.mesh
+    pub fn from_line(line: Line, transform_matrix: Option<Mat4>) -> Self {
+        Self {
+            content: Box::new(line),
+            transform_matrix: transform_matrix.unwrap_or_default(),
+        }
     }
 
     pub fn transform_matrix(&self) -> &Mat4 {
         &self.transform_matrix
     }
+
+    pub fn shader_type(&self) -> ShaderType {
+        self.content.shader_type()
+    }
+
+    pub fn create_vertex_buffer(
+        &self,
+        gl: &glow::Context,
+        program: &glow::Program,
+    ) -> Result<(glow::VertexArray, usize), String> {
+        use glow::HasContext as _;
+
+        let attribute_data = self.content.get_shader_attribute_data();
+
+        unsafe {
+            let vao = gl.create_vertex_array()?;
+            gl.bind_vertex_array(Some(vao));
+
+            for (name, size, data) in &attribute_data {
+                let attrib_position = gl
+                    .get_attrib_location(*program, name)
+                    .unwrap_or_else(|| panic!("Failed to get attribute location: {:?}", name));
+                let vbo = gl
+                    .create_buffer()
+                    .expect("Failed to create vertex buffer object");
+                gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, to_byte_slice(data), glow::STATIC_DRAW);
+                gl.enable_vertex_attrib_array(attrib_position);
+                gl.vertex_attrib_pointer_f32(
+                    attrib_position,
+                    size,
+                    glow::FLOAT,
+                    false,
+                    size * 4,
+                    0,
+                );
+            }
+
+            Ok((vao, attribute_data.vertex_count().unwrap_or(0)))
+        }
+    }
+}
+
+unsafe fn to_byte_slice<T>(values: &[T]) -> &[u8] {
+    std::slice::from_raw_parts(values.as_ptr() as *const _, std::mem::size_of_val(values))
 }

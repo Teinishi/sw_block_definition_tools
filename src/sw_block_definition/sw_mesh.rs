@@ -77,10 +77,10 @@ impl SwMesh {
         })
     }
 
-    pub fn to_mesh(&self) -> gl_renderer::Mesh {
+    pub fn as_mesh(&self) -> gl_renderer::Mesh {
         let vertices: Vec<gl_renderer::MeshVertex> =
-            self.vertices.iter().map(|v| v.to_mesh_vertex()).collect();
-        let triangles = self.triangles.iter().map(|t| t.to_usize_arr()).collect();
+            self.vertices.iter().map(|v| v.as_mesh_vertex()).collect();
+        let triangles = self.triangles.iter().map(|t| t.as_usize_arr()).collect();
 
         gl_renderer::Mesh {
             vertices,
@@ -143,11 +143,11 @@ impl SwMeshVertex {
         })
     }
 
-    pub fn to_mesh_vertex(&self) -> gl_renderer::MeshVertex {
+    pub fn as_mesh_vertex(&self) -> gl_renderer::MeshVertex {
         gl_renderer::MeshVertex {
-            position: self.position.to_vec3(),
-            color: self.color.to_color4(),
-            normal: self.normal.to_vec3(),
+            position: self.position.as_vec3(),
+            color: self.color.as_color4(),
+            normal: self.normal.as_vec3(),
         }
     }
 }
@@ -167,7 +167,7 @@ impl SwMeshTriangle {
         Ok(Self { indices })
     }
 
-    pub fn to_usize_arr(&self) -> [usize; 3] {
+    pub fn as_usize_arr(&self) -> [usize; 3] {
         self.indices.map(|i| i as usize)
     }
 }
@@ -225,7 +225,7 @@ impl SwMeshVec3 {
         Ok(Self { x, y, z })
     }
 
-    fn to_vec3(&self) -> glam::Vec3 {
+    fn as_vec3(&self) -> glam::Vec3 {
         glam::Vec3::new(self.x, self.y, self.z)
     }
 }
@@ -247,7 +247,7 @@ impl SwMeshColor4 {
         Ok(Self { r, g, b, a })
     }
 
-    fn to_color4(&self) -> gl_renderer::Color4 {
+    fn as_color4(&self) -> gl_renderer::Color4 {
         gl_renderer::Color4 {
             r: self.r as f32 / 255.0,
             g: self.g as f32 / 255.0,

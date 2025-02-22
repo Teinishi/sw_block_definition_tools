@@ -1,7 +1,8 @@
 use super::State;
-use crate::gl_renderer::{OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use eframe::egui_glow;
 use egui::{mutex::Mutex, vec2};
+use glam::{vec3, Vec3};
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
@@ -15,8 +16,11 @@ impl Definition3dPanel {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
         let scene = Arc::new(Mutex::new(Scene::default()));
-        let camera = Arc::new(Mutex::new(OrbitCamera::default()));
-        let renderer = SceneRenderer::new(gl.clone(), scene.clone());
+        let camera = Arc::new(Mutex::new(OrbitCamera {
+            direction: Vec3::new(-0.5, -1.0, -2.0),
+            ..Default::default()
+        }));
+        let renderer = SceneRenderer::new(gl, scene.clone());
 
         Some(Self {
             scene: scene.clone(),
@@ -102,9 +106,20 @@ impl Definition3dPanel {
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     self.scene
                         .lock()
-                        .add_object(SceneObject::new(mesh.to_mesh()));
+                        .add_object(SceneObject::from_mesh(mesh.as_mesh(), None));
                 }
             }
+        }
+
+        for (direction, color) in [
+            (Vec3::X, Color4::RED),
+            (Vec3::Y, Color4::GREEN),
+            (Vec3::Z, Color4::BLUE),
+        ] {
+            self.scene.lock().add_object(SceneObject::from_line(
+                Line::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color),
+                None,
+            ));
         }
     }
 }

@@ -11,18 +11,18 @@ pub trait Camera {
 
 #[derive(Debug)]
 pub struct OrbitCamera {
-    center: Vec3,
-    direction: Vec3,
-    up: Vec3,
-    fov_y: f32,
-    aspect_ratio: f32,
-    near_clip: f32,
-    far_clip: f32,
-    rotate_speed: f32,
-    pan_speed: f32,
-    zoom_speed: f32,
-    rotate_pointer_button: PointerButton,
-    pan_pointer_button: PointerButton,
+    pub center: Vec3,
+    pub direction: Vec3,
+    pub up: Vec3,
+    pub fov_y: f32,
+    pub aspect_ratio: f32,
+    pub near_clip: f32,
+    pub far_clip: f32,
+    pub rotate_speed: f32,
+    pub pan_speed: f32,
+    pub zoom_speed: f32,
+    pub rotate_pointer_button: PointerButton,
+    pub pan_pointer_button: PointerButton,
 }
 
 impl Default for OrbitCamera {
@@ -46,7 +46,11 @@ impl Default for OrbitCamera {
 
 impl Camera for OrbitCamera {
     fn mat_view(&self) -> Mat4 {
-        Mat4::look_at_rh(self.center - self.direction, self.center, self.up)
+        Mat4::look_at_rh(
+            self.center - self.direction,
+            self.center,
+            self.up.normalize(),
+        )
     }
 
     fn mat_proj(&self) -> Mat4 {
