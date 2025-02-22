@@ -46,33 +46,61 @@ impl Mesh {
         triangles: Vec<[usize; 3]>,
         color: Color4,
     ) -> Self {
-        let mut vertices = Vec::with_capacity(triangles.len() * 3);
-        let mut new_triangles = Vec::with_capacity(triangles.len());
+        Self::multiple_color_lh(positions, vec![(triangles, color)])
+    }
 
-        for indices in triangles {
-            let i0 = vertices.len();
+    pub fn multiple_color_lh(
+        positions: Vec<Vec3>,
+        triangles_color: Vec<(Vec<[usize; 3]>, Color4)>,
+    ) -> Self {
+        let mut vertices = Vec::new();
+        let mut triangles = Vec::new();
 
-            let p0 = positions[indices[0]];
-            let p0 = Vec3::new(p0.x, p0.y, -p0.z);
-            let p1 = positions[indices[1]];
-            let p1 = Vec3::new(p1.x, p1.y, -p1.z);
-            let p2 = positions[indices[2]];
-            let p2 = Vec3::new(p2.x, p2.y, -p2.z);
+        for (trgs, color) in triangles_color {
+            for indices in trgs {
+                let i0 = vertices.len();
 
-            let normal = (p1 - p0).cross(p2 - p0).normalize();
-            for position in [p0, p1, p2] {
-                vertices.push(MeshVertex {
-                    position,
-                    color,
-                    normal,
-                });
+                let p0 = positions[indices[0]];
+                let p0 = Vec3::new(p0.x, p0.y, -p0.z);
+                let p1 = positions[indices[1]];
+                let p1 = Vec3::new(p1.x, p1.y, -p1.z);
+                let p2 = positions[indices[2]];
+                let p2 = Vec3::new(p2.x, p2.y, -p2.z);
+
+                let normal = (p1 - p0).cross(p2 - p0).normalize();
+                for position in [p0, p1, p2] {
+                    vertices.push(MeshVertex {
+                        position,
+                        color,
+                        normal,
+                    });
+                }
+                triangles.push([i0, i0 + 1, i0 + 2]);
             }
-            new_triangles.push([i0, i0 + 1, i0 + 2]);
         }
 
         Self {
             vertices,
-            triangles: new_triangles,
+            triangles,
+        }
+    }
+
+    pub fn combined(meshes: impl IntoIterator<Item = Self>) -> Self {
+        let mut vertices = Vec::new();
+        let mut triangles = Vec::new();
+
+        for mut mesh in meshes {
+            let offset = vertices.len();
+            vertices.append(&mut mesh.vertices);
+            triangles.reserve(mesh.triangles.len());
+            for indices in mesh.triangles {
+                triangles.push(indices.map(|i| i + offset));
+            }
+        }
+
+        Self {
+            vertices,
+            triangles,
         }
     }
 }

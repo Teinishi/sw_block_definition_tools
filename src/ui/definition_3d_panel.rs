@@ -1,10 +1,9 @@
 use super::State;
-use crate::gl_renderer::{Color4, Lines, Mesh, OrbitCamera, Scene, SceneObject, SceneRenderer};
-use crate::sw_block_definition::definition_schema;
+use crate::gl_renderer::{Color4, Lines, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::sw_block_definition::create_surface_object;
 use eframe::egui_glow;
 use egui::{mutex::Mutex, vec2};
-use glam::{vec3, Mat4, Quat, Vec3};
-use std::f32::consts::PI;
+use glam::{vec3, Vec3};
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
@@ -18,10 +17,12 @@ impl Definition3dPanel {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
         let scene = Arc::new(Mutex::new(Scene::default()));
-        let camera = Arc::new(Mutex::new(OrbitCamera {
-            direction: Vec3::new(-0.5, -1.0, -2.0),
+        let mut camera = OrbitCamera {
+            direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
-        }));
+        };
+        camera.orthogonalize_up();
+        let camera = Arc::new(Mutex::new(camera));
         let renderer = SceneRenderer::new(gl, scene.clone());
 
         Some(Self {
@@ -126,10 +127,10 @@ impl Definition3dPanel {
         if state.show_surfaces() {
             if let Some(data) = state.selected_definition().and_then(|def| def.data().ok()) {
                 if let Some(surfaces) = data.surfaces.last() {
-                    println!("surfaces");
                     for surface in &surfaces.surface {
-                        println!("{:?}", surface);
-                        self.scene.lock().add_object(create_surface_object(surface));
+                        if let Some(obj) = create_surface_object(surface) {
+                            self.scene.lock().add_object(obj);
+                        }
                     }
                 }
             }
@@ -150,45 +151,4 @@ impl Definition3dPanel {
             }
         }
     }
-}
-
-fn create_surface_object(surface: &definition_schema::Surface) -> SceneObject {
-    let (vertices, triangles) = match surface.shape {
-        Some(1) => (
-            vec![
-                Vec3::new(0.125, 0.125, 0.125),
-                Vec3::new(0.125, 0.125, -0.125),
-                Vec3::new(0.125, -0.125, -0.125),
-                Vec3::new(0.125, -0.125, 0.125),
-            ],
-            vec![[0, 1, 2], [0, 2, 3]],
-        ),
-        _ => (Vec::new(), Vec::new()),
-    };
-
-    let rotation = Quat::from_rotation_x(PI / 2.0 * surface.rotation.unwrap_or(0) as f32);
-
-    let orientation = match surface.orientation {
-        Some(1) => Quat::from_rotation_z(PI),
-        Some(2) => Quat::from_rotation_z(PI / 2.0),
-        Some(3) => Quat::from_rotation_z(-PI / 2.0),
-        Some(4) => Quat::from_rotation_x(PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
-        Some(5) => Quat::from_rotation_x(-PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
-        _ => Quat::IDENTITY,
-    };
-
-    let translation = match surface.position.last() {
-        Some(position) => {
-            0.25 * Vec3::new(position.x as f32, position.y as f32, -position.z as f32)
-        }
-        None => Vec3::ZERO,
-    };
-
-    SceneObject::from_mesh(
-        Mesh::signle_color_lh(vertices, triangles, Color4::WHITE),
-        Some(Mat4::from_rotation_translation(
-            orientation.mul_quat(rotation),
-            translation,
-        )),
-    )
 }

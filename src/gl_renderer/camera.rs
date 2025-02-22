@@ -59,6 +59,10 @@ impl Camera for OrbitCamera {
 }
 
 impl OrbitCamera {
+    pub fn orthogonalize_up(&mut self) {
+        self.up = (self.up - self.up.project_onto(self.direction)).normalize();
+    }
+
     pub fn control(&mut self, ui: &mut egui::Ui, response: egui::Response) {
         if response.dragged_by(self.rotate_pointer_button) {
             let motion = -self.rotate_speed * response.drag_motion();
