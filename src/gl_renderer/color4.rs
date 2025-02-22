@@ -7,6 +7,12 @@ pub struct Color4 {
 }
 
 impl Color4 {
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
     pub const RED: Self = Self {
         r: 1.0,
         g: 0.0,

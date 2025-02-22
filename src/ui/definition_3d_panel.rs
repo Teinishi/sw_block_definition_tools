@@ -1,8 +1,10 @@
 use super::State;
-use crate::gl_renderer::{Color4, Lines, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{Color4, Lines, Mesh, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::sw_block_definition::definition_schema;
 use eframe::egui_glow;
 use egui::{mutex::Mutex, vec2};
-use glam::{vec3, Vec3};
+use glam::{vec3, Mat4, Quat, Vec3};
+use std::f32::consts::PI;
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
@@ -46,6 +48,10 @@ impl Definition3dPanel {
         let mut c = state.show_xyz_axis();
         ui.checkbox(&mut c, "XYZ Axis");
         state.set_show_xyz_axis(c);
+
+        let mut c = state.show_surfaces();
+        ui.checkbox(&mut c, "Surfaces");
+        state.set_show_surfaces(c);
 
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
@@ -100,6 +106,31 @@ impl Definition3dPanel {
     fn update_scene(&mut self, state: &mut State) {
         self.scene.lock().clear();
 
+        if state.show_xyz_axis() {
+            for (direction, color) in [
+                (Vec3::X, Color4::RED),
+                (Vec3::Y, Color4::GREEN),
+                (Vec3::Z, Color4::BLUE),
+            ] {
+                self.scene.lock().add_object(SceneObject::from_line(
+                    Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
+                    None,
+                ));
+            }
+        }
+
+        if state.show_surfaces() {
+            if let Some(data) = state.selected_definition().and_then(|def| def.data().ok()) {
+                if let Some(surfaces) = data.surfaces.last() {
+                    println!("surfaces");
+                    for surface in &surfaces.surface {
+                        println!("{:?}", surface);
+                        self.scene.lock().add_object(create_surface_object(surface));
+                    }
+                }
+            }
+        }
+
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
 
@@ -114,18 +145,39 @@ impl Definition3dPanel {
                 }
             }
         }
-
-        if state.show_xyz_axis() {
-            for (direction, color) in [
-                (Vec3::X, Color4::RED),
-                (Vec3::Y, Color4::GREEN),
-                (Vec3::Z, Color4::BLUE),
-            ] {
-                self.scene.lock().add_object(SceneObject::from_line(
-                    Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
-                    None,
-                ));
-            }
-        }
     }
+}
+
+fn create_surface_object(surface: &definition_schema::Surface) -> SceneObject {
+    let rotation = match surface.orientation {
+        Some(1) => Quat::from_rotation_z(PI),
+        Some(2) => Quat::from_rotation_z(PI / 2.0),
+        Some(3) => Quat::from_rotation_z(-PI / 2.0),
+        Some(4) => Quat::from_rotation_y(PI / 2.0),
+        Some(5) => Quat::from_rotation_y(-PI / 2.0),
+        _ => Quat::IDENTITY,
+    };
+
+    let translation = match surface.position.last() {
+        Some(position) => 0.25 * Vec3::new(position.x as f32, position.y as f32, position.z as f32),
+        None => Vec3::ZERO,
+    };
+
+    let (vertices, triangles) = match surface.shape {
+        Some(1) => (
+            vec![
+                Vec3::new(0.125, 0.125, 0.125),
+                Vec3::new(0.125, 0.125, -0.125),
+                Vec3::new(0.125, -0.125, -0.125),
+                Vec3::new(0.125, -0.125, 0.125),
+            ],
+            vec![[0, 1, 2], [0, 2, 3]],
+        ),
+        _ => (Vec::new(), Vec::new()),
+    };
+
+    SceneObject::from_mesh(
+        Mesh::signle_color(vertices, triangles, Color4::WHITE),
+        Some(Mat4::from_rotation_translation(rotation, translation)),
+    )
 }

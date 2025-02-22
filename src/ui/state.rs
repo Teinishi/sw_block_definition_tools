@@ -7,6 +7,7 @@ pub struct State {
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
     show_xyz_axis: bool,
+    show_surfaces: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     #[serde(skip)]
     changed: Option<bool>,
@@ -22,6 +23,7 @@ impl Default for State {
             definitions: Vec::new(),
             selected_definition_index: None,
             show_xyz_axis: true,
+            show_surfaces: true,
             show_mesh,
             changed: None,
         }
@@ -64,6 +66,17 @@ impl State {
     pub fn set_show_xyz_axis(&mut self, value: bool) {
         if self.show_xyz_axis != value {
             self.show_xyz_axis = value;
+            self.changed();
+        }
+    }
+
+    pub fn show_surfaces(&self) -> bool {
+        self.show_surfaces
+    }
+
+    pub fn set_show_surfaces(&mut self, value: bool) {
+        if self.show_surfaces != value {
+            self.show_surfaces = value;
             self.changed();
         }
     }
