@@ -43,6 +43,10 @@ impl Definition3dPanel {
                 self.custom_painting(ui);
             });
 
+        let mut c = state.show_xyz_axis();
+        ui.checkbox(&mut c, "XYZ Axis");
+        state.set_show_xyz_axis(c);
+
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
 
@@ -66,10 +70,10 @@ impl Definition3dPanel {
             if let Some((key, value)) = change {
                 state.set_show_mesh(key, value);
             }
+        }
 
-            if state.is_changed() {
-                self.update_scene(state);
-            }
+        if state.is_changed() {
+            self.update_scene(state);
         }
     }
 
@@ -111,15 +115,17 @@ impl Definition3dPanel {
             }
         }
 
-        for (direction, color) in [
-            (Vec3::X, Color4::RED),
-            (Vec3::Y, Color4::GREEN),
-            (Vec3::Z, Color4::BLUE),
-        ] {
-            self.scene.lock().add_object(SceneObject::from_line(
-                Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
-                None,
-            ));
+        if state.show_xyz_axis() {
+            for (direction, color) in [
+                (Vec3::X, Color4::RED),
+                (Vec3::Y, Color4::GREEN),
+                (Vec3::Z, Color4::BLUE),
+            ] {
+                self.scene.lock().add_object(SceneObject::from_line(
+                    Lines::single_color(vec![vec3(0.0, 0.0, 0.0), 100.0 * direction], color, 2.0),
+                    None,
+                ));
+            }
         }
     }
 }

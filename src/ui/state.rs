@@ -6,6 +6,7 @@ use std::{fs, io, path::Path};
 pub struct State {
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
+    show_xyz_axis: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     #[serde(skip)]
     changed: Option<bool>,
@@ -20,6 +21,7 @@ impl Default for State {
         Self {
             definitions: Vec::new(),
             selected_definition_index: None,
+            show_xyz_axis: true,
             show_mesh,
             changed: None,
         }
@@ -51,6 +53,17 @@ impl State {
     pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
         if self.selected_definition_index != value {
             self.selected_definition_index = value;
+            self.changed();
+        }
+    }
+
+    pub fn show_xyz_axis(&self) -> bool {
+        self.show_xyz_axis
+    }
+
+    pub fn set_show_xyz_axis(&mut self, value: bool) {
+        if self.show_xyz_axis != value {
+            self.show_xyz_axis = value;
             self.changed();
         }
     }
