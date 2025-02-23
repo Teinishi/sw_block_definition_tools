@@ -8,3 +8,5 @@ mod definition_detail_panel;
 pub use definition_detail_panel::DefinitionDetailPanel;
 mod definition_3d_panel;
 pub use definition_3d_panel::Definition3dPanel;
+mod bottom_panel;
+pub use bottom_panel::BottomPanel;

@@ -2,10 +2,29 @@ use crate::sw_block_definition::{SwBlockDefinition, SwBlockDefinitionMeshKey};
 use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
 
+macro_rules! getter_setter {
+    ($target:ident, $name:ident, $setter_name:ident, $type:ty) => {
+        impl $target {
+            pub fn $name(&self) -> $type {
+                self.$name
+            }
+
+            pub fn $setter_name(&mut self, value: $type) {
+                if (self.$name != value) {
+                    self.$name = value;
+                    self.changed();
+                }
+            }
+        }
+    };
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
+    show_all_attributes: bool,
+    hide_default_attributes: bool,
     show_xyz_axis: bool,
     show_surfaces: bool,
     show_surface_edge: bool,
@@ -23,6 +42,8 @@ impl Default for State {
         Self {
             definitions: Vec::new(),
             selected_definition_index: None,
+            show_all_attributes: false,
+            hide_default_attributes: false,
             show_xyz_axis: true,
             show_surfaces: true,
             show_surface_edge: true,
@@ -57,39 +78,6 @@ impl State {
     pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
         if self.selected_definition_index != value {
             self.selected_definition_index = value;
-            self.changed();
-        }
-    }
-
-    pub fn show_xyz_axis(&self) -> bool {
-        self.show_xyz_axis
-    }
-
-    pub fn set_show_xyz_axis(&mut self, value: bool) {
-        if self.show_xyz_axis != value {
-            self.show_xyz_axis = value;
-            self.changed();
-        }
-    }
-
-    pub fn show_surfaces(&self) -> bool {
-        self.show_surfaces
-    }
-
-    pub fn set_show_surfaces(&mut self, value: bool) {
-        if self.show_surfaces != value {
-            self.show_surfaces = value;
-            self.changed();
-        }
-    }
-
-    pub fn show_surface_edge(&self) -> bool {
-        self.show_surface_edge
-    }
-
-    pub fn set_show_surface_edge(&mut self, value: bool) {
-        if self.show_surface_edge != value {
-            self.show_surface_edge = value;
             self.changed();
         }
     }
@@ -137,3 +125,14 @@ impl State {
         }
     }
 }
+
+getter_setter!(State, show_all_attributes, set_show_all_sttributes, bool);
+getter_setter!(
+    State,
+    hide_default_attributes,
+    set_hide_default_attributes,
+    bool
+);
+getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool);
+getter_setter!(State, show_surfaces, set_show_surfaces, bool);
+getter_setter!(State, show_surface_edge, set_show_surface_edge, bool);

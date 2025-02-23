@@ -1,10 +1,11 @@
-use super::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, State};
+use super::{BottomPanel, Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, State};
 
 pub struct MainApp {
     state: State,
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
+    bottom_panel: BottomPanel,
 }
 
 impl MainApp {
@@ -41,6 +42,7 @@ impl MainApp {
             definition_select_panel: DefinitionSelectPanel::default(),
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel: Definition3dPanel::new(cc).unwrap(),
+            bottom_panel: BottomPanel::default(),
         }
     }
 }
@@ -101,6 +103,15 @@ impl eframe::App for MainApp {
                     self.definition_3d_panel.ui(ui, &mut self.state);
                     ui.add_space(4.0);
                 });
+            });
+
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .resizable(false)
+            .min_height(0.0)
+            .show(ctx, |ui| {
+                ui.add_space(4.0);
+                self.bottom_panel.ui(ui, &mut self.state);
+                ui.add_space(4.0);
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
