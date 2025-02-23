@@ -3,18 +3,25 @@ use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
-pub struct Lines {
+pub struct Line {
     pub vertices: Vec<LineVertex>,
     pub line_width: f32,
 }
 
-impl Lines {
-    pub fn single_color_lh(positions: Vec<Vec3>, color: Color4, line_width: f32) -> Self {
-        let vertices = positions
-            .iter()
-            .map(|p| LineVertex {
-                position: Vec3::new(p.x, p.y, -p.z),
-                color,
+impl Line {
+    pub fn single_color_lh(
+        positions: Vec<Vec3>,
+        color: Color4,
+        line_width: f32,
+        is_loop: bool,
+    ) -> Self {
+        let n = positions.len();
+        let vertices = (0..(if is_loop { n } else { n - 1 }))
+            .flat_map(|i| {
+                [
+                    LineVertex::from_vec3_lh(positions[i], color),
+                    LineVertex::from_vec3_lh(positions[(i + 1) % n], color),
+                ]
             })
             .collect();
         Self {
@@ -24,7 +31,7 @@ impl Lines {
     }
 }
 
-impl GetShaderAttributeData for Lines {
+impl GetShaderAttributeData for Line {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData {
         let vertex_count = self.vertices.len();
         let mut positions: Vec<f32> = Vec::with_capacity(vertex_count * 3);
@@ -55,4 +62,13 @@ impl GetShaderAttributeData for Lines {
 pub struct LineVertex {
     pub position: Vec3,
     pub color: Color4,
+}
+
+impl LineVertex {
+    pub fn from_vec3_lh(position: Vec3, color: Color4) -> Self {
+        Self {
+            position: Vec3::new(position.x, position.y, -position.z),
+            color,
+        }
+    }
 }

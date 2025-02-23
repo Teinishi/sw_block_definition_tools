@@ -7,7 +7,7 @@ pub use color4::Color4;
 mod mesh;
 pub use mesh::{Mesh, MeshVertex};
 mod line;
-pub use line::Lines;
+pub use line::Line;
 mod camera;
 pub use camera::{Camera, OrbitCamera};
 mod shader_type;

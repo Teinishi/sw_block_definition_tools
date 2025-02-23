@@ -1,7 +1,7 @@
 use crate::gl_renderer;
 use byteorder::{LittleEndian, ReadBytesExt};
-use glam::Vec3;
 use core::fmt;
+use glam::Vec3;
 use std::{
     fs,
     io::{self, Cursor, Read},

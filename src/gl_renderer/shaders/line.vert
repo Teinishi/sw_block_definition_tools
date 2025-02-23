@@ -9,5 +9,6 @@ uniform mat4 mat_world;
 void main()
 {
     gl_Position =  mat_view_proj * mat_world * vec4(vertexPosition_in, 1);
+    gl_Position.z -= 0.00001;
     vertexColor_out = vertexColor_in;
 }

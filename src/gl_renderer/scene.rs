@@ -1,4 +1,4 @@
-use super::{GetShaderAttributeData, GlConfig, Lines, Mesh};
+use super::{GetShaderAttributeData, GlConfig, Line, Mesh};
 use eframe::glow;
 use glam::Mat4;
 
@@ -46,7 +46,7 @@ impl SceneObject {
         }
     }
 
-    pub fn from_line(line: Lines, transform_matrix: Option<Mat4>) -> Self {
+    pub fn from_line(line: Line, transform_matrix: Option<Mat4>) -> Self {
         Self {
             content: Box::new(line),
             transform_matrix: transform_matrix.unwrap_or_default(),

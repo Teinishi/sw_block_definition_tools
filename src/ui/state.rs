@@ -8,6 +8,7 @@ pub struct State {
     selected_definition_index: Option<usize>,
     show_xyz_axis: bool,
     show_surfaces: bool,
+    show_surface_edge: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     #[serde(skip)]
     changed: Option<bool>,
@@ -24,6 +25,7 @@ impl Default for State {
             selected_definition_index: None,
             show_xyz_axis: true,
             show_surfaces: true,
+            show_surface_edge: true,
             show_mesh,
             changed: None,
         }
@@ -77,6 +79,17 @@ impl State {
     pub fn set_show_surfaces(&mut self, value: bool) {
         if self.show_surfaces != value {
             self.show_surfaces = value;
+            self.changed();
+        }
+    }
+
+    pub fn show_surface_edge(&self) -> bool {
+        self.show_surface_edge
+    }
+
+    pub fn set_show_surface_edge(&mut self, value: bool) {
+        if self.show_surface_edge != value {
+            self.show_surface_edge = value;
             self.changed();
         }
     }

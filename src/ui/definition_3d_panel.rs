@@ -1,9 +1,9 @@
 use super::State;
-use crate::gl_renderer::{Color4, Lines, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::create_surface_object;
 use eframe::egui_glow;
 use egui::{mutex::Mutex, vec2};
-use glam::{vec3, Vec3};
+use glam::Vec3;
 use std::sync::Arc;
 
 pub struct Definition3dPanel {
@@ -53,6 +53,10 @@ impl Definition3dPanel {
         let mut c = state.show_surfaces();
         ui.checkbox(&mut c, "Surfaces");
         state.set_show_surfaces(c);
+
+        let mut c = state.show_surface_edge();
+        ui.checkbox(&mut c, "Surface Edge Lines");
+        state.set_show_surface_edge(c);
 
         if let Some(definition) = state.selected_definition() {
             let meshes = definition.meshes();
@@ -114,23 +118,25 @@ impl Definition3dPanel {
                 (Vec3::Z, Color4::BLUE),
             ] {
                 self.scene.lock().add_object(SceneObject::from_line(
-                    Lines::single_color_lh(
-                        vec![vec3(0.0, 0.0, 0.0), 100.0 * direction],
-                        color,
-                        2.0,
-                    ),
+                    Line::single_color_lh(vec![Vec3::ZERO, 100.0 * direction], color, 2.0, false),
                     None,
                 ));
             }
         }
 
-        if state.show_surfaces() {
-            if let Some(data) = state.selected_definition().and_then(|def| def.data().ok()) {
-                if let Some(surfaces) = data.surfaces.last() {
-                    for surface in &surfaces.surface {
-                        if let Some(obj) = create_surface_object(surface) {
-                            self.scene.lock().add_object(obj);
-                        }
+        if let Some(data) = state.selected_definition().and_then(|def| def.data().ok()) {
+            if let Some(surfaces) = data.surfaces.last() {
+                for surface in &surfaces.surface {
+                    let (mesh_obj, line_obj) = create_surface_object(
+                        surface,
+                        state.show_surfaces(),
+                        state.show_surface_edge(),
+                    );
+                    if let Some(obj) = mesh_obj {
+                        self.scene.lock().add_object(obj);
+                    }
+                    if let Some(obj) = line_obj {
+                        self.scene.lock().add_object(obj);
                     }
                 }
             }
