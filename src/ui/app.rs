@@ -81,7 +81,7 @@ impl eframe::App for MainApp {
         egui::SidePanel::left("left_panel")
             .resizable(true)
             .default_width(200.0)
-            .width_range(80.0..=300.0)
+            .width_range(80.0..=500.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
@@ -94,7 +94,7 @@ impl eframe::App for MainApp {
         egui::SidePanel::right("right_panel")
             .resizable(true)
             .default_width(300.0)
-            .width_range(80.0..=500.0)
+            .width_range(80.0..=800.0)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
