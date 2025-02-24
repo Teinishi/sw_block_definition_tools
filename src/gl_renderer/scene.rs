@@ -1,6 +1,6 @@
-use super::{GetShaderAttributeData, GlConfig, Line, Mesh};
+use super::{GlConfig, Line, Mesh, SceneObjectContent};
 use eframe::glow;
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 
 #[derive(Default)]
 pub struct Scene {
@@ -34,7 +34,7 @@ impl Scene {
 }
 
 pub struct SceneObject {
-    content: Box<dyn GetShaderAttributeData>,
+    content: Box<dyn SceneObjectContent>,
     transform_matrix: Mat4,
 }
 
@@ -61,6 +61,10 @@ impl SceneObject {
         self.content.gl_config()
     }
 
+    pub fn center(&self) -> Vec3 {
+        self.content.center()
+    }
+
     pub fn create_vertex_buffer(
         &self,
         gl: &glow::Context,
@@ -75,23 +79,19 @@ impl SceneObject {
             gl.bind_vertex_array(Some(vao));
 
             for (name, size, data) in &attribute_data {
-                let attrib_position = gl
-                    .get_attrib_location(*program, name)
-                    .unwrap_or_else(|| panic!("Failed to get attribute location: {:?}", name));
-                let vbo = gl
-                    .create_buffer()
-                    .expect("Failed to create vertex buffer object");
-                gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, to_byte_slice(data), glow::STATIC_DRAW);
-                gl.enable_vertex_attrib_array(attrib_position);
-                gl.vertex_attrib_pointer_f32(
-                    attrib_position,
-                    size,
-                    glow::FLOAT,
-                    false,
-                    size * 4,
-                    0,
-                );
+                if let Some(location) = gl.get_attrib_location(*program, name) {
+                    let vbo = gl
+                        .create_buffer()
+                        .expect("Failed to create vertex buffer object");
+                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                    gl.buffer_data_u8_slice(
+                        glow::ARRAY_BUFFER,
+                        to_byte_slice(data),
+                        glow::STATIC_DRAW,
+                    );
+                    gl.enable_vertex_attrib_array(location);
+                    gl.vertex_attrib_pointer_f32(location, size, glow::FLOAT, false, size * 4, 0);
+                }
             }
 
             Ok((vao, attribute_data.vertex_count().unwrap_or(0)))

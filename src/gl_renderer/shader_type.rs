@@ -8,23 +8,34 @@ const BASIC_SHADER_SOURCES: [(u32, &str); 2] = [
     (glow::FRAGMENT_SHADER, include_str!("./shaders/basic.frag")),
 ];
 
+const GLASS_SHADER_SOURCES: [(u32, &str); 2] = [
+    (glow::VERTEX_SHADER, include_str!("./shaders/glass.vert")),
+    (glow::FRAGMENT_SHADER, include_str!("./shaders/glass.frag")),
+];
+
 const LINE_SHADER_SOURCES: [(u32, &str); 2] = [
     (glow::VERTEX_SHADER, include_str!("./shaders/line.vert")),
     (glow::FRAGMENT_SHADER, include_str!("./shaders/line.frag")),
 ];
 
-#[derive(Debug, Enum, Clone, Copy)]
+#[derive(Debug, Enum, Clone, Copy, PartialEq)]
 pub enum ShaderType {
     Basic,
+    Glass,
     Line,
 }
 
 impl ShaderType {
+    pub fn is_translucent(self) -> bool {
+        self == Self::Glass
+    }
+
     pub fn create_program(&self, gl: &glow::Context) -> Option<glow::Program> {
         use glow::HasContext as _;
 
         let shader_sources = match self {
             Self::Basic => BASIC_SHADER_SOURCES,
+            Self::Glass => GLASS_SHADER_SOURCES,
             Self::Line => LINE_SHADER_SOURCES,
         };
 
@@ -83,6 +94,7 @@ impl ShaderType {
     pub fn create_programs(gl: &glow::Context) -> EnumMap<Self, glow::Program> {
         enum_map! {
             Self::Basic => Self::Basic.create_program(gl).expect("Failed to create shader program"),
+            Self::Glass => Self::Glass.create_program(gl).expect("Failed to create shader program"),
             Self::Line => Self::Line.create_program(gl).expect("Failed to create shader program"),
         }
     }
@@ -131,19 +143,19 @@ impl<'a> Iterator for ShaderAttributeDataIter<'a> {
         let mut val = None;
         if self.index == 0 {
             if let Some(positions) = &self.data.positions {
-                val = Some(("vertexPosition_in", 3, positions));
+                val = Some(("vertex_position_in", 3, positions));
             }
             self.index += 1;
         }
         if val.is_none() && self.index == 1 {
             if let Some(colors) = &self.data.colors {
-                val = Some(("vertexColor_in", 4, colors));
+                val = Some(("vertex_color_in", 4, colors));
             }
             self.index += 1;
         }
         if val.is_none() && self.index == 2 {
             if let Some(normals) = &self.data.normals {
-                val = Some(("vertexNormal_in", 3, normals));
+                val = Some(("vertex_normal_in", 3, normals));
             }
             self.index += 1;
         }
@@ -151,7 +163,8 @@ impl<'a> Iterator for ShaderAttributeDataIter<'a> {
     }
 }
 
-pub trait GetShaderAttributeData: Send + Sync {
+pub trait SceneObjectContent: Send + Sync {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData;
     fn gl_config(&self) -> GlConfig;
+    fn center(&self) -> glam::Vec3;
 }

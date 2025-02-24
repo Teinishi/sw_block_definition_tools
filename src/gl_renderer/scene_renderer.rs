@@ -5,6 +5,18 @@ use enum_map::EnumMap;
 use glam::{Mat4, Vec3, Vec4};
 use std::sync::Arc;
 
+const SKY_COLOR_UP: Vec3 = Vec3 {
+    x: 0.0,
+    y: 61.0 / 255.0,
+    z: 182.0 / 255.0,
+};
+
+const SKY_COLOR_DOWN: Vec3 = Vec3 {
+    x: 139.0 / 255.0,
+    y: 210.0 / 255.0,
+    z: 207.0 / 255.0,
+};
+
 pub struct SceneRenderer {
     programs: EnumMap<ShaderType, glow::Program>,
     vaos: Vec<VaoContainer>,
@@ -41,6 +53,13 @@ impl SceneRenderer {
     pub fn paint(&mut self, gl: &glow::Context, camera: Arc<Mutex<impl Camera>>) {
         use glow::HasContext as _;
 
+        let override_color_1 = Vec4::ONE;
+        let override_color_2 = Vec4::ONE;
+        let override_color_3 = Vec4::ONE;
+
+        let mat_view_proj = camera.lock().mat_view_proj();
+        let camera_position = camera.lock().position();
+
         if let Some(scene) = self.scene.lock().paint() {
             match update_vaos(&self.programs, gl, scene) {
                 Ok(vaos) => self.vaos = vaos,
@@ -48,11 +67,25 @@ impl SceneRenderer {
             }
         }
 
-        let override_color_1 = Vec4::ONE;
-        let override_color_2 = Vec4::ONE;
-        let override_color_3 = Vec4::ONE;
-
-        let mat_view_proj = camera.lock().mat_view_proj();
+        let mut vaos: Vec<(bool, &VaoContainer)> = self
+            .vaos
+            .iter()
+            .map(|vao_container| {
+                (
+                    vao_container.config.shader_type.is_translucent(),
+                    vao_container,
+                )
+            })
+            .collect();
+        // 不透明オブジェクトを先に、半透明オブジェクトはカメラから遠い順に描画
+        // 同一VAO内で重なっていた場合はどうにもならんが、そうなることはたぶんない
+        vaos.sort_by(|a, b| {
+            a.0.cmp(&b.0).then_with(|| {
+                let da = (a.1.center - camera_position).length();
+                let db = (b.1.center - camera_position).length();
+                db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Greater)
+            })
+        });
 
         unsafe {
             gl.clear(glow::DEPTH_BUFFER_BIT);
@@ -67,7 +100,7 @@ impl SceneRenderer {
             #[cfg(not(target_arch = "wasm32"))]
             gl.enable(glow::MULTISAMPLE);
 
-            for vao_container in &self.vaos {
+            for (_, vao_container) in vaos {
                 let program = self.programs[vao_container.config.shader_type];
 
                 gl.use_program(Some(program));
@@ -77,11 +110,22 @@ impl SceneRenderer {
                 }
 
                 set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);
+                set_uniform_mat4(gl, program, "mat_view_proj_inverse", mat_view_proj);
                 set_uniform_mat4(gl, program, "mat_world", vao_container.transform);
                 set_uniform_vec4(gl, program, "override_color_1", override_color_1);
                 set_uniform_vec4(gl, program, "override_color_2", override_color_2);
                 set_uniform_vec4(gl, program, "override_color_3", override_color_3);
                 set_uniform_i32(gl, program, "is_preview", 1);
+
+                set_uniform_vec3(gl, program, "camera_position", camera_position);
+                set_uniform_vec4(
+                    gl,
+                    program,
+                    "glass_color",
+                    Vec4::new(0.627451, 0.627451, 0.78039217, 0.5019608),
+                );
+                set_uniform_vec3(gl, program, "sky_color_up", SKY_COLOR_UP);
+                set_uniform_vec3(gl, program, "sky_color_down", SKY_COLOR_DOWN);
 
                 gl.bind_vertex_array(Some(vao_container.vao));
                 gl.draw_arrays(vao_container.config.mode, 0, vao_container.vertex_count);
@@ -107,6 +151,7 @@ fn update_vaos(
                 transform: *object.transform_matrix(),
                 vertex_count: vertex_count as i32,
                 config,
+                center: object.center(),
             })
         })
         .collect()
@@ -125,9 +170,10 @@ struct VaoContainer {
     transform: Mat4,
     vertex_count: i32,
     config: GlConfig,
+    center: Vec3,
 }
 
-unsafe fn _set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {
+unsafe fn set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {
     gl.uniform_3_f32(
         gl.get_uniform_location(program, name).as_ref(),
         value.x,
@@ -135,6 +181,7 @@ unsafe fn _set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &s
         value.z,
     );
 }
+
 unsafe fn set_uniform_vec4(gl: &glow::Context, program: glow::Program, name: &str, value: Vec4) {
     gl.uniform_4_f32(
         gl.get_uniform_location(program, name).as_ref(),

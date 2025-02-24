@@ -1,14 +1,25 @@
-use super::{Color4, GetShaderAttributeData, GlConfig, ShaderAttributeData, ShaderType};
+use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
 use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
 pub struct Line {
-    pub vertices: Vec<LineVertex>,
-    pub line_width: f32,
+    vertices: Vec<LineVertex>,
+    line_width: f32,
+    center: Vec3,
 }
 
 impl Line {
+    pub fn new(vertices: Vec<LineVertex>, line_width: f32) -> Self {
+        let center =
+            vertices.iter().fold(Vec3::ZERO, |a, b| a + b.position) / (vertices.len() as f32);
+        Self {
+            vertices,
+            line_width,
+            center,
+        }
+    }
+
     pub fn single_color_lh(
         positions: Vec<Vec3>,
         color: Color4,
@@ -24,14 +35,11 @@ impl Line {
                 ]
             })
             .collect();
-        Self {
-            vertices,
-            line_width,
-        }
+        Self::new(vertices, line_width)
     }
 }
 
-impl GetShaderAttributeData for Line {
+impl SceneObjectContent for Line {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData {
         let vertex_count = self.vertices.len();
         let mut positions: Vec<f32> = Vec::with_capacity(vertex_count * 3);
@@ -55,6 +63,10 @@ impl GetShaderAttributeData for Line {
             mode: glow::LINES,
             line_width: Some(self.line_width),
         }
+    }
+
+    fn center(&self) -> Vec3 {
+        self.center
     }
 }
 

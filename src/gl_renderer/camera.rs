@@ -7,6 +7,7 @@ pub trait Camera {
     fn mat_view_proj(&self) -> Mat4 {
         self.mat_proj().mul_mat4(&self.mat_view())
     }
+    fn position(&self) -> Vec3;
 }
 
 #[derive(Debug)]
@@ -33,8 +34,8 @@ impl Default for OrbitCamera {
             up: Vec3::Y,
             fov_y: 60f32.to_radians(),
             aspect_ratio: 1.0,
-            near_clip: 0.01,
-            far_clip: 100.0,
+            near_clip: 0.025,
+            far_clip: 20100.0,
             rotate_speed: 0.005,
             pan_speed: 0.001,
             zoom_speed: 0.1,
@@ -55,6 +56,10 @@ impl Camera for OrbitCamera {
 
     fn mat_proj(&self) -> Mat4 {
         Mat4::perspective_rh(self.fov_y, self.aspect_ratio, self.near_clip, self.far_clip)
+    }
+
+    fn position(&self) -> Vec3 {
+        self.center - self.direction
     }
 }
 

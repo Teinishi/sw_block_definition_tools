@@ -11,4 +11,4 @@ pub use line::Line;
 mod camera;
 pub use camera::{Camera, OrbitCamera};
 mod shader_type;
-pub use shader_type::{GetShaderAttributeData, ShaderAttributeData, ShaderType};
+pub use shader_type::{SceneObjectContent, ShaderAttributeData, ShaderType};

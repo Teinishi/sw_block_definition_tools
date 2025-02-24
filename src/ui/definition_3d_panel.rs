@@ -150,9 +150,11 @@ impl Definition3dPanel {
                     continue;
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
-                    self.scene
-                        .lock()
-                        .add_object(SceneObject::from_mesh(mesh.as_mesh(), None));
+                    for m in mesh.as_meshes() {
+                        self.scene
+                            .lock()
+                            .add_object(SceneObject::from_mesh(m, None));
+                    }
                 }
             }
         }

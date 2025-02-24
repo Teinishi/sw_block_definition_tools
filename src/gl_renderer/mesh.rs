@@ -1,14 +1,44 @@
-use super::{Color4, GetShaderAttributeData, GlConfig, ShaderAttributeData, ShaderType};
+use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
 use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
-pub struct Mesh {
-    pub vertices: Vec<MeshVertex>,
-    pub triangles: Vec<[usize; 3]>,
+pub enum MeshMaterial {
+    Basic,
+    Glass,
 }
 
-impl GetShaderAttributeData for Mesh {
+impl MeshMaterial {
+    fn shader_type(&self) -> ShaderType {
+        match self {
+            Self::Basic => ShaderType::Basic,
+            Self::Glass => ShaderType::Glass,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Mesh {
+    vertices: Vec<MeshVertex>,
+    triangles: Vec<[usize; 3]>,
+    material: MeshMaterial,
+    center: Vec3,
+}
+
+impl Mesh {
+    pub fn new(vertices: Vec<MeshVertex>, triangles: Vec<[usize; 3]>) -> Self {
+        let center =
+            vertices.iter().fold(Vec3::ZERO, |a, b| a + b.position) / (vertices.len() as f32);
+        Self {
+            vertices,
+            triangles,
+            material: MeshMaterial::Basic,
+            center,
+        }
+    }
+}
+
+impl SceneObjectContent for Mesh {
     fn get_shader_attribute_data(&self) -> ShaderAttributeData {
         let vertex_count = self.triangles.len() * 3;
         let mut positions: Vec<f32> = Vec::with_capacity(vertex_count * 3);
@@ -33,10 +63,14 @@ impl GetShaderAttributeData for Mesh {
 
     fn gl_config(&self) -> super::GlConfig {
         GlConfig {
-            shader_type: ShaderType::Basic,
+            shader_type: self.material.shader_type(),
             mode: glow::TRIANGLES,
             line_width: None,
         }
+    }
+
+    fn center(&self) -> Vec3 {
+        self.center
     }
 }
 
@@ -79,10 +113,7 @@ impl Mesh {
             }
         }
 
-        Self {
-            vertices,
-            triangles,
-        }
+        Self::new(vertices, triangles)
     }
 
     pub fn combined(meshes: impl IntoIterator<Item = Self>) -> Self {
@@ -98,10 +129,11 @@ impl Mesh {
             }
         }
 
-        Self {
-            vertices,
-            triangles,
-        }
+        Self::new(vertices, triangles)
+    }
+
+    pub fn glass(&mut self) {
+        self.material = MeshMaterial::Glass;
     }
 }
 

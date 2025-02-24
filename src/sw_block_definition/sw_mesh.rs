@@ -17,7 +17,7 @@ pub struct SwMesh {
     _triangle_count: u32,
     triangles: Vec<SwMeshTriangle>,
     _submesh_count: u16,
-    _submeshes: Vec<SwSubmesh>,
+    submeshes: Vec<SwSubmesh>,
 }
 
 impl SwMesh {
@@ -36,7 +36,7 @@ impl SwMesh {
 
         if mesh_type.is_none() {
             return Err(SwMeshFromFileError::Parse(
-                "File is beginning with unexpected bytes.".to_string(),
+                "Mesh file is beginning with unexpected bytes.".to_string(),
             ));
         }
 
@@ -52,6 +52,12 @@ impl SwMesh {
         }
 
         let index_count = cur.read_u32::<LittleEndian>()?;
+        if index_count % 3 != 0 {
+            return Err(SwMeshFromFileError::Parse(format!(
+                "Mesh file contains unexpected binary sequence: index_count={} is invalid.",
+                index_count
+            )));
+        }
         let triangle_count = index_count / 3;
 
         let mut triangles = Vec::with_capacity(triangle_count.try_into().unwrap());
@@ -63,7 +69,7 @@ impl SwMesh {
 
         let mut submeshes = Vec::with_capacity(submesh_count.into());
         for _ in 0..submesh_count {
-            submeshes.push(SwSubmesh::from_binary(&mut cur)?);
+            submeshes.push(SwSubmesh::from_binary(&mut cur, index_count)?);
         }
 
         Ok(Self {
@@ -74,19 +80,36 @@ impl SwMesh {
             _triangle_count: triangle_count,
             triangles,
             _submesh_count: submesh_count,
-            _submeshes: submeshes,
+            submeshes,
         })
     }
 
-    pub fn as_mesh(&self) -> gl_renderer::Mesh {
-        let vertices: Vec<gl_renderer::MeshVertex> =
-            self.vertices.iter().map(|v| v.as_mesh_vertex()).collect();
-        let triangles = self.triangles.iter().map(|t| t.as_usize_arr()).collect();
+    pub fn as_meshes(&self) -> Vec<gl_renderer::Mesh> {
+        self.submeshes
+            .iter()
+            .map(|submesh| {
+                let start_index = submesh.index_buffer_start / 3;
+                let end_index = start_index + submesh.index_buffer_length / 3;
 
-        gl_renderer::Mesh {
-            vertices,
-            triangles,
-        }
+                let mut vertices: Vec<gl_renderer::MeshVertex> = Vec::new();
+                let mut triangles = Vec::new();
+
+                for triangle_index in start_index..end_index {
+                    let indices = &self.triangles[triangle_index as usize].as_usize_arr();
+                    let vertex_index = vertices.len();
+                    for i in indices {
+                        vertices.push(self.vertices[*i].as_mesh_vertex());
+                    }
+                    triangles.push([vertex_index, vertex_index + 1, vertex_index + 2]);
+                }
+
+                let mut mesh = gl_renderer::Mesh::new(vertices, triangles);
+                if submesh.shader_id == 1 {
+                    mesh.glass();
+                }
+                mesh
+            })
+            .collect()
     }
 }
 
@@ -175,9 +198,9 @@ impl SwMeshTriangle {
 
 #[derive(Debug)]
 pub struct SwSubmesh {
-    _index_buffer_start: u32,
-    _index_buffer_length: u32,
-    _shader_id: u16,
+    index_buffer_start: u32,
+    index_buffer_length: u32,
+    shader_id: u16,
     _bounds_min: SwMeshVec3,
     _bounds_max: SwMeshVec3,
     _name_len: u16,
@@ -185,9 +208,24 @@ pub struct SwSubmesh {
 }
 
 impl SwSubmesh {
-    fn from_binary(cur: &mut Cursor<Vec<u8>>) -> std::io::Result<Self> {
+    fn from_binary(
+        cur: &mut Cursor<Vec<u8>>,
+        index_count: u32,
+    ) -> Result<Self, SwMeshFromFileError> {
         let index_buffer_start = cur.read_u32::<LittleEndian>()?;
+        if index_buffer_start % 3 != 0 || index_buffer_start >= index_count {
+            return Err(SwMeshFromFileError::Parse(format!(
+                "Mesh file contains unexpected binary sequence: submesh.index_buffer_start={} is invalid.",
+                index_buffer_start
+            )));
+        }
         let index_buffer_length = cur.read_u32::<LittleEndian>()?;
+        if index_buffer_length % 3 != 0 || index_buffer_start + index_buffer_length > index_count {
+            return Err(SwMeshFromFileError::Parse(format!(
+                "Mesh file contains unexpected binary sequence: submesh.index_buffer_length={} is invalid.",
+                index_buffer_length
+            )));
+        }
         let _header2 = cur.read_u16::<LittleEndian>()?;
         let shader_id = cur.read_u16::<LittleEndian>()?;
         let bounds_min = SwMeshVec3::from_binary(cur)?;
@@ -200,9 +238,9 @@ impl SwSubmesh {
         }
         let _header8 = SwMeshVec3::from_binary(cur)?;
         Ok(Self {
-            _index_buffer_start: index_buffer_start,
-            _index_buffer_length: index_buffer_length,
-            _shader_id: shader_id,
+            index_buffer_start,
+            index_buffer_length,
+            shader_id,
             _bounds_min: bounds_min,
             _bounds_max: bounds_max,
             _name_len: name_len,

@@ -2,11 +2,11 @@
 precision highp float;
 #endif
 
-in vec4 vertexColor_out;
+in vec4 vertex_color_out;
 
 out vec4 color_out;
 
 void main()
 {
-    color_out = vertexColor_out;
+    color_out = vertex_color_out;
 }
