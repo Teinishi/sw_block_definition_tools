@@ -56,6 +56,7 @@ impl SceneRenderer {
         let override_color_1 = Vec4::ONE;
         let override_color_2 = Vec4::ONE;
         let override_color_3 = Vec4::ONE;
+        let additive_color = Vec4::ONE;
 
         let mat_view_proj = camera.lock().mat_view_proj();
         let camera_position = camera.lock().position();
@@ -67,11 +68,12 @@ impl SceneRenderer {
             }
         }
 
-        let mut vaos: Vec<(bool, &VaoContainer)> = self
+        let mut vaos: Vec<(i32, bool, &VaoContainer)> = self
             .vaos
             .iter()
             .map(|vao_container| {
                 (
+                    vao_container.config.shader_type.render_order(),
                     vao_container.config.shader_type.is_translucent(),
                     vao_container,
                 )
@@ -81,9 +83,13 @@ impl SceneRenderer {
         // 同一VAO内で重なっていた場合はどうにもならんが、そうなることはたぶんない
         vaos.sort_by(|a, b| {
             a.0.cmp(&b.0).then_with(|| {
-                let da = (a.1.center - camera_position).length();
-                let db = (b.1.center - camera_position).length();
-                db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Greater)
+                if a.1 || b.1 {
+                    let da = (a.2.center - camera_position).length();
+                    let db = (b.2.center - camera_position).length();
+                    db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Greater)
+                } else {
+                    std::cmp::Ordering::Greater
+                }
             })
         });
 
@@ -97,16 +103,24 @@ impl SceneRenderer {
             gl.cull_face(glow::BACK);
             gl.front_face(glow::CCW);
 
+            gl.enable(glow::BLEND);
+
             #[cfg(not(target_arch = "wasm32"))]
             gl.enable(glow::MULTISAMPLE);
 
-            for (_, vao_container) in vaos {
+            for (_, _, vao_container) in vaos {
                 let program = self.programs[vao_container.config.shader_type];
 
                 gl.use_program(Some(program));
 
                 if let Some(line_width) = vao_container.config.line_width {
                     gl.line_width(line_width);
+                }
+
+                if vao_container.config.shader_type.is_additive() {
+                    gl.blend_func(glow::SRC_ALPHA, glow::ONE);
+                } else {
+                    gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
                 }
 
                 set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);
@@ -118,14 +132,10 @@ impl SceneRenderer {
                 set_uniform_i32(gl, program, "is_preview", 1);
 
                 set_uniform_vec3(gl, program, "camera_position", camera_position);
-                set_uniform_vec4(
-                    gl,
-                    program,
-                    "glass_color",
-                    Vec4::new(0.627451, 0.627451, 0.78039217, 0.5019608),
-                );
                 set_uniform_vec3(gl, program, "sky_color_up", SKY_COLOR_UP);
                 set_uniform_vec3(gl, program, "sky_color_down", SKY_COLOR_DOWN);
+
+                set_uniform_vec4(gl, program, "additive_color", additive_color);
 
                 gl.bind_vertex_array(Some(vao_container.vao));
                 gl.draw_arrays(vao_container.config.mode, 0, vao_container.vertex_count);

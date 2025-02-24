@@ -104,8 +104,10 @@ impl SwMesh {
                 }
 
                 let mut mesh = gl_renderer::Mesh::new(vertices, triangles);
-                if submesh.shader_id == 1 {
-                    mesh.glass();
+                match submesh.shader_id {
+                    1 => mesh.glass(),
+                    2 => mesh.additive(),
+                    _ => {}
                 }
                 mesh
             })

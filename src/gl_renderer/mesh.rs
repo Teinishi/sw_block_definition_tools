@@ -6,6 +6,7 @@ use glam::Vec3;
 pub enum MeshMaterial {
     Basic,
     Glass,
+    Additive
 }
 
 impl MeshMaterial {
@@ -13,6 +14,7 @@ impl MeshMaterial {
         match self {
             Self::Basic => ShaderType::Basic,
             Self::Glass => ShaderType::Glass,
+            Self::Additive => ShaderType::Additive
         }
     }
 }
@@ -134,6 +136,10 @@ impl Mesh {
 
     pub fn glass(&mut self) {
         self.material = MeshMaterial::Glass;
+    }
+
+    pub fn additive(&mut self) {
+        self.material = MeshMaterial::Additive;
     }
 }
 

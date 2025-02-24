@@ -3,31 +3,50 @@ use enum_map::{enum_map, Enum, EnumMap};
 
 use super::GlConfig;
 
-const BASIC_SHADER_SOURCES: [(u32, &str); 2] = [
-    (glow::VERTEX_SHADER, include_str!("./shaders/basic.vert")),
-    (glow::FRAGMENT_SHADER, include_str!("./shaders/basic.frag")),
+const BASIC_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/basic.vert"),
+    include_str!("./shaders/basic.frag"),
 ];
 
-const GLASS_SHADER_SOURCES: [(u32, &str); 2] = [
-    (glow::VERTEX_SHADER, include_str!("./shaders/glass.vert")),
-    (glow::FRAGMENT_SHADER, include_str!("./shaders/glass.frag")),
+const GLASS_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/glass.vert"),
+    include_str!("./shaders/glass.frag"),
 ];
 
-const LINE_SHADER_SOURCES: [(u32, &str); 2] = [
-    (glow::VERTEX_SHADER, include_str!("./shaders/line.vert")),
-    (glow::FRAGMENT_SHADER, include_str!("./shaders/line.frag")),
+const ADDITIVE_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/additive.vert"),
+    include_str!("./shaders/additive.frag"),
+];
+
+const LINE_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/line.vert"),
+    include_str!("./shaders/line.frag"),
 ];
 
 #[derive(Debug, Enum, Clone, Copy, PartialEq)]
 pub enum ShaderType {
     Basic,
     Glass,
+    Additive,
     Line,
 }
 
 impl ShaderType {
+    pub fn render_order(self) -> i32 {
+        match self {
+            ShaderType::Basic => 0,
+            ShaderType::Glass => 2,
+            ShaderType::Additive => 1,
+            ShaderType::Line => -1,
+        }
+    }
+
     pub fn is_translucent(self) -> bool {
-        self == Self::Glass
+        self == Self::Glass || self == Self::Additive
+    }
+
+    pub fn is_additive(self) -> bool {
+        self == Self::Additive
     }
 
     pub fn create_program(&self, gl: &glow::Context) -> Option<glow::Program> {
@@ -36,6 +55,7 @@ impl ShaderType {
         let shader_sources = match self {
             Self::Basic => BASIC_SHADER_SOURCES,
             Self::Glass => GLASS_SHADER_SOURCES,
+            Self::Additive => ADDITIVE_SHADER_SOURCES,
             Self::Line => LINE_SHADER_SOURCES,
         };
 
@@ -52,7 +72,10 @@ impl ShaderType {
             let program = gl.create_program().expect("Cannot create program");
 
             let mut shaders = Vec::with_capacity(shader_sources.len());
-            for (shader_type, shader_source) in shader_sources.iter() {
+            for (shader_type, shader_source) in [glow::VERTEX_SHADER, glow::FRAGMENT_SHADER]
+                .iter()
+                .zip(shader_sources)
+            {
                 let shader = gl
                     .create_shader(*shader_type)
                     .expect("Cannot create shader");
@@ -95,6 +118,7 @@ impl ShaderType {
         enum_map! {
             Self::Basic => Self::Basic.create_program(gl).expect("Failed to create shader program"),
             Self::Glass => Self::Glass.create_program(gl).expect("Failed to create shader program"),
+            Self::Additive => Self::Additive.create_program(gl).expect("Failed to create shader program"),
             Self::Line => Self::Line.create_program(gl).expect("Failed to create shader program"),
         }
     }
