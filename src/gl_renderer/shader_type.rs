@@ -3,9 +3,14 @@ use enum_map::{enum_map, Enum, EnumMap};
 
 use super::GlConfig;
 
-const BASIC_SHADER_SOURCES: [&str; 2] = [
-    include_str!("./shaders/basic.vert"),
-    include_str!("./shaders/basic.frag"),
+const SIMPLE_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/simple.vert"),
+    include_str!("./shaders/simple.frag"),
+];
+
+const OPAQUE_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/opaque.vert"),
+    include_str!("./shaders/opaque.frag"),
 ];
 
 const GLASS_SHADER_SOURCES: [&str; 2] = [
@@ -25,7 +30,8 @@ const LINE_SHADER_SOURCES: [&str; 2] = [
 
 #[derive(Debug, Enum, Clone, Copy, PartialEq)]
 pub enum ShaderType {
-    Basic,
+    Simple,
+    Opaque,
     Glass,
     Additive,
     Line,
@@ -34,7 +40,8 @@ pub enum ShaderType {
 impl ShaderType {
     pub fn render_order(self) -> i32 {
         match self {
-            ShaderType::Basic => 0,
+            ShaderType::Simple => 0,
+            ShaderType::Opaque => 0,
             ShaderType::Glass => 2,
             ShaderType::Additive => 1,
             ShaderType::Line => -1,
@@ -53,7 +60,8 @@ impl ShaderType {
         use glow::HasContext as _;
 
         let shader_sources = match self {
-            Self::Basic => BASIC_SHADER_SOURCES,
+            Self::Simple => SIMPLE_SHADER_SOURCES,
+            Self::Opaque => OPAQUE_SHADER_SOURCES,
             Self::Glass => GLASS_SHADER_SOURCES,
             Self::Additive => ADDITIVE_SHADER_SOURCES,
             Self::Line => LINE_SHADER_SOURCES,
@@ -116,7 +124,8 @@ impl ShaderType {
 
     pub fn create_programs(gl: &glow::Context) -> EnumMap<Self, glow::Program> {
         enum_map! {
-            Self::Basic => Self::Basic.create_program(gl).expect("Failed to create shader program"),
+            Self::Simple => Self::Simple.create_program(gl).expect("Failed to create shader program"),
+            Self::Opaque => Self::Opaque.create_program(gl).expect("Failed to create shader program"),
             Self::Glass => Self::Glass.create_program(gl).expect("Failed to create shader program"),
             Self::Additive => Self::Additive.create_program(gl).expect("Failed to create shader program"),
             Self::Line => Self::Line.create_program(gl).expect("Failed to create shader program"),

@@ -5,6 +5,34 @@ use enum_map::EnumMap;
 use glam::{Mat4, Vec3, Vec4};
 use std::sync::Arc;
 
+/*
+// ワクベ内
+const AMBIENT_COLOR_LOW: Vec3 = Vec3 {
+    x: 41.0 / 255.0,
+    y: 92.0 / 255.0,
+    z: 89.0 / 255.0,
+};
+
+const AMBIENT_COLOR_HIGH: Vec3 = Vec3 {
+    x: 6.0 / 255.0,
+    y: 20.0 / 255.0,
+    z: 68.0 / 255.0,
+};
+*/
+
+// ワクベ外
+const AMBIENT_COLOR_HIGH: Vec3 = Vec3 {
+    x: 118.0 / 255.0,
+    y: 142.0 / 255.0,
+    z: 190.0 / 255.0,
+};
+
+const AMBIENT_COLOR_LOW: Vec3 = Vec3 {
+    x: 11.0 / 255.0,
+    y: 16.0 / 255.0,
+    z: 44.0 / 255.0,
+};
+
 const SKY_COLOR_UP: Vec3 = Vec3 {
     x: 0.0,
     y: 61.0 / 255.0,
@@ -132,6 +160,8 @@ impl SceneRenderer {
                 set_uniform_i32(gl, program, "is_preview", 1);
 
                 set_uniform_vec3(gl, program, "camera_position", camera_position);
+                set_uniform_vec3(gl, program, "ambient_color_low", AMBIENT_COLOR_LOW);
+                set_uniform_vec3(gl, program, "ambient_color_high", AMBIENT_COLOR_HIGH);
                 set_uniform_vec3(gl, program, "sky_color_up", SKY_COLOR_UP);
                 set_uniform_vec3(gl, program, "sky_color_down", SKY_COLOR_DOWN);
 
