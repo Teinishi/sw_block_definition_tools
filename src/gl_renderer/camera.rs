@@ -1,7 +1,7 @@
 use egui::PointerButton;
 use glam::{Mat4, Quat, Vec3};
 
-pub trait Camera {
+pub trait Camera: Default {
     fn mat_view(&self) -> Mat4;
     fn mat_proj(&self) -> Mat4;
     fn mat_view_proj(&self) -> Mat4 {
@@ -10,7 +10,7 @@ pub trait Camera {
     fn position(&self) -> Vec3;
 }
 
-#[derive(Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct OrbitCamera {
     pub center: Vec3,
     pub direction: Vec3,

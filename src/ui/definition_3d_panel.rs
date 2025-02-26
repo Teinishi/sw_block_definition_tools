@@ -2,15 +2,14 @@ use super::State;
 use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::create_surface_object;
 use eframe::egui_glow;
-use egui::{mutex::Mutex, vec2};
+use egui::vec2;
 use glam::Vec3;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
     #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
-    #[serde(skip)]
     camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
@@ -18,13 +17,16 @@ pub struct Definition3dPanel {
 }
 
 impl Definition3dPanel {
-    pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
+    pub fn new<'a>(
+        cc: &'a eframe::CreationContext<'a>,
+        camera: Option<OrbitCamera>,
+    ) -> Option<Self> {
         let gl = cc.gl.as_ref()?;
         let scene = Arc::new(Mutex::new(Scene::default()));
-        let mut camera = OrbitCamera {
+        let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
-        };
+        });
         camera.orthogonalize_up();
         let camera = Arc::new(Mutex::new(camera));
         let renderer = SceneRenderer::new(gl, scene.clone());
@@ -35,6 +37,13 @@ impl Definition3dPanel {
             renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
             //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
         })
+    }
+
+    pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
+        if let Some(gl) = &cc.gl {
+            let renderer = SceneRenderer::new(gl, self.scene.clone());
+            self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)))
+        }
     }
 
     pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
@@ -96,7 +105,7 @@ impl Definition3dPanel {
         let size = ui.available_width();
         let (rect, response) = ui.allocate_exact_size(vec2(size, size), egui::Sense::drag());
 
-        self.camera.lock().control(ui, response);
+        self.camera.lock().unwrap().control(ui, response);
         let camera = self.camera.clone();
 
         if let Some(renderer) = self.renderer.clone() {
@@ -113,7 +122,7 @@ impl Definition3dPanel {
     }
 
     fn update_scene(&mut self, state: &mut State) {
-        self.scene.lock().clear();
+        self.scene.lock().unwrap().clear();
 
         if state.show_xyz_axis() {
             for (direction, color) in [
@@ -121,10 +130,18 @@ impl Definition3dPanel {
                 (Vec3::Y, Color4::GREEN),
                 (Vec3::Z, Color4::BLUE),
             ] {
-                self.scene.lock().add_object(SceneObject::from_line(
-                    Line::single_color_lh(vec![Vec3::ZERO, 100.0 * direction], color, 2.0, false),
-                    None,
-                ));
+                self.scene
+                    .lock()
+                    .unwrap()
+                    .add_object(SceneObject::from_line(
+                        Line::single_color_lh(
+                            vec![Vec3::ZERO, 100.0 * direction],
+                            color,
+                            2.0,
+                            false,
+                        ),
+                        None,
+                    ));
             }
         }
 
@@ -137,10 +154,10 @@ impl Definition3dPanel {
                         state.show_surface_edge(),
                     );
                     if let Some(obj) = mesh_obj {
-                        self.scene.lock().add_object(obj);
+                        self.scene.lock().unwrap().add_object(obj);
                     }
                     if let Some(obj) = line_obj {
-                        self.scene.lock().add_object(obj);
+                        self.scene.lock().unwrap().add_object(obj);
                     }
                 }
             }
@@ -157,6 +174,7 @@ impl Definition3dPanel {
                     for m in mesh.as_meshes() {
                         self.scene
                             .lock()
+                            .unwrap()
                             .add_object(SceneObject::from_mesh(m, None));
                     }
                 }

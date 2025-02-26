@@ -1,6 +1,6 @@
 use super::{
-    AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
-    DefinitionSelectPanel, State,
+    AttributeDetailWindow, BottomPanel, Definition3dPanel,
+    DefinitionDetailPanel, DefinitionSelectPanel, State,
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -8,7 +8,7 @@ pub struct MainApp {
     state: State,
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
-    definition_3d_panel: Definition3dPanel,
+    definition_3d_panel: Option<Definition3dPanel>,
     bottom_panel: BottomPanel,
     window_id: i32,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
@@ -38,7 +38,11 @@ impl MainApp {
         cc.egui_ctx.set_fonts(fonts);
 
         if let Some(storage) = cc.storage {
-            if let Some(app) = eframe::get_value(storage, eframe::APP_KEY) {
+            let app: Option<Self> = eframe::get_value(storage, eframe::APP_KEY);
+            if let Some(mut app) = app {
+                if let Some(definition_3d_panel) = &mut app.definition_3d_panel {
+                    definition_3d_panel.creation_context(cc);
+                }
                 return app;
             }
         }
@@ -47,7 +51,7 @@ impl MainApp {
             state: State::default(),
             definition_select_panel: DefinitionSelectPanel::default(),
             definition_detail_panel: DefinitionDetailPanel::default(),
-            definition_3d_panel: Definition3dPanel::new(cc).unwrap(),
+            definition_3d_panel: Definition3dPanel::new(cc, None),
             bottom_panel: BottomPanel::default(),
             window_id: 0,
             attribute_detail_windows: Vec::new(),
@@ -67,7 +71,9 @@ impl eframe::App for MainApp {
     }
 
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
-        self.definition_3d_panel.destroy(gl);
+        if let Some(definition_3d_panel) = &self.definition_3d_panel {
+            definition_3d_panel.destroy(gl);
+        }
     }
 
     #[allow(unused_variables)]
@@ -114,7 +120,9 @@ impl eframe::App for MainApp {
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
-                    self.definition_3d_panel.ui(ui, &mut self.state);
+                    if let Some(definition_3d_panel) = &mut self.definition_3d_panel {
+                        definition_3d_panel.ui(ui, &mut self.state);
+                    }
                     ui.add_space(4.0);
                 });
             });

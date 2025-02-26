@@ -1,9 +1,8 @@
 use super::{Camera, Scene, ShaderType};
 use eframe::glow::{self, HasContext};
-use egui::mutex::Mutex;
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3, Vec4};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /*
 // ワクベ内
@@ -86,10 +85,12 @@ impl SceneRenderer {
         let override_color_3 = Vec4::ONE;
         let additive_color = Vec4::ONE;
 
-        let mat_view_proj = camera.lock().mat_view_proj();
-        let camera_position = camera.lock().position();
+        let camera = camera.lock().unwrap();
 
-        if let Some(scene) = self.scene.lock().paint() {
+        let mat_view_proj = camera.mat_view_proj();
+        let camera_position = camera.position();
+
+        if let Some(scene) = self.scene.lock().unwrap().paint() {
             match update_vaos(&self.programs, gl, scene) {
                 Ok(vaos) => self.vaos = vaos,
                 Err(mes) => self.render_error = Some(mes),
