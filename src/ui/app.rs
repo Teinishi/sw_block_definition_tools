@@ -78,6 +78,11 @@ impl eframe::App for MainApp {
 
     #[allow(unused_variables)]
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+        for window in &mut self.attribute_detail_windows {
+            window.ui(ctx, &mut self.state);
+        }
+        self.attribute_detail_windows.retain(|w| w.is_open());
+
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -144,11 +149,6 @@ impl eframe::App for MainApp {
                 }
             });
         });
-
-        for window in &mut self.attribute_detail_windows {
-            window.ui(ctx, &mut self.state);
-        }
-        self.attribute_detail_windows.retain(|w| w.is_open());
 
         self.state.update();
     }

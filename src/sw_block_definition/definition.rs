@@ -20,6 +20,12 @@ pub struct SwBlockDefinition {
     meshes: Option<Rc<SwBlockDefinitionMeshes>>,
 }
 
+impl PartialEq for SwBlockDefinition {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
 impl SwBlockDefinition {
     pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(rom_path: P, path: Q) -> Option<Self> {
         let pathbuf = path.as_ref().to_path_buf();
@@ -82,6 +88,10 @@ impl SwBlockDefinition {
             self.data = Some(data.clone());
             data
         }
+    }
+
+    pub fn data_if_loaded(&self) -> Option<Result<Rc<Definition>, SwBlockDefinitionDataError>> {
+        self.data.clone()
     }
 
     pub fn meshes(&mut self) -> Rc<SwBlockDefinitionMeshes> {

@@ -1,4 +1,6 @@
-use crate::sw_block_definition::{DefinitionAttribute, SwBlockDefinition, SwBlockDefinitionMeshKey};
+use crate::sw_block_definition::{
+    DefinitionAttribute, DefinitionAttributeValue, SwBlockDefinition, SwBlockDefinitionMeshKey,
+};
 use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
 
@@ -82,6 +84,10 @@ impl State {
         }
     }
 
+    pub fn definition_index(&self, definition: &SwBlockDefinition) -> Option<usize> {
+        self.definitions.iter().position(|d| d == definition)
+    }
+
     pub fn show_mesh(&self) -> &EnumMap<SwBlockDefinitionMeshKey, bool> {
         &self.show_mesh
     }
@@ -138,5 +144,24 @@ getter_setter!(State, show_surfaces, set_show_surfaces, bool);
 getter_setter!(State, show_surface_edge, set_show_surface_edge, bool);
 
 impl State {
-    pub fn get_attribute_all(&mut self, _specifier: &DefinitionAttribute) {}
+    pub fn load_all_definitions(&mut self) {
+        for definition in &mut self.definitions {
+            let _ = definition.data();
+        }
+    }
+
+    pub fn get_attribute_all(
+        &self,
+        specifier: &DefinitionAttribute,
+    ) -> Vec<(&SwBlockDefinition, DefinitionAttributeValue)> {
+        let mut values: Vec<(&SwBlockDefinition, DefinitionAttributeValue)> = Vec::new();
+        for definition in &self.definitions {
+            if let Some(Ok(data)) = definition.data_if_loaded() {
+                if let Some(value) = specifier.get_value(&data) {
+                    values.push((definition, value));
+                }
+            }
+        }
+        values
+    }
 }
