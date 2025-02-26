@@ -1,11 +1,17 @@
-use super::{BottomPanel, Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, State};
+use super::{
+    AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
+    DefinitionSelectPanel, State,
+};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct MainApp {
     state: State,
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     bottom_panel: BottomPanel,
+    window_id: i32,
+    attribute_detail_windows: Vec<AttributeDetailWindow>,
 }
 
 impl MainApp {
@@ -31,25 +37,33 @@ impl MainApp {
         font_families.insert(1, "noto_sans_jp_regular".to_owned());
         cc.egui_ctx.set_fonts(fonts);
 
-        let mut state: Option<State> = None;
         if let Some(storage) = cc.storage {
-            state = eframe::get_value(storage, eframe::APP_KEY);
+            if let Some(app) = eframe::get_value(storage, eframe::APP_KEY) {
+                return app;
+            }
         }
-        let state = state.unwrap_or_default();
 
         Self {
-            state,
+            state: State::default(),
             definition_select_panel: DefinitionSelectPanel::default(),
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel: Definition3dPanel::new(cc).unwrap(),
             bottom_panel: BottomPanel::default(),
+            window_id: 0,
+            attribute_detail_windows: Vec::new(),
         }
+    }
+
+    pub fn add_attribute_detail_window(&mut self, mut window: AttributeDetailWindow) {
+        window.set_id(egui::Id::new(format!("window_{}", self.window_id)));
+        self.attribute_detail_windows.push(window);
+        self.window_id += 1;
     }
 }
 
 impl eframe::App for MainApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        eframe::set_value(storage, eframe::APP_KEY, &self);
     }
 
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -117,9 +131,16 @@ impl eframe::App for MainApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                self.definition_detail_panel.ui(ui, &mut self.state);
+                if let Some(w) = self.definition_detail_panel.ui(ui, &mut self.state) {
+                    self.add_attribute_detail_window(w);
+                }
             });
         });
+
+        for window in &mut self.attribute_detail_windows {
+            window.ui(ctx);
+        }
+        self.attribute_detail_windows.retain(|w| w.is_open());
 
         self.state.update();
     }

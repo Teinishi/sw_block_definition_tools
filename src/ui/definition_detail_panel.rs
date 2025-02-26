@@ -1,21 +1,19 @@
-use super::State;
+use super::{AttributeDetailWindow, State};
 use std::fmt::Debug;
 
-#[derive(Default)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionDetailPanel {}
 
 impl DefinitionDetailPanel {
-    pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) -> Option<AttributeDetailWindow> {
         let definition = state.selected_definition();
-        if definition.is_none() {
-            return;
-        }
+        definition.as_ref()?;
         let data = definition.unwrap().data();
         if let Err(err) = data {
             ui.collapsing("Error", |ui| {
                 ui.label(err.to_string());
             });
-            return;
+            return None;
         }
         let data = data.unwrap();
 
@@ -23,7 +21,7 @@ impl DefinitionDetailPanel {
             ui.heading(name);
         }
 
-        attribute_table_body(
+        let clicked = attribute_table(
             ui,
             "definition_detail_table",
             state.show_all_attributes(),
@@ -267,6 +265,8 @@ impl DefinitionDetailPanel {
                 ("tool_type", fmt_default(&data.tool_type)),
             ],
         );
+
+        Some(AttributeDetailWindow::definition_attribute(clicked?))
     }
 }
 
@@ -278,28 +278,39 @@ fn fmt_default<T: Debug + Default + PartialEq>(value: &Option<T>) -> (Option<Str
     }
 }
 
-fn attribute_table_body<'a>(
+fn attribute_table<'a>(
     ui: &mut egui::Ui,
     id: &str,
     show_all: bool,
     hide_default: bool,
     items: impl IntoIterator<Item = (&'a str, (Option<String>, bool))>,
-) {
+) -> Option<String> {
+    let mut clicked = None;
+
     egui::Grid::new(id)
-        .num_columns(2)
+        .num_columns(3)
+        .min_col_width(0.0)
         .spacing([10.0, 4.0])
         .striped(true)
         .show(ui, |ui| {
             for (label, (value, is_default)) in items {
                 if (show_all || value.is_some()) && !(hide_default && is_default) {
+                    if ui.button("...").clicked() {
+                        clicked = Some(label.to_string());
+                    }
+
                     ui.label(label);
+
                     if let Some(val) = value {
                         ui.label(val);
                     } else {
                         ui.weak("Not defined");
                     }
+
                     ui.end_row();
                 }
             }
         });
+
+    clicked
 }

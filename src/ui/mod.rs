@@ -10,3 +10,5 @@ mod definition_3d_panel;
 pub use definition_3d_panel::Definition3dPanel;
 mod bottom_panel;
 pub use bottom_panel::BottomPanel;
+mod attirbute_detail_window;
+pub use attirbute_detail_window::AttributeDetailWindow;

@@ -1,6 +1,6 @@
 use super::State;
 
-#[derive(Default)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct BottomPanel {}
 
 impl BottomPanel {

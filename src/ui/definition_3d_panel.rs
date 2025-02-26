@@ -6,9 +6,13 @@ use egui::{mutex::Mutex, vec2};
 use glam::Vec3;
 use std::sync::Arc;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
+    #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
+    #[serde(skip)]
     camera: Arc<Mutex<OrbitCamera>>,
+    #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     //framebuffer: Option<MultisampleFramebuffer>,
 }

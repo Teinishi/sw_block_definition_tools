@@ -1,7 +1,7 @@
 use super::State;
 use egui::Layout;
 
-#[derive(Default)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionSelectPanel {}
 
 impl DefinitionSelectPanel {
