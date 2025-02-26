@@ -308,12 +308,6 @@ pub struct Definition {
     pub rope_hook_offset: Vec<RopeHookOffset>,
 }
 
-impl Definition {
-    pub fn rope_hook_offset_last(&self) -> Option<&RopeHookOffset> {
-        self.rope_hook_offset.last()
-    }
-}
-
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct SfxDatas {

@@ -86,7 +86,7 @@ impl SwBlockDefinition {
 
     pub fn meshes(&mut self) -> Rc<SwBlockDefinitionMeshes> {
         let _ = self.data();
-        self.meshes.clone().unwrap()
+        self.meshes.clone().unwrap_or_default()
     }
 }
 

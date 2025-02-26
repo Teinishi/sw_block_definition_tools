@@ -1,21 +1,20 @@
+use super::State;
+use crate::sw_block_definition::DefinitionAttribute;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct AttributeDetailWindow {
     open: bool,
     id: Option<egui::Id>,
-    specifier: AttributeSpecifier,
+    specifier: DefinitionAttribute,
 }
 
 impl AttributeDetailWindow {
-    pub fn new(specifier: AttributeSpecifier) -> Self {
+    pub fn new(specifier: DefinitionAttribute) -> Self {
         Self {
             open: true,
             id: None,
             specifier,
         }
-    }
-
-    pub fn definition_attribute(name: String) -> Self {
-        Self::new(AttributeSpecifier::DefinitionAttribute(name))
     }
 
     pub fn set_id(&mut self, id: egui::Id) {
@@ -26,29 +25,20 @@ impl AttributeDetailWindow {
         self.open
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context) {
+    pub fn ui(&mut self, ctx: &egui::Context, state: &mut State) {
         if let Some(id) = self.id {
+            let mut open = self.open;
             egui::Window::new(self.specifier.to_string())
                 .id(id)
-                .open(&mut self.open)
-                .show(ctx, |_ui| {
-                    // TODO
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    self.ui_content(ui, state);
                 });
+            self.open = open;
         }
     }
-}
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub enum AttributeSpecifier {
-    DefinitionAttribute(String),
-}
-
-impl std::fmt::Display for AttributeSpecifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DefinitionAttribute(name) => {
-                write!(f, "{} in <definition>", name)
-            }
-        }
+    fn ui_content(&mut self, _ui: &mut egui::Ui, state: &mut State) {
+        state.get_attribute_all(&self.specifier);
     }
 }

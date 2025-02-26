@@ -1,6 +1,6 @@
 use super::{
-    AttributeDetailWindow, BottomPanel, Definition3dPanel,
-    DefinitionDetailPanel, DefinitionSelectPanel, State,
+    AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
+    DefinitionSelectPanel, State,
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -146,7 +146,7 @@ impl eframe::App for MainApp {
         });
 
         for window in &mut self.attribute_detail_windows {
-            window.ui(ctx);
+            window.ui(ctx, &mut self.state);
         }
         self.attribute_detail_windows.retain(|w| w.is_open());
 

@@ -1,4 +1,4 @@
-use crate::sw_block_definition::{SwBlockDefinition, SwBlockDefinitionMeshKey};
+use crate::sw_block_definition::{DefinitionAttribute, SwBlockDefinition, SwBlockDefinitionMeshKey};
 use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
 
@@ -136,3 +136,7 @@ getter_setter!(
 getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool);
 getter_setter!(State, show_surfaces, set_show_surfaces, bool);
 getter_setter!(State, show_surface_edge, set_show_surface_edge, bool);
+
+impl State {
+    pub fn get_attribute_all(&mut self, _specifier: &DefinitionAttribute) {}
+}
