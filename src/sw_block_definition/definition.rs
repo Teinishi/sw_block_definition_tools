@@ -7,7 +7,11 @@ use std::{
     fmt, io,
     path::{Path, PathBuf},
     rc::Rc,
+    sync::{mpsc, Arc},
+    thread,
 };
+
+type LoadDataResult = Result<Definition, SwBlockDefinitionDataError>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SwBlockDefinition {
@@ -15,9 +19,13 @@ pub struct SwBlockDefinition {
     path: PathBuf,
     filename: String,
     #[serde(skip)]
-    data: Option<Result<Rc<Definition>, SwBlockDefinitionDataError>>,
+    data: Option<Result<Arc<Definition>, SwBlockDefinitionDataError>>,
     #[serde(skip)]
     meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+    #[serde(skip)]
+    load_data_thread: Option<mpsc::Receiver<LoadDataResult>>,
+    #[serde(skip)]
+    load_mesh_thread: Option<mpsc::Receiver<SwBlockDefinitionMeshes>>,
 }
 
 impl PartialEq for SwBlockDefinition {
@@ -35,7 +43,9 @@ impl SwBlockDefinition {
             path: pathbuf,
             filename,
             data: None,
-            meshes: Default::default(),
+            meshes: None,
+            load_data_thread: None,
+            load_mesh_thread: None,
         })
     }
 
@@ -43,61 +53,122 @@ impl SwBlockDefinition {
         self.filename.clone()
     }
 
-    fn open_file(&mut self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
-        let xml = std::fs::read_to_string(self.path.clone())?;
-
-        // ルート要素が  <definition> であるかチェック
-        let is_definition: Result<(), String> = {
-            let mut xml_reader = quick_xml::Reader::from_str(&xml);
-            xml_reader.config_mut().trim_text(true);
-            loop {
-                if let Ok(event) = xml_reader.read_event() {
-                    if let quick_xml::events::Event::Start(ref e) = event {
-                        if e.name().as_ref() == b"definition" {
-                            break Ok(());
-                        } else {
-                            break Err(format!(
-                                "Unexpected root element: {:?}",
-                                std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
-                            ));
-                        }
+    pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
+        if let Some(rx) = &self.load_data_thread {
+            if let Ok(r) = rx.try_recv() {
+                match r {
+                    Ok(data) => {
+                        self.data = Some(Ok(Arc::new(data)));
+                        //self.meshes = Some(Rc::new(meshes));
                     }
-                } else {
-                    break Err("Could not find root element".to_string());
+                    Err(err) => {
+                        self.data = Some(Err(err));
+                    }
                 }
+                self.meshes = None;
+                self.load_data_thread = None;
             }
-        };
-
-        if let Err(mes) = is_definition {
-            Err(SwBlockDefinitionDataError::Xml(mes))
-        } else {
-            let data: Definition = quick_xml::de::from_str(&xml)?;
-            self.meshes = Some(Rc::new(SwBlockDefinitionMeshes::new(
-                &data,
-                self.rom_path.clone(),
-            )));
-            Ok(Rc::new(data))
         }
-    }
 
-    pub fn data(&mut self) -> Result<Rc<Definition>, SwBlockDefinitionDataError> {
         if let Some(data) = &self.data {
-            data.clone()
+            Some(data.clone())
         } else {
-            let data = self.open_file();
-            self.data = Some(data.clone());
-            data
+            self.spawn_load_data();
+            None
         }
     }
 
-    pub fn data_if_loaded(&self) -> Option<Result<Rc<Definition>, SwBlockDefinitionDataError>> {
+    pub fn data(&self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
         self.data.clone()
     }
 
-    pub fn meshes(&mut self) -> Rc<SwBlockDefinitionMeshes> {
-        let _ = self.data();
-        self.meshes.clone().unwrap_or_default()
+    pub fn load_meshes(&mut self) -> Option<Rc<SwBlockDefinitionMeshes>> {
+        if let Some(rx) = &self.load_mesh_thread {
+            if let Ok(meshes) = rx.try_recv() {
+                self.meshes = Some(Rc::new(meshes));
+                self.load_mesh_thread = None;
+            }
+        }
+
+        if let Some(meshes) = &self.meshes {
+            Some(meshes.clone())
+        } else {
+            self.spawn_load_meshes();
+            None
+        }
     }
+
+    fn spawn_load_data(&mut self) {
+        if self.load_data_thread.is_some() {
+            return;
+        }
+
+        let path = self.path.clone();
+
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            tx.send(load_data(path)).unwrap();
+        });
+
+        self.load_data_thread = Some(rx);
+    }
+
+    fn spawn_load_meshes(&mut self) {
+        if self.load_mesh_thread.is_some() {
+            return;
+        }
+
+        if let Some(Ok(data)) = &self.data {
+            let data = data.clone();
+            let rom_path = self.rom_path.clone();
+
+            let (tx, rx) = mpsc::channel();
+            thread::spawn(move || {
+                tx.send(load_meshes(&data, rom_path)).unwrap();
+            });
+
+            self.load_mesh_thread = Some(rx);
+        }
+    }
+}
+
+fn load_data<P: AsRef<Path>>(path: P) -> LoadDataResult {
+    let xml = std::fs::read_to_string(path)?;
+
+    // ルート要素が  <definition> であるかチェック
+    let check_definition: Result<(), String> = {
+        let mut xml_reader = quick_xml::Reader::from_str(&xml);
+        xml_reader.config_mut().trim_text(true);
+        loop {
+            if let Ok(event) = xml_reader.read_event() {
+                if let quick_xml::events::Event::Start(ref e) = event {
+                    if e.name().as_ref() == b"definition" {
+                        break Ok(());
+                    } else {
+                        break Err(format!(
+                            "Unexpected root element: {:?}",
+                            std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                        ));
+                    }
+                }
+            } else {
+                break Err("Could not find root element".to_string());
+            }
+        }
+    };
+
+    if let Err(mes) = check_definition {
+        Err(SwBlockDefinitionDataError::Xml(mes))
+    } else {
+        let data = quick_xml::de::from_str(&xml)?;
+        //let meshes = SwBlockDefinitionMeshes::new(&data, rom_path);
+        Ok(data)
+    }
+}
+
+fn load_meshes<P: AsRef<Path>>(data: &Definition, rom_path: P) -> SwBlockDefinitionMeshes {
+    thread::sleep(std::time::Duration::from_secs(1));
+    SwBlockDefinitionMeshes::new(data, rom_path)
 }
 
 #[derive(Debug, Clone)]

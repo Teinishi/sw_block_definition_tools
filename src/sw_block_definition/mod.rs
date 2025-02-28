@@ -1,5 +1,5 @@
 mod definition;
-pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey};
+pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes};
 pub mod definition_schema;
 mod surface_mesh;
 mod sw_mesh;

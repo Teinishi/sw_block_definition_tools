@@ -1,5 +1,6 @@
 use crate::sw_block_definition::{
     DefinitionAttribute, DefinitionAttributeValue, SwBlockDefinition, SwBlockDefinitionMeshKey,
+    SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
 use std::{fs, io, path::Path};
@@ -103,6 +104,12 @@ impl State {
         self.definitions.get_mut(self.selected_definition_index?)
     }
 
+    pub fn selected_meshes(&mut self) -> Option<std::rc::Rc<SwBlockDefinitionMeshes>> {
+        self.definitions
+            .get_mut(self.selected_definition_index?)?
+            .load_meshes()
+    }
+
     pub fn open_rom_directory<P: AsRef<Path>>(&mut self, rom_path: P) -> io::Result<()> {
         // ディレクトリ内の .xml ファイルを列挙
         match fs::read_dir(rom_path.as_ref().join("data\\definitions")) {
@@ -146,7 +153,7 @@ getter_setter!(State, show_surface_edge, set_show_surface_edge, bool);
 impl State {
     pub fn load_all_definitions(&mut self) {
         for definition in &mut self.definitions {
-            let _ = definition.data();
+            let _ = definition.load_data();
         }
     }
 
@@ -156,7 +163,7 @@ impl State {
     ) -> Vec<(&SwBlockDefinition, DefinitionAttributeValue)> {
         let mut values: Vec<(&SwBlockDefinition, DefinitionAttributeValue)> = Vec::new();
         for definition in &self.definitions {
-            if let Some(Ok(data)) = definition.data_if_loaded() {
+            if let Some(Ok(data)) = definition.data() {
                 if let Some(value) = specifier.get_value(&data) {
                     values.push((definition, value));
                 }

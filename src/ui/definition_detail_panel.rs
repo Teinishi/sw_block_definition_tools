@@ -10,30 +10,34 @@ impl DefinitionDetailPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) -> Option<AttributeDetailWindow> {
         let definition = state.selected_definition();
         definition.as_ref()?;
-        let data = definition.unwrap().data();
-        if let Err(err) = data {
-            ui.collapsing("Error", |ui| {
-                ui.label(err.to_string());
-            });
-            return None;
+
+        if let Some(data) = definition.unwrap().load_data() {
+            if let Err(err) = data {
+                ui.collapsing("Error", |ui| {
+                    ui.label(err.to_string());
+                });
+                return None;
+            }
+            let data = data.unwrap();
+
+            if let Some(name) = &data.name {
+                ui.heading(name);
+            }
+
+            let clicked = attribute_table(
+                ui,
+                "definition_detail_table",
+                state.show_all_attributes(),
+                state.hide_default_attributes(),
+                DefinitionAttribute::VARIANTS
+                    .iter()
+                    .map(|attr| (attr.clone(), attr.get_value(&data))),
+            );
+
+            Some(AttributeDetailWindow::new(clicked?))
+        } else {
+            None
         }
-        let data = data.unwrap();
-
-        if let Some(name) = &data.name {
-            ui.heading(name);
-        }
-
-        let clicked = attribute_table(
-            ui,
-            "definition_detail_table",
-            state.show_all_attributes(),
-            state.hide_default_attributes(),
-            DefinitionAttribute::VARIANTS
-                .iter()
-                .map(|attr| (attr.clone(), attr.get_value(&data))),
-        );
-
-        Some(AttributeDetailWindow::new(clicked?))
     }
 }
 

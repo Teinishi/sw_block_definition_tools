@@ -13,7 +13,8 @@ pub struct Definition3dPanel {
     camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
-    //framebuffer: Option<MultisampleFramebuffer>,
+    #[serde(skip)]
+    mesh_loaded: bool, //framebuffer: Option<MultisampleFramebuffer>,
 }
 
 impl Definition3dPanel {
@@ -35,6 +36,7 @@ impl Definition3dPanel {
             scene: scene.clone(),
             camera,
             renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
+            mesh_loaded: false,
             //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
         })
     }
@@ -71,8 +73,10 @@ impl Definition3dPanel {
         ui.checkbox(&mut c, "Surface Edge Lines");
         state.set_show_surface_edge(c);
 
-        if let Some(definition) = state.selected_definition() {
-            let meshes = definition.meshes();
+        let mesh_loaded_now;
+
+        if let Some(meshes) = state.selected_meshes() {
+            mesh_loaded_now = true;
 
             let mut change = None;
             for (key, show) in state.show_mesh() {
@@ -94,11 +98,14 @@ impl Definition3dPanel {
             if let Some((key, value)) = change {
                 state.set_show_mesh(key, value);
             }
+        } else {
+            mesh_loaded_now = false;
         }
 
-        if state.is_changed() {
+        if state.is_changed() || (mesh_loaded_now != self.mesh_loaded) {
             self.update_scene(state);
         }
+        self.mesh_loaded = mesh_loaded_now;
     }
 
     fn custom_painting(&mut self, ui: &mut egui::Ui) {
@@ -145,7 +152,10 @@ impl Definition3dPanel {
             }
         }
 
-        if let Some(data) = state.selected_definition().and_then(|def| def.data().ok()) {
+        if let Some(data) = state
+            .selected_definition()
+            .and_then(|def| def.load_data().and_then(|d| d.ok()))
+        {
             if let Some(surfaces) = data.surfaces.last() {
                 for surface in &surfaces.surface {
                     let (mesh_obj, line_obj) = create_surface_object(
@@ -163,9 +173,7 @@ impl Definition3dPanel {
             }
         }
 
-        if let Some(definition) = state.selected_definition() {
-            let meshes = definition.meshes();
-
+        if let Some(meshes) = state.selected_meshes() {
             for (key, show) in state.show_mesh() {
                 if !*show {
                     continue;
