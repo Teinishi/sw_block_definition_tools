@@ -50,9 +50,9 @@ impl AttributeDetailWindow {
         if let Some(id) = self.id {
             let mut open = self.open;
 
-            ctx.style_mut(|style| {
+            /*ctx.style_mut(|style| {
                 style.spacing.window_margin = egui::Margin::ZERO;
-            });
+            });*/
 
             egui::Window::new(self.specifier.to_string())
                 .id(id)
@@ -61,9 +61,11 @@ impl AttributeDetailWindow {
                 .show(ctx, |ui| {
                     TopBottomPanel::top(id.with("top_panel")).show_inside(ui, |ui| {
                         self.ui_top_panel(ui);
+                        ui.add_space(4.0);
                     });
 
                     TopBottomPanel::bottom(id.with("bottom_panel")).show_inside(ui, |ui| {
+                        ui.add_space(4.0);
                         self.ui_bottom_panel(ui);
                     });
 
