@@ -32,6 +32,7 @@ byteorder = "1.5.0"
 enum-map = { version = "2.7.3", features = ["serde"] }
 strum = { version = "0.27.1", features = ["derive"] }
 egui_extras = "0.31.0"
+ordered-float = { version = "5.0.0", features = ["serde"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

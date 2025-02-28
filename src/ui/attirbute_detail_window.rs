@@ -1,26 +1,40 @@
-use egui::ScrollArea;
-use egui_extras::{Column, TableBuilder};
+use std::collections::BTreeMap;
 
 use super::State;
 use crate::sw_block_definition::{
     DefinitionAttribute, DefinitionAttributeValue, SwBlockDefinition,
 };
+use egui::{CentralPanel, ScrollArea, TopBottomPanel};
+use egui_extras::{Column, TableBuilder};
+
+type DefinitionValuesItem<'a> = (usize, &'a SwBlockDefinition, DefinitionAttributeValue);
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq)]
+enum AttributeDetailTabs {
+    Definitions,
+    Values,
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct AttributeDetailWindow {
     open: bool,
     id: Option<egui::Id>,
     specifier: DefinitionAttribute,
+    tab: AttributeDetailTabs,
     hide_default_value: bool,
+    #[serde(skip)]
+    values_table_heights: Vec<f32>,
 }
 
 impl AttributeDetailWindow {
-    pub fn new(specifier: DefinitionAttribute) -> Self {
+    pub fn new(specifier: DefinitionAttribute, hide_default_value: bool) -> Self {
         Self {
             open: true,
             id: None,
             specifier,
-            hide_default_value: false,
+            tab: AttributeDetailTabs::Definitions,
+            hide_default_value,
+            values_table_heights: Vec::new(),
         }
     }
 
@@ -36,63 +50,84 @@ impl AttributeDetailWindow {
         if let Some(id) = self.id {
             let mut open = self.open;
 
+            ctx.style_mut(|style| {
+                style.spacing.window_margin = egui::Margin::ZERO;
+            });
+
             egui::Window::new(self.specifier.to_string())
                 .id(id)
                 .default_width(500.0)
                 .open(&mut open)
                 .show(ctx, |ui| {
-                    egui::TopBottomPanel::bottom(id.with("bottom_panel")).show_inside(ui, |ui| {
-                        ui.add_space(4.0);
+                    TopBottomPanel::top(id.with("top_panel")).show_inside(ui, |ui| {
+                        self.ui_top_panel(ui);
+                    });
+
+                    TopBottomPanel::bottom(id.with("bottom_panel")).show_inside(ui, |ui| {
                         self.ui_bottom_panel(ui);
                     });
 
-                    egui::CentralPanel::default()
-                        .frame(
-                            egui::Frame::default().inner_margin(egui::Margin::symmetric(4, 0)),
-                        )
-                        .show_inside(ui, |ui| {
-                            ScrollArea::vertical().show(ui, |ui| {
-                                self.ui_all_definitions(ui, state);
-                            });
-                        });
+                    CentralPanel::default().show_inside(ui, |ui| {
+                        self.ui_central_panel(ui, state);
+                    });
                 });
             self.open = open;
         }
+    }
+
+    fn ui_top_panel(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.selectable_value(
+                &mut self.tab,
+                AttributeDetailTabs::Definitions,
+                "Definition List",
+            );
+            ui.selectable_value(&mut self.tab, AttributeDetailTabs::Values, "Value List");
+        });
     }
 
     fn ui_bottom_panel(&mut self, ui: &mut egui::Ui) {
         ui.checkbox(&mut self.hide_default_value, "Hide default value");
     }
 
-    fn ui_all_definitions(&mut self, ui: &mut egui::Ui, state: &mut State) {
-        state.load_all_definitions();
-        let mut values = state.get_attribute_all(&self.specifier);
+    fn ui_central_panel(&mut self, ui: &mut egui::Ui, state: &mut State) {
+        ScrollArea::vertical().show(ui, |ui| {
+            state.load_all_definitions();
+            let mut definition_values = state.get_attribute_all_definitions(&self.specifier);
 
-        if self.hide_default_value {
-            values.retain(|(_, _, v)| !v.is_default);
-        }
+            if self.hide_default_value {
+                definition_values.retain(|(_, _, v)| !v.is_default());
+            }
 
-        let set_selected_definition =
-            self.ui_all_definitions_table(ui, values, *state.selected_definition_index());
-        if let Some(i) = set_selected_definition {
-            state.set_selected_definition_index(Some(i));
-        }
+            let selected_definition_index = *state.selected_definition_index();
+            let set_selected_definition = match self.tab {
+                AttributeDetailTabs::Definitions => {
+                    self.ui_definitions_table(ui, definition_values, selected_definition_index)
+                }
+                AttributeDetailTabs::Values => {
+                    self.ui_values_table(ui, definition_values, selected_definition_index)
+                }
+            };
+            if let Some(i) = set_selected_definition {
+                state.set_selected_definition_index(Some(i));
+            }
+        });
     }
 
-    fn ui_all_definitions_table(
+    fn ui_definitions_table(
         &mut self,
         ui: &mut egui::Ui,
-        values: Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)>,
+        definition_values: Vec<DefinitionValuesItem<'_>>,
         selected_definition_index: Option<usize>,
     ) -> Option<usize> {
-        let mut set_selected = None;
+        let mut select = None;
         TableBuilder::new(ui)
-            .column(Column::exact(250.0).resizable(true))
+            .column(Column::exact(250.0))
             .column(Column::remainder())
             .striped(true)
             .body(|body| {
-                body.rows(20.0, values.len(), |mut row| {
-                    let (i, definition, value) = &values[row.index()];
+                body.rows(20.0, definition_values.len(), |mut row| {
+                    let (i, definition, value) = &definition_values[row.index()];
                     let i = *i;
                     let definition = *definition;
 
@@ -106,14 +141,79 @@ impl AttributeDetailWindow {
                                     ui.label(filename);
                                 });
                         if label.clicked() {
-                            set_selected = Some(i);
+                            select = Some(i);
                         }
                     });
                     row.col(|ui| {
-                        ui.label(value.debug_str.clone());
+                        ui.label(value.debug_str());
                     });
                 });
             });
-        set_selected
+        select
+    }
+
+    fn ui_values_table<'a>(
+        &mut self,
+        ui: &mut egui::Ui,
+        definition_values: Vec<DefinitionValuesItem<'a>>,
+        selected_definition_index: Option<usize>,
+    ) -> Option<usize> {
+        let mut value_map: BTreeMap<DefinitionAttributeValue, Vec<(usize, &'a SwBlockDefinition)>> =
+            BTreeMap::new();
+        for (i, definition, value) in definition_values {
+            if let Some(entries) = value_map.get_mut(&value) {
+                entries.push((i, definition));
+            } else {
+                value_map.insert(value, vec![(i, definition)]);
+            }
+        }
+
+        let mut select = None;
+        TableBuilder::new(ui)
+            .column(Column::exact(250.0))
+            .column(Column::remainder())
+            .striped(true)
+            .body(|body| {
+                let keys: Vec<DefinitionAttributeValue> = value_map.keys().cloned().collect();
+                self.values_table_heights.resize(keys.len(), 20.0);
+
+                body.heterogeneous_rows(
+                    self.values_table_heights.clone().into_iter(),
+                    |mut row| {
+                        let row_index = row.index();
+                        let key = keys[row_index].clone();
+                        let definitions = value_map.get(&key).unwrap();
+
+                        row.col(|ui| {
+                            let collapsing_response =
+                                ui.collapsing(format!("{} definitions", definitions.len()), |ui| {
+                                    for (i, definition) in definitions {
+                                        let checked = Some(*i) == selected_definition_index;
+                                        if ui
+                                            .selectable_label(checked, definition.filename())
+                                            .clicked()
+                                        {
+                                            select = Some(*i);
+                                        }
+                                    }
+                                });
+
+                            let mut rect = collapsing_response.header_response.rect;
+                            if let Some(body_res) = collapsing_response.body_response {
+                                rect = rect.union(body_res.rect);
+                            }
+                            if row_index >= self.values_table_heights.len() {
+                                self.values_table_heights.resize(row_index, 20.0);
+                            }
+                            self.values_table_heights.insert(row_index, rect.height());
+                        });
+
+                        row.col(|ui| {
+                            ui.label(key.debug_str());
+                        });
+                    },
+                );
+            });
+        select
     }
 }

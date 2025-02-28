@@ -34,7 +34,10 @@ impl DefinitionDetailPanel {
                     .map(|attr| (attr.clone(), attr.get_value(&data))),
             );
 
-            Some(AttributeDetailWindow::new(clicked?))
+            Some(AttributeDetailWindow::new(
+                clicked?,
+                state.hide_default_attributes(),
+            ))
         } else {
             None
         }
@@ -57,7 +60,7 @@ fn attribute_table(
         .striped(true)
         .show(ui, |ui| {
             for (attr, value) in items {
-                let is_default = value.as_ref().is_some_and(|v| v.is_default);
+                let is_default = value.as_ref().is_some_and(|v| v.is_default());
                 if (show_all || value.is_some()) && !(hide_default && is_default) {
                     if ui.button("...").clicked() {
                         clicked = Some(attr.clone());
@@ -66,7 +69,7 @@ fn attribute_table(
                     ui.label(attr.to_string());
 
                     if let Some(val) = value {
-                        ui.label(val.debug_str);
+                        ui.label(val.debug_str());
                     } else {
                         ui.weak("Not defined");
                     }

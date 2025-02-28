@@ -157,7 +157,7 @@ impl State {
         }
     }
 
-    pub fn get_attribute_all(
+    pub fn get_attribute_all_definitions(
         &self,
         specifier: &DefinitionAttribute,
     ) -> Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)> {

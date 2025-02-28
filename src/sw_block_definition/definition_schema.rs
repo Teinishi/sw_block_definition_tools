@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+type Of32 = ordered_float::NotNan<f32>;
+
 macro_rules! define_vec3 {
     ($name:ident, $type:ty) => {
         #[derive(Serialize, Deserialize, Default, Debug)]
@@ -25,9 +27,9 @@ pub struct Definition {
     #[serde(rename = "@type")]
     pub definition_type: Option<i32>,
     #[serde(rename = "@mass")]
-    pub mass: Option<f32>,
+    pub mass: Option<Of32>,
     #[serde(rename = "@value")]
-    pub value: Option<f32>,
+    pub value: Option<Of32>,
     #[serde(rename = "@flags")]
     pub flags: Option<u64>,
     #[serde(rename = "@tags")]
@@ -47,7 +49,7 @@ pub struct Definition {
     #[serde(rename = "@audio_filename_end_b")]
     pub audio_filename_end_b: Option<String>,
     #[serde(rename = "@audio_gain")]
-    pub audio_gain: Option<f32>,
+    pub audio_gain: Option<Of32>,
     #[serde(rename = "@mesh_data_name")]
     pub mesh_data_name: Option<String>,
     #[serde(rename = "@mesh_0_name")]
@@ -69,15 +71,15 @@ pub struct Definition {
     #[serde(rename = "@constraint_axis")]
     pub constraint_axis: Option<i32>,
     #[serde(rename = "@constraint_range_of_motion")]
-    pub constraint_range_of_motion: Option<f32>,
+    pub constraint_range_of_motion: Option<Of32>,
     #[serde(rename = "@max_motor_force")]
-    pub max_motor_force: Option<f32>,
+    pub max_motor_force: Option<Of32>,
     #[serde(rename = "@max_motor_speed")]
-    pub max_motor_speed: Option<f32>,
+    pub max_motor_speed: Option<Of32>,
     #[serde(rename = "@cable_radius")]
-    pub cable_radius: Option<f32>,
+    pub cable_radius: Option<Of32>,
     #[serde(rename = "@cable_length")]
-    pub cable_length: Option<f32>,
+    pub cable_length: Option<Of32>,
     #[serde(rename = "@seat_type")]
     pub seat_type: Option<i32>,
     #[serde(rename = "@seat_pose")]
@@ -85,67 +87,67 @@ pub struct Definition {
     #[serde(rename = "@seat_health_per_sec")]
     pub seat_health_per_sec: Option<i32>,
     #[serde(rename = "@buoy_radius")]
-    pub buoy_radius: Option<f32>,
+    pub buoy_radius: Option<Of32>,
     #[serde(rename = "@buoy_factor")]
-    pub buoy_factor: Option<f32>,
+    pub buoy_factor: Option<Of32>,
     #[serde(rename = "@buoy_force")]
-    pub buoy_force: Option<f32>,
+    pub buoy_force: Option<Of32>,
     #[serde(rename = "@force_emitter_max_force")]
-    pub force_emitter_max_force: Option<f32>,
+    pub force_emitter_max_force: Option<Of32>,
     #[serde(rename = "@force_emitter_max_vector")]
-    pub force_emitter_max_vector: Option<f32>,
+    pub force_emitter_max_vector: Option<Of32>,
     #[serde(rename = "@force_emitter_default_pitch")]
-    pub force_emitter_default_pitch: Option<f32>,
+    pub force_emitter_default_pitch: Option<Of32>,
     #[serde(rename = "@force_emitter_blade_height")]
-    pub force_emitter_blade_height: Option<f32>,
+    pub force_emitter_blade_height: Option<Of32>,
     #[serde(rename = "@force_emitter_rotation_speed")]
-    pub force_emitter_rotation_speed: Option<f32>,
+    pub force_emitter_rotation_speed: Option<Of32>,
     #[serde(rename = "@force_emitter_blade_physics_length")]
-    pub force_emitter_blade_physics_length: Option<f32>,
+    pub force_emitter_blade_physics_length: Option<Of32>,
     #[serde(rename = "@force_emitter_blade_efficiency")]
-    pub force_emitter_blade_efficiency: Option<f32>,
+    pub force_emitter_blade_efficiency: Option<Of32>,
     #[serde(rename = "@force_emitter_efficiency")]
-    pub force_emitter_efficiency: Option<f32>,
+    pub force_emitter_efficiency: Option<Of32>,
     #[serde(rename = "@engine_max_force")]
-    pub engine_max_force: Option<f32>,
+    pub engine_max_force: Option<Of32>,
     #[serde(rename = "@engine_frictionless_force")]
-    pub engine_frictionless_force: Option<f32>,
+    pub engine_frictionless_force: Option<Of32>,
     #[serde(rename = "@trans_conn_type")]
     pub trans_conn_type: Option<i32>,
     #[serde(rename = "@trans_type")]
     pub trans_type: Option<i32>,
     #[serde(rename = "@wheel_radius")]
-    pub wheel_radius: Option<f32>,
+    pub wheel_radius: Option<Of32>,
     #[serde(rename = "@wheel_width")]
-    pub wheel_width: Option<f32>,
+    pub wheel_width: Option<Of32>,
     #[serde(rename = "@wheel_wishbone_length")]
-    pub wheel_wishbone_length: Option<f32>,
+    pub wheel_wishbone_length: Option<Of32>,
     #[serde(rename = "@wheel_suspension_height")]
-    pub wheel_suspension_height: Option<f32>,
+    pub wheel_suspension_height: Option<Of32>,
     #[serde(rename = "@wheel_wishbone_margin")]
-    pub wheel_wishbone_margin: Option<f32>,
+    pub wheel_wishbone_margin: Option<Of32>,
     #[serde(rename = "@wheel_suspension_offset")]
-    pub wheel_suspension_offset: Option<f32>,
+    pub wheel_suspension_offset: Option<Of32>,
     #[serde(rename = "@wheel_wishbone_offset")]
-    pub wheel_wishbone_offset: Option<f32>,
+    pub wheel_wishbone_offset: Option<Of32>,
     #[serde(rename = "@wheel_type")]
-    pub wheel_type: Option<f32>,
+    pub wheel_type: Option<Of32>,
     #[serde(rename = "@button_type")]
     pub button_type: Option<i32>,
     #[serde(rename = "@light_intensity")]
-    pub light_intensity: Option<f32>,
+    pub light_intensity: Option<Of32>,
     #[serde(rename = "@light_range")]
-    pub light_range: Option<f32>,
+    pub light_range: Option<Of32>,
     #[serde(rename = "@light_ies_map")]
     pub light_ies_map: Option<String>,
     #[serde(rename = "@light_fov")]
-    pub light_fov: Option<f32>,
+    pub light_fov: Option<Of32>,
     #[serde(rename = "@light_type")]
     pub light_type: Option<i32>,
     #[serde(rename = "@door_lower_limit")]
-    pub door_lower_limit: Option<f32>,
+    pub door_lower_limit: Option<Of32>,
     #[serde(rename = "@door_upper_limit")]
-    pub door_upper_limit: Option<f32>,
+    pub door_upper_limit: Option<Of32>,
     #[serde(rename = "@door_flipped")]
     pub door_flipped: Option<bool>,
     #[serde(rename = "@custom_door_type")]
@@ -155,9 +157,9 @@ pub struct Definition {
     #[serde(rename = "@door_up_dist")]
     pub door_up_dist: Option<i32>,
     #[serde(rename = "@dynamic_min_rotation")]
-    pub dynamic_min_rotation: Option<f32>,
+    pub dynamic_min_rotation: Option<Of32>,
     #[serde(rename = "@dynamic_max_rotation")]
-    pub dynamic_max_rotation: Option<f32>,
+    pub dynamic_max_rotation: Option<Of32>,
     #[serde(rename = "@logic_gate_type")]
     pub logic_gate_type: Option<i32>,
     #[serde(rename = "@logic_gate_subtype")]
@@ -167,7 +169,7 @@ pub struct Definition {
     #[serde(rename = "@connector_type")]
     pub connector_type: Option<i32>,
     #[serde(rename = "@magnet_force")]
-    pub magnet_force: Option<f32>,
+    pub magnet_force: Option<Of32>,
     #[serde(rename = "@gyro_type")]
     pub gyro_type: Option<i32>,
     #[serde(rename = "@reward_tier")]
@@ -175,23 +177,23 @@ pub struct Definition {
     #[serde(rename = "@revision")]
     pub revision: Option<i32>,
     #[serde(rename = "@rudder_surface_area")]
-    pub rudder_surface_area: Option<f32>,
+    pub rudder_surface_area: Option<Of32>,
     #[serde(rename = "@pump_pressure")]
-    pub pump_pressure: Option<f32>,
+    pub pump_pressure: Option<Of32>,
     #[serde(rename = "@m_pump_pressure")]
-    pub m_pump_pressure: Option<f32>,
+    pub m_pump_pressure: Option<Of32>,
     #[serde(rename = "@water_component_type")]
-    pub water_component_type: Option<f32>,
+    pub water_component_type: Option<Of32>,
     #[serde(rename = "@torque_component_type")]
     pub torque_component_type: Option<i32>,
     #[serde(rename = "@jet_engine_component_type")]
     pub jet_engine_component_type: Option<i32>,
     #[serde(rename = "@particle_speed")]
-    pub particle_speed: Option<f32>,
+    pub particle_speed: Option<Of32>,
     #[serde(rename = "@inventory_type")]
-    pub inventory_type: Option<f32>,
+    pub inventory_type: Option<Of32>,
     #[serde(rename = "@inventory_default_outfit")]
-    pub inventory_default_outfit: Option<f32>,
+    pub inventory_default_outfit: Option<Of32>,
     #[serde(rename = "@inventory_class")]
     pub inventory_class: Option<i32>,
     #[serde(rename = "@inventory_default_item")]
@@ -201,17 +203,17 @@ pub struct Definition {
     #[serde(rename = "@electric_charge_capacity")]
     pub electric_charge_capacity: Option<i32>,
     #[serde(rename = "@electric_magnitude")]
-    pub electric_magnitude: Option<f32>,
+    pub electric_magnitude: Option<Of32>,
     #[serde(rename = "@composite_type")]
     pub composite_type: Option<i32>,
     #[serde(rename = "@camera_fov_min")]
-    pub camera_fov_min: Option<f32>,
+    pub camera_fov_min: Option<Of32>,
     #[serde(rename = "@camera_fov_max")]
-    pub camera_fov_max: Option<f32>,
+    pub camera_fov_max: Option<Of32>,
     #[serde(rename = "@monitor_border")]
-    pub monitor_border: Option<f32>,
+    pub monitor_border: Option<Of32>,
     #[serde(rename = "@monitor_inset")]
-    pub monitor_inset: Option<f32>,
+    pub monitor_inset: Option<Of32>,
     #[serde(rename = "@weapon_type")]
     pub weapon_type: Option<i32>,
     #[serde(rename = "@weapon_class")]
@@ -225,29 +227,29 @@ pub struct Definition {
     #[serde(rename = "@weapon_barrel_length_voxels")]
     pub weapon_barrel_length_voxels: Option<i32>,
     #[serde(rename = "@rx_range")]
-    pub rx_range: Option<f32>,
+    pub rx_range: Option<Of32>,
     #[serde(rename = "@rx_length")]
-    pub rx_length: Option<f32>,
+    pub rx_length: Option<Of32>,
     #[serde(rename = "@rocket_type")]
     pub rocket_type: Option<i32>,
     #[serde(rename = "@radar_range")]
-    pub radar_range: Option<f32>,
+    pub radar_range: Option<Of32>,
     #[serde(rename = "@radar_speed")]
-    pub radar_speed: Option<f32>,
+    pub radar_speed: Option<Of32>,
     #[serde(rename = "@engine_module_type")]
     pub engine_module_type: Option<i32>,
     #[serde(rename = "@steam_component_type")]
     pub steam_component_type: Option<i32>,
     #[serde(rename = "@steam_component_capacity")]
-    pub steam_component_capacity: Option<f32>,
+    pub steam_component_capacity: Option<Of32>,
     #[serde(rename = "@nuclear_component_type")]
     pub nuclear_component_type: Option<i32>,
     #[serde(rename = "@radar_type")]
     pub radar_type: Option<i32>,
     #[serde(rename = "@piston_len")]
-    pub piston_len: Option<f32>,
+    pub piston_len: Option<Of32>,
     #[serde(rename = "@piston_cam")]
-    pub piston_cam: Option<f32>,
+    pub piston_cam: Option<Of32>,
     #[serde(rename = "@data_logger_component_type")]
     pub data_logger_component_type: Option<i32>,
     #[serde(rename = "@metadata_component_type")]
@@ -321,11 +323,11 @@ pub struct SfxData {
     #[serde(rename = "@sfx_name")]
     pub sfx_name: Option<String>,
     #[serde(rename = "@sfx_range_inner")]
-    pub sfx_range_inner: Option<f32>,
+    pub sfx_range_inner: Option<Of32>,
     #[serde(rename = "@sfx_range_outer")]
-    pub sfx_range_outer: Option<f32>,
+    pub sfx_range_outer: Option<Of32>,
     #[serde(rename = "@sfx_priority")]
-    pub sfx_priority: Option<f32>,
+    pub sfx_priority: Option<Of32>,
     #[serde(rename = "@sfx_is_underwater_affected")]
     pub sfx_is_underwater_affected: Option<bool>,
 
@@ -349,15 +351,15 @@ pub struct SfxLayer {
     #[serde(rename = "@sfx_filename_end")]
     pub sfx_filename_end: Option<String>,
     #[serde(rename = "@sfx_gain")]
-    pub sfx_gain: Option<f32>,
+    pub sfx_gain: Option<Of32>,
     #[serde(rename = "@sfx_loop_start_time")]
-    pub sfx_loop_start_time: Option<f32>,
+    pub sfx_loop_start_time: Option<Of32>,
     #[serde(rename = "@sfx_loop_blend_duration")]
-    pub sfx_loop_blend_duration: Option<f32>,
+    pub sfx_loop_blend_duration: Option<Of32>,
     #[serde(rename = "@sfx_volume_fade_speed")]
-    pub sfx_volume_fade_speed: Option<f32>,
+    pub sfx_volume_fade_speed: Option<Of32>,
     #[serde(rename = "@sfx_pitch_fade_speed")]
-    pub sfx_pitch_fade_speed: Option<f32>,
+    pub sfx_pitch_fade_speed: Option<Of32>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -515,41 +517,41 @@ define_vec3!(VoxelMin, i32);
 define_vec3!(VoxelMax, i32);
 define_vec3!(VoxelPhysicsMin, i32);
 define_vec3!(VoxelPhysicsMax, i32);
-define_vec3!(BbPhysicsMin, f32);
-define_vec3!(BbPhysicsMax, f32);
+define_vec3!(BbPhysicsMin, Of32);
+define_vec3!(BbPhysicsMax, Of32);
 define_vec3!(CompartmentSamplePos, i32);
-define_vec3!(ConstraintPosParent, f32);
-define_vec3!(ConstraintPosChild, f32);
+define_vec3!(ConstraintPosParent, Of32);
+define_vec3!(ConstraintPosChild, Of32);
 define_vec3!(VoxelLocationChild, i32);
-define_vec3!(SeatOffset, f32);
+define_vec3!(SeatOffset, Of32);
 define_vec3!(SeatFront, i32);
 define_vec3!(SeatUp, i32);
-define_vec3!(SeatCamera, f32);
-define_vec3!(SeatRender, f32);
-define_vec3!(ForceDir, f32);
+define_vec3!(SeatCamera, Of32);
+define_vec3!(SeatRender, Of32);
+define_vec3!(ForceDir, Of32);
 define_vec3!(LightPosition, i32);
-define_vec3!(LightColor, f32);
-define_vec3!(LightForward, f32);
-define_vec3!(DoorSize, f32);
-define_vec3!(DoorNormal, f32);
-define_vec3!(DoorSide, f32);
-define_vec3!(DoorUp, f32);
-define_vec3!(DoorBasePos, f32);
+define_vec3!(LightColor, Of32);
+define_vec3!(LightForward, Of32);
+define_vec3!(DoorSize, Of32);
+define_vec3!(DoorNormal, Of32);
+define_vec3!(DoorSide, Of32);
+define_vec3!(DoorUp, Of32);
+define_vec3!(DoorBasePos, Of32);
 define_vec3!(DynamicBodyPosition, i32);
-define_vec3!(DynamicRotationAxes, f32);
-define_vec3!(DynamicSideAxis, f32);
-define_vec3!(MagnetOffset, f32);
+define_vec3!(DynamicRotationAxes, Of32);
+define_vec3!(DynamicSideAxis, Of32);
+define_vec3!(MagnetOffset, Of32);
 define_vec3!(ConnectorAxis, i32);
 define_vec3!(ConnectorUp, i32);
 define_vec3!(ParticleDirection, i32);
-define_vec3!(ParticleOffset, f32);
-define_vec3!(ParticleBounds, f32);
+define_vec3!(ParticleOffset, Of32);
+define_vec3!(ParticleBounds, Of32);
 define_vec3!(SeatExitPosition, i32);
-define_vec3!(WeaponBreechPosition, f32);
-define_vec3!(WeaponBreechNormal, f32);
-define_vec3!(WeaponCartPosition, f32);
-define_vec3!(WeaponCartVelocity, f32);
-define_vec3!(RopeHookOffset, f32);
+define_vec3!(WeaponBreechPosition, Of32);
+define_vec3!(WeaponBreechNormal, Of32);
+define_vec3!(WeaponCartPosition, Of32);
+define_vec3!(WeaponCartVelocity, Of32);
+define_vec3!(RopeHookOffset, Of32);
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
