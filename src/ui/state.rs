@@ -160,12 +160,12 @@ impl State {
     pub fn get_attribute_all(
         &self,
         specifier: &DefinitionAttribute,
-    ) -> Vec<(&SwBlockDefinition, DefinitionAttributeValue)> {
-        let mut values: Vec<(&SwBlockDefinition, DefinitionAttributeValue)> = Vec::new();
-        for definition in &self.definitions {
+    ) -> Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)> {
+        let mut values: Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)> = Vec::new();
+        for (i, definition) in self.definitions.iter().enumerate() {
             if let Some(Ok(data)) = definition.data() {
                 if let Some(value) = specifier.get_value(&data) {
-                    values.push((definition, value));
+                    values.push((i, definition, value));
                 }
             }
         }

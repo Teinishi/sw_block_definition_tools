@@ -59,7 +59,6 @@ impl SwBlockDefinition {
                 match r {
                     Ok(data) => {
                         self.data = Some(Ok(Arc::new(data)));
-                        //self.meshes = Some(Rc::new(meshes));
                     }
                     Err(err) => {
                         self.data = Some(Err(err));
@@ -107,7 +106,7 @@ impl SwBlockDefinition {
 
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
-            tx.send(load_data(path)).unwrap();
+            tx.send(load_data(path)).unwrap_or_default();
         });
 
         self.load_data_thread = Some(rx);
