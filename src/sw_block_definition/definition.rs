@@ -1,6 +1,6 @@
 use super::{
-    definition_schema::Definition,
     sw_mesh::{SwMesh, SwMeshFromFileError},
+    Definition,
 };
 use std::{
     collections::BTreeMap,

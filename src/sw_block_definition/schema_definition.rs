@@ -1,21 +1,15 @@
+use super::{
+    BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp,
+    ConstraintPosChild, ConstraintPosParent, Couplings, DefinitionAttributeValue, DoorBasePos,
+    DoorNormal, DoorSide, DoorSize, DoorUp, DynamicBodyPosition, DynamicRotationAxes,
+    DynamicSideAxis, ForceDir, JetEngineConnectionsNext, JetEngineConnectionsPrev, LightColor,
+    LightForward, LightPosition, LogicNodes, MagnetOffset, Of32, ParticleBounds, ParticleDirection,
+    ParticleOffset, RewardProperties, RopeHookOffset, SeatCamera, SeatExitPosition, SeatFront,
+    SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces, TooltipProperties, VoxelLocationChild,
+    VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin, Voxels, WeaponBreechNormal,
+    WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
+};
 use serde::{Deserialize, Serialize};
-
-type Of32 = ordered_float::NotNan<f32>;
-
-macro_rules! define_vec3 {
-    ($name:ident, $type:ty) => {
-        #[derive(Serialize, Deserialize, Default, Debug)]
-        #[serde(default)]
-        pub struct $name {
-            #[serde(rename = "@x")]
-            pub x: $type,
-            #[serde(rename = "@y")]
-            pub y: $type,
-            #[serde(rename = "@z")]
-            pub z: $type,
-        }
-    };
-}
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename = "definition", default, deny_unknown_fields)]
@@ -310,288 +304,256 @@ pub struct Definition {
     pub rope_hook_offset: Vec<RopeHookOffset>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct SfxDatas {
-    #[serde(default)]
-    pub sfx_data: Vec<SfxData>,
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum DefinitionAttribute {
+    Name,
+    Category,
+    Type,
+    Mass,
+    Value,
+    Flags,
+    Tags,
+    PhysCollisionDampen,
+    AudioFilenameStart,
+    AudioFilenameLoop,
+    AudioFilenameEnd,
+    AudioFilenameStartB,
+    AudioFilenameLoopB,
+    AudioFilenameEndB,
+    AudioGain,
+    MeshDataName,
+    Mesh0Name,
+    Mesh1Name,
+    Mesh2Name,
+    MeshEditorOnlyName,
+    BlockType,
+    ChildName,
+    ExtenderName,
+    ConstraintType,
+    ConstraintAxis,
+    ConstraintRangeOfMotion,
+    MaxMotorForce,
+    MaxMotorSpeed,
+    CableRadius,
+    CableLength,
+    SeatType,
+    SeatPose,
+    SeatHealthPerSec,
+    BuoyRadius,
+    BuoyFactor,
+    BuoyForce,
+    ForceEmitterMaxForce,
+    ForceEmitterMaxVector,
+    ForceEmitterDefaultPitch,
+    ForceEmitterBladeHeight,
+    ForceEmitterRotationSpeed,
+    ForceEmitterBladePhysicsLength,
+    ForceEmitterBladeEfficiency,
+    ForceEmitterEfficiency,
+    EngineMaxForce,
+    EngineFrictionlessForce,
+    TransConnType,
+    TransType,
+    WheelRadius,
+    WheelWidth,
+    WheelWishboneLength,
+    WheelSuspensionHeight,
+    WheelWishboneMargin,
+    WheelSuspensionOffset,
+    WheelWishboneOffset,
+    WheelType,
+    ButtonType,
+    LightIntensity,
+    LightRange,
+    LightIesMap,
+    LightFov,
+    LightType,
+    DoorLowerLimit,
+    DoorUpperLimit,
+    DoorFlipped,
+    CustomDoorType,
+    DoorSideDist,
+    DoorUpDist,
+    DynamicMinRotation,
+    DynamicMaxRotation,
+    LogicGateType,
+    LogicGateSubtype,
+    IndicatorType,
+    ConnectorType,
+    MagnetForce,
+    GyroType,
+    RewardTier,
+    Revision,
+    RudderSurfaceArea,
+    PumpPressure,
+    MPumpPressure,
+    WaterComponentType,
+    TorqueComponentType,
+    JetEngineComponentType,
+    ParticleSpeed,
+    InventoryType,
+    InventoryDefaultOutfit,
+    InventoryClass,
+    InventoryDefaultItem,
+    ElectricType,
+    ElectricChargeCapacity,
+    ElectricMagnitude,
+    CompositeType,
+    CameraFovMin,
+    CameraFovMax,
+    MonitorBorder,
+    MonitorInset,
+    WeaponType,
+    WeaponClass,
+    WeaponBeltType,
+    WeaponAmmoCapacity,
+    WeaponAmmoFeed,
+    WeaponBarrelLengthVoxels,
+    RxRange,
+    RxLength,
+    RocketType,
+    RadarRange,
+    RadarSpeed,
+    EngineModuleType,
+    SteamComponentType,
+    SteamComponentCapacity,
+    NuclearComponentType,
+    RadarType,
+    PistonLen,
+    PistonCam,
+    DataLoggerComponentType,
+    MetadataComponentType,
+    OilComponentType,
+    ToolType,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct SfxData {
-    #[serde(rename = "@sfx_name")]
-    pub sfx_name: Option<String>,
-    #[serde(rename = "@sfx_range_inner")]
-    pub sfx_range_inner: Option<Of32>,
-    #[serde(rename = "@sfx_range_outer")]
-    pub sfx_range_outer: Option<Of32>,
-    #[serde(rename = "@sfx_priority")]
-    pub sfx_priority: Option<Of32>,
-    #[serde(rename = "@sfx_is_underwater_affected")]
-    pub sfx_is_underwater_affected: Option<bool>,
-
-    pub sfx_layers: Vec<SfxLayers>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct SfxLayers {
-    #[serde(default)]
-    pub sfx_layer: Vec<SfxLayer>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct SfxLayer {
-    #[serde(rename = "@sfx_filename_start")]
-    pub sfx_filename_start: Option<String>,
-    #[serde(rename = "@sfx_filename_loop")]
-    pub sfx_filename_loop: Option<String>,
-    #[serde(rename = "@sfx_filename_end")]
-    pub sfx_filename_end: Option<String>,
-    #[serde(rename = "@sfx_gain")]
-    pub sfx_gain: Option<Of32>,
-    #[serde(rename = "@sfx_loop_start_time")]
-    pub sfx_loop_start_time: Option<Of32>,
-    #[serde(rename = "@sfx_loop_blend_duration")]
-    pub sfx_loop_blend_duration: Option<Of32>,
-    #[serde(rename = "@sfx_volume_fade_speed")]
-    pub sfx_volume_fade_speed: Option<Of32>,
-    #[serde(rename = "@sfx_pitch_fade_speed")]
-    pub sfx_pitch_fade_speed: Option<Of32>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Surfaces {
-    #[serde(default)]
-    pub surface: Vec<Surface>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct BuoyancySurfaces {
-    #[serde(default)]
-    pub surface: Vec<Surface>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Surface {
-    #[serde(rename = "@orientation")]
-    pub orientation: Option<i32>,
-    #[serde(rename = "@rotation")]
-    pub rotation: Option<i32>,
-    #[serde(rename = "@shape")]
-    pub shape: Option<i32>,
-    #[serde(rename = "@trans_type")]
-    pub trans_type: Option<i32>,
-    #[serde(rename = "@flags")]
-    pub flags: Option<u64>,
-    #[serde(rename = "@is_reverse_normals")]
-    pub is_reverse_normals: Option<bool>,
-    #[serde(rename = "@is_two_sided")]
-    pub is_two_sided: Option<bool>,
-
-    pub position: Vec<Position>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct LogicNodes {
-    #[serde(default)]
-    pub logic_node: Vec<LogicNode>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct LogicNode {
-    #[serde(rename = "@orientation")]
-    pub orientation: Option<i32>,
-    #[serde(rename = "@label")]
-    pub label: Option<String>,
-    #[serde(rename = "@mode")]
-    pub mode: Option<i32>,
-    #[serde(rename = "@type")]
-    pub node_type: Option<i32>,
-    #[serde(rename = "@description")]
-    pub description: Option<String>,
-    #[serde(rename = "@flags")]
-    pub flags: Option<u64>,
-
-    pub position: Vec<Position>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Couplings {
-    #[serde(default)]
-    pub coupling: Vec<Coupling>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Coupling {
-    #[serde(rename = "@orientation")]
-    pub orientation: Option<i32>,
-    #[serde(rename = "@alignment")]
-    pub alignment: Option<i32>,
-    #[serde(rename = "@coupling_type")]
-    pub coupling_type: Option<String>,
-    #[serde(rename = "@coupling_name")]
-    pub coupling_name: Option<String>,
-    #[serde(rename = "@coupling_gender")]
-    pub coupling_gender: Option<i32>,
-    #[serde(rename = "@alignment_required")]
-    pub alignment_required: Option<bool>,
-    #[serde(rename = "@allow_bipolar_alignment")]
-    pub allow_bipolar_alignment: Option<bool>,
-
-    pub position: Vec<Position>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Voxels {
-    #[serde(default)]
-    pub voxel: Vec<Voxel>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct Voxel {
-    #[serde(rename = "@flags")]
-    pub flags: Option<i32>,
-    #[serde(rename = "@physics_shape")]
-    pub physics_shape: Option<i32>,
-    #[serde(rename = "@buoy_pipes")]
-    pub buoy_pipes: Option<i32>,
-
-    pub position: Vec<Position>,
-    pub physics_shape_rotation: Vec<PhysicsShapeRotation>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(default)]
-pub struct PhysicsShapeRotation {
-    #[serde(rename = "@00", default = "one")]
-    pub r00: i32,
-    #[serde(rename = "@01")]
-    pub r01: i32,
-    #[serde(rename = "@02")]
-    pub r02: i32,
-    #[serde(rename = "@10")]
-    pub r10: i32,
-    #[serde(rename = "@11", default = "one")]
-    pub r11: i32,
-    #[serde(rename = "@12")]
-    pub r12: i32,
-    #[serde(rename = "@20")]
-    pub r20: i32,
-    #[serde(rename = "@21")]
-    pub r21: i32,
-    #[serde(rename = "@22", default = "one")]
-    pub r22: i32,
-}
-
-impl Default for PhysicsShapeRotation {
-    fn default() -> Self {
-        Self {
-            r00: 1,
-            r01: 0,
-            r02: 0,
-            r10: 0,
-            r11: 1,
-            r12: 0,
-            r20: 0,
-            r21: 0,
-            r22: 1,
+impl DefinitionAttribute {
+    pub fn get_value(&self, d: &Definition) -> Option<DefinitionAttributeValue> {
+        match self {
+            Self::Name => Some(d.name.clone()?.into()),
+            Self::Category => Some(d.category?.into()),
+            Self::Type => Some(d.definition_type?.into()),
+            Self::Mass => Some(d.mass?.into()),
+            Self::Value => Some(d.value?.into()),
+            Self::Flags => Some(d.flags?.into()),
+            Self::Tags => Some(d.tags.clone()?.into()),
+            Self::PhysCollisionDampen => Some(d.phys_collision_dampen.clone()?.into()),
+            Self::AudioFilenameStart => Some(d.audio_filename_start.clone()?.into()),
+            Self::AudioFilenameLoop => Some(d.audio_filename_loop.clone()?.into()),
+            Self::AudioFilenameEnd => Some(d.audio_filename_end.clone()?.into()),
+            Self::AudioFilenameStartB => Some(d.audio_filename_start_b.clone()?.into()),
+            Self::AudioFilenameLoopB => Some(d.audio_filename_loop_b.clone()?.into()),
+            Self::AudioFilenameEndB => Some(d.audio_filename_end_b.clone()?.into()),
+            Self::AudioGain => Some(d.audio_gain?.into()),
+            Self::MeshDataName => Some(d.mesh_data_name.clone()?.into()),
+            Self::Mesh0Name => Some(d.mesh_0_name.clone()?.into()),
+            Self::Mesh1Name => Some(d.mesh_1_name.clone()?.into()),
+            Self::Mesh2Name => Some(d.mesh_2_name.clone()?.into()),
+            Self::MeshEditorOnlyName => Some(d.mesh_editor_only_name.clone()?.into()),
+            Self::BlockType => Some(d.block_type?.into()),
+            Self::ChildName => Some(d.child_name.clone()?.into()),
+            Self::ExtenderName => Some(d.extender_name.clone()?.into()),
+            Self::ConstraintType => Some(d.constraint_type?.into()),
+            Self::ConstraintAxis => Some(d.constraint_axis?.into()),
+            Self::ConstraintRangeOfMotion => Some(d.constraint_range_of_motion?.into()),
+            Self::MaxMotorForce => Some(d.max_motor_force?.into()),
+            Self::MaxMotorSpeed => Some(d.max_motor_speed?.into()),
+            Self::CableRadius => Some(d.cable_radius?.into()),
+            Self::CableLength => Some(d.cable_length?.into()),
+            Self::SeatType => Some(d.seat_type?.into()),
+            Self::SeatPose => Some(d.seat_pose?.into()),
+            Self::SeatHealthPerSec => Some(d.seat_health_per_sec?.into()),
+            Self::BuoyRadius => Some(d.buoy_radius?.into()),
+            Self::BuoyFactor => Some(d.buoy_factor?.into()),
+            Self::BuoyForce => Some(d.buoy_force?.into()),
+            Self::ForceEmitterMaxForce => Some(d.force_emitter_max_force?.into()),
+            Self::ForceEmitterMaxVector => Some(d.force_emitter_max_vector?.into()),
+            Self::ForceEmitterDefaultPitch => Some(d.force_emitter_default_pitch?.into()),
+            Self::ForceEmitterBladeHeight => Some(d.force_emitter_blade_height?.into()),
+            Self::ForceEmitterRotationSpeed => Some(d.force_emitter_rotation_speed?.into()),
+            Self::ForceEmitterBladePhysicsLength => {
+                Some(d.force_emitter_blade_physics_length?.into())
+            }
+            Self::ForceEmitterBladeEfficiency => Some(d.force_emitter_blade_efficiency?.into()),
+            Self::ForceEmitterEfficiency => Some(d.force_emitter_efficiency?.into()),
+            Self::EngineMaxForce => Some(d.engine_max_force?.into()),
+            Self::EngineFrictionlessForce => Some(d.engine_frictionless_force?.into()),
+            Self::TransConnType => Some(d.trans_conn_type?.into()),
+            Self::TransType => Some(d.trans_type?.into()),
+            Self::WheelRadius => Some(d.wheel_radius?.into()),
+            Self::WheelWidth => Some(d.wheel_width?.into()),
+            Self::WheelWishboneLength => Some(d.wheel_wishbone_length?.into()),
+            Self::WheelSuspensionHeight => Some(d.wheel_suspension_height?.into()),
+            Self::WheelWishboneMargin => Some(d.wheel_wishbone_margin?.into()),
+            Self::WheelSuspensionOffset => Some(d.wheel_suspension_offset?.into()),
+            Self::WheelWishboneOffset => Some(d.wheel_wishbone_offset?.into()),
+            Self::WheelType => Some(d.wheel_type?.into()),
+            Self::ButtonType => Some(d.button_type?.into()),
+            Self::LightIntensity => Some(d.light_intensity?.into()),
+            Self::LightRange => Some(d.light_range?.into()),
+            Self::LightIesMap => Some(d.light_ies_map.clone()?.into()),
+            Self::LightFov => Some(d.light_fov?.into()),
+            Self::LightType => Some(d.light_type?.into()),
+            Self::DoorLowerLimit => Some(d.door_lower_limit?.into()),
+            Self::DoorUpperLimit => Some(d.door_upper_limit?.into()),
+            Self::DoorFlipped => Some(d.door_flipped?.into()),
+            Self::CustomDoorType => Some(d.custom_door_type?.into()),
+            Self::DoorSideDist => Some(d.door_side_dist?.into()),
+            Self::DoorUpDist => Some(d.door_up_dist?.into()),
+            Self::DynamicMinRotation => Some(d.dynamic_min_rotation?.into()),
+            Self::DynamicMaxRotation => Some(d.dynamic_max_rotation?.into()),
+            Self::LogicGateType => Some(d.logic_gate_type?.into()),
+            Self::LogicGateSubtype => Some(d.logic_gate_subtype?.into()),
+            Self::IndicatorType => Some(d.indicator_type?.into()),
+            Self::ConnectorType => Some(d.connector_type?.into()),
+            Self::MagnetForce => Some(d.magnet_force?.into()),
+            Self::GyroType => Some(d.gyro_type?.into()),
+            Self::RewardTier => Some(d.reward_tier?.into()),
+            Self::Revision => Some(d.revision?.into()),
+            Self::RudderSurfaceArea => Some(d.rudder_surface_area?.into()),
+            Self::PumpPressure => Some(d.pump_pressure?.into()),
+            Self::MPumpPressure => Some(d.m_pump_pressure?.into()),
+            Self::WaterComponentType => Some(d.water_component_type?.into()),
+            Self::TorqueComponentType => Some(d.torque_component_type?.into()),
+            Self::JetEngineComponentType => Some(d.jet_engine_component_type?.into()),
+            Self::ParticleSpeed => Some(d.particle_speed?.into()),
+            Self::InventoryType => Some(d.inventory_type?.into()),
+            Self::InventoryDefaultOutfit => Some(d.inventory_default_outfit?.into()),
+            Self::InventoryClass => Some(d.inventory_class?.into()),
+            Self::InventoryDefaultItem => Some(d.inventory_default_item?.into()),
+            Self::ElectricType => Some(d.electric_type?.into()),
+            Self::ElectricChargeCapacity => Some(d.electric_charge_capacity?.into()),
+            Self::ElectricMagnitude => Some(d.electric_magnitude?.into()),
+            Self::CompositeType => Some(d.composite_type?.into()),
+            Self::CameraFovMin => Some(d.camera_fov_min?.into()),
+            Self::CameraFovMax => Some(d.camera_fov_max?.into()),
+            Self::MonitorBorder => Some(d.monitor_border?.into()),
+            Self::MonitorInset => Some(d.monitor_inset?.into()),
+            Self::WeaponType => Some(d.weapon_type?.into()),
+            Self::WeaponClass => Some(d.weapon_class?.into()),
+            Self::WeaponBeltType => Some(d.weapon_belt_type?.into()),
+            Self::WeaponAmmoCapacity => Some(d.weapon_ammo_capacity?.into()),
+            Self::WeaponAmmoFeed => Some(d.weapon_ammo_feed?.into()),
+            Self::WeaponBarrelLengthVoxels => Some(d.weapon_barrel_length_voxels?.into()),
+            Self::RxRange => Some(d.rx_range?.into()),
+            Self::RxLength => Some(d.rx_length?.into()),
+            Self::RocketType => Some(d.rocket_type?.into()),
+            Self::RadarRange => Some(d.radar_range?.into()),
+            Self::RadarSpeed => Some(d.radar_speed?.into()),
+            Self::EngineModuleType => Some(d.engine_module_type?.into()),
+            Self::SteamComponentType => Some(d.steam_component_type?.into()),
+            Self::SteamComponentCapacity => Some(d.steam_component_capacity?.into()),
+            Self::NuclearComponentType => Some(d.nuclear_component_type?.into()),
+            Self::RadarType => Some(d.radar_type?.into()),
+            Self::PistonLen => Some(d.piston_len?.into()),
+            Self::PistonCam => Some(d.piston_cam?.into()),
+            Self::DataLoggerComponentType => Some(d.data_logger_component_type?.into()),
+            Self::MetadataComponentType => Some(d.metadata_component_type?.into()),
+            Self::OilComponentType => Some(d.oil_component_type?.into()),
+            Self::ToolType => Some(d.tool_type?.into()),
         }
     }
-}
-
-define_vec3!(Position, i32);
-define_vec3!(Normal, i32);
-define_vec3!(VoxelMin, i32);
-define_vec3!(VoxelMax, i32);
-define_vec3!(VoxelPhysicsMin, i32);
-define_vec3!(VoxelPhysicsMax, i32);
-define_vec3!(BbPhysicsMin, Of32);
-define_vec3!(BbPhysicsMax, Of32);
-define_vec3!(CompartmentSamplePos, i32);
-define_vec3!(ConstraintPosParent, Of32);
-define_vec3!(ConstraintPosChild, Of32);
-define_vec3!(VoxelLocationChild, i32);
-define_vec3!(SeatOffset, Of32);
-define_vec3!(SeatFront, i32);
-define_vec3!(SeatUp, i32);
-define_vec3!(SeatCamera, Of32);
-define_vec3!(SeatRender, Of32);
-define_vec3!(ForceDir, Of32);
-define_vec3!(LightPosition, i32);
-define_vec3!(LightColor, Of32);
-define_vec3!(LightForward, Of32);
-define_vec3!(DoorSize, Of32);
-define_vec3!(DoorNormal, Of32);
-define_vec3!(DoorSide, Of32);
-define_vec3!(DoorUp, Of32);
-define_vec3!(DoorBasePos, Of32);
-define_vec3!(DynamicBodyPosition, i32);
-define_vec3!(DynamicRotationAxes, Of32);
-define_vec3!(DynamicSideAxis, Of32);
-define_vec3!(MagnetOffset, Of32);
-define_vec3!(ConnectorAxis, i32);
-define_vec3!(ConnectorUp, i32);
-define_vec3!(ParticleDirection, i32);
-define_vec3!(ParticleOffset, Of32);
-define_vec3!(ParticleBounds, Of32);
-define_vec3!(SeatExitPosition, i32);
-define_vec3!(WeaponBreechPosition, Of32);
-define_vec3!(WeaponBreechNormal, Of32);
-define_vec3!(WeaponCartPosition, Of32);
-define_vec3!(WeaponCartVelocity, Of32);
-define_vec3!(RopeHookOffset, Of32);
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct TooltipProperties {
-    #[serde(rename = "@description")]
-    pub description: Option<String>,
-    #[serde(rename = "@short_description")]
-    pub short_description: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct JetEngineConnectionsPrev {
-    #[serde(default)]
-    pub j: Vec<JetEngineConnection>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct JetEngineConnectionsNext {
-    #[serde(default)]
-    pub j: Vec<JetEngineConnection>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct JetEngineConnection {
-    pub pos: Vec<Position>,
-    pub normal: Vec<Normal>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
-pub struct RewardProperties {
-    #[serde(rename = "@tier")]
-    pub tier: Option<i32>,
-    #[serde(rename = "@number_rewarded")]
-    pub number_rewarded: Option<i32>,
-}
-
-fn one() -> i32 {
-    1
 }

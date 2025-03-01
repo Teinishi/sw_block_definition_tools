@@ -1,4 +1,4 @@
-use super::definition_schema;
+use super::Surface;
 use crate::gl_renderer::{Color4, Line, Mesh, SceneObject};
 use glam::{Mat4, Quat, Vec3};
 use std::f32::consts::PI;
@@ -34,7 +34,7 @@ const PIPE_COLOR_POWER: Color4 = Color4 {
 */
 
 pub fn create_surface_object(
-    surface: &definition_schema::Surface,
+    surface: &Surface,
     show_surface: bool,
     show_edge: bool,
 ) -> (Option<SceneObject>, Option<SceneObject>) {
