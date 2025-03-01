@@ -50,13 +50,10 @@ impl AttributeDetailWindow {
         if let Some(id) = self.id {
             let mut open = self.open;
 
-            /*ctx.style_mut(|style| {
-                style.spacing.window_margin = egui::Margin::ZERO;
-            });*/
-
             egui::Window::new(self.specifier.to_string())
                 .id(id)
                 .default_width(500.0)
+                .min_width(300.0)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     TopBottomPanel::top(id.with("top_panel")).show_inside(ui, |ui| {
@@ -64,10 +61,11 @@ impl AttributeDetailWindow {
                         ui.add_space(4.0);
                     });
 
-                    TopBottomPanel::bottom(id.with("bottom_panel")).show_inside(ui, |ui| {
-                        ui.add_space(4.0);
-                        self.ui_bottom_panel(ui);
-                    });
+                    TopBottomPanel::bottom(id.with("bottom_panel"))
+                        .show_separator_line(false)
+                        .exact_height(0.0)
+                        .frame(egui::Frame::NONE)
+                        .show_inside(ui, |_| {});
 
                     CentralPanel::default().show_inside(ui, |ui| {
                         self.ui_central_panel(ui, state);
@@ -85,11 +83,10 @@ impl AttributeDetailWindow {
                 "Definition List",
             );
             ui.selectable_value(&mut self.tab, AttributeDetailTabs::Values, "Value List");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::LEFT), |ui| {
+                ui.checkbox(&mut self.hide_default_value, "Hide default value");
+            });
         });
-    }
-
-    fn ui_bottom_panel(&mut self, ui: &mut egui::Ui) {
-        ui.checkbox(&mut self.hide_default_value, "Hide default value");
     }
 
     fn ui_central_panel(&mut self, ui: &mut egui::Ui, state: &mut State) {
