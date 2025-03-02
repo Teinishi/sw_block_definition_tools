@@ -1,13 +1,6 @@
 use super::State;
 use crate::sw_block_definition::{AttributeProperty, AttributeValue};
-use std::{
-    fmt::Display,
-    fs::File,
-    io::{self, BufReader},
-    path::PathBuf,
-    sync::mpsc,
-    thread,
-};
+use std::{fmt::Display, io};
 
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
@@ -39,7 +32,6 @@ impl AttributeValueAction {
             AttributeValueAction::PlayAudio(value) => {
                 if let AttributeValue::String(s) = value {
                     if let Some(rom_path) = state.rom_path() {
-                        #[cfg(not(target_arch = "wasm32"))]
                         play_audio(rom_path.join(s), 0.5); // TODO: rx でエラーを拾う 音量調節もできるようにする
                     }
                 }
@@ -49,23 +41,27 @@ impl AttributeValueAction {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn play_audio(path: PathBuf, volume: f32) -> mpsc::Receiver<Result<(), PlayAudioErr>> {
-    let (tx, rx) = mpsc::channel();
+fn play_audio(
+    path: std::path::PathBuf,
+    volume: f32,
+) -> std::sync::mpsc::Receiver<Result<(), PlayAudioErr>> {
+    let (tx, rx) = std::sync::mpsc::channel();
 
-    thread::spawn(move || {
-        let r: Result<(), PlayAudioErr> = match File::open(path) {
+    std::thread::spawn(move || {
+        let r: Result<(), PlayAudioErr> = match std::fs::File::open(path) {
             Err(err) => Err(err.into()),
             Ok(file) => match rodio::OutputStream::try_default() {
                 Err(err) => Err(err.into()),
-                Ok((_stream, stream_handle)) => match stream_handle.play_once(BufReader::new(file))
-                {
-                    Err(err) => Err(err.into()),
-                    Ok(sink) => {
-                        sink.set_volume(volume);
-                        sink.sleep_until_end();
-                        Ok(())
+                Ok((_stream, stream_handle)) => {
+                    match stream_handle.play_once(io::BufReader::new(file)) {
+                        Err(err) => Err(err.into()),
+                        Ok(sink) => {
+                            sink.set_volume(volume);
+                            sink.sleep_until_end();
+                            Ok(())
+                        }
                     }
-                },
+                }
             },
         };
         tx.send(r).unwrap_or_default();
@@ -73,6 +69,9 @@ fn play_audio(path: PathBuf, volume: f32) -> mpsc::Receiver<Result<(), PlayAudio
 
     rx
 }
+
+#[cfg(target_arch = "wasm32")]
+fn play_audio(_: PathBuf, _: f32) {}
 
 enum PlayAudioErr {
     #[allow(dead_code)]
