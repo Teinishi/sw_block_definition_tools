@@ -5,6 +5,8 @@ name: CI
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
+  SDL_VIDEODRIVER: "dummy"
+  SDL_AUDIODRIVER: "disk"
 
 jobs:
   check:
