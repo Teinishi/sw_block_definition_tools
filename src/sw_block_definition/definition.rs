@@ -53,6 +53,10 @@ impl SwBlockDefinition {
         self.filename.clone()
     }
 
+    pub fn filepath(&self) -> PathBuf {
+        self.rom_path.join("data/definitions/").join(self.filename.clone())
+    }
+
     pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
         if let Some(rx) = &self.load_data_thread {
             if let Ok(r) = rx.try_recv() {

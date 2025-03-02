@@ -52,6 +52,10 @@ impl DefinitionDetailPanel {
                     ui.add_space(10.0);
                 }
                 ui.weak(filename);
+                ui.add_space(10.0);
+                if ui.button("Open").clicked() {
+                    let _ = open::that(definition.filepath());
+                }
             });
 
             ui.add_space(4.0);
@@ -176,31 +180,6 @@ fn attribute_table<T: AttributeEnum<S>, S>(
                 ui.end_row();
             }
         });
-
-    /*TableBuilder::new(ui)
-    .columns(Column::auto(), columns.len())
-    .striped(true)
-    .header(20.0, |mut row| {
-        for attr in &columns {
-            row.col(|ui| {
-                ui.strong(attr.to_string());
-            });
-        }
-    })
-    .body(|body| {
-        body.rows(20.0, items.len(), |mut row| {
-            let item = &items[row.index()];
-            for attr in &columns {
-                row.col(|ui| {
-                    if let Some(val) = attr.get_value(item) {
-                        ui.label(val.debug_str());
-                    } else {
-                        ui.weak("Not defined");
-                    }
-                });
-            }
-        });
-    });*/
 }
 
 fn sfx_data_table(
