@@ -1,4 +1,4 @@
-use super::Of32;
+use super::{DefinitionAttributeValue, Of32};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -23,6 +23,30 @@ pub struct SfxData {
     pub sfx_is_underwater_affected: Option<bool>,
 
     pub sfx_layers: Vec<SfxLayers>,
+}
+
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+)]
+#[strum(serialize_all = "snake_case", prefix = "sfx_")]
+pub enum SfxDataAttribute {
+    Name,
+    RangeInner,
+    RangeOuter,
+    Priority,
+    IsUnderwaterAffected,
+}
+
+impl SfxDataAttribute {
+    pub fn get_value(&self, d: &SfxData) -> Option<DefinitionAttributeValue> {
+        match self {
+            Self::Name => Some(d.sfx_name.clone()?.into()),
+            Self::RangeInner => Some(d.sfx_range_inner?.into()),
+            Self::RangeOuter => Some(d.sfx_range_outer?.into()),
+            Self::Priority => Some(d.sfx_priority?.into()),
+            Self::IsUnderwaterAffected => Some(d.sfx_is_underwater_affected?.into()),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
