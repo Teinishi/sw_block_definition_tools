@@ -34,6 +34,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 egui_extras = "0.31.0"
 ordered-float = { version = "5.0.0", features = ["serde"] }
 open = "5.3.2"
+rodio = "0.20.1"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -1,9 +1,9 @@
 mod definition;
 pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes};
-mod definition_attribute_value;
-pub use definition_attribute_value::{DefinitionAttributeValue, Of32};
+mod attribute_value;
+pub use attribute_value::{AttributeValue, Of32};
 mod attribute_specifier;
-pub use attribute_specifier::{AttributeEnum, AttributeSpecifier};
+pub use attribute_specifier::{AttributeEnum, AttributeSpecifier, AttributeProperty};
 mod schema_definition;
 pub use schema_definition::*;
 mod schema_sfx;

@@ -1,5 +1,5 @@
 use crate::sw_block_definition::{
-    AttributeSpecifier, DefinitionAttributeValue, SwBlockDefinition, SwBlockDefinitionMeshKey,
+    AttributeSpecifier, AttributeValue, SwBlockDefinition, SwBlockDefinitionMeshKey,
     SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
@@ -160,8 +160,8 @@ impl State {
     pub fn get_attribute_all_definitions(
         &self,
         specifier: &AttributeSpecifier,
-    ) -> Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)> {
-        let mut values: Vec<(usize, &SwBlockDefinition, DefinitionAttributeValue)> = Vec::new();
+    ) -> Vec<(usize, &SwBlockDefinition, AttributeValue)> {
+        let mut values: Vec<(usize, &SwBlockDefinition, AttributeValue)> = Vec::new();
         for (i, definition) in self.definitions.iter().enumerate() {
             if let Some(Ok(data)) = definition.data() {
                 for value in specifier.get_value_root(&data) {

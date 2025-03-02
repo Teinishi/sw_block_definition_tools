@@ -53,10 +53,12 @@ impl SwBlockDefinition {
         self.filename.clone()
     }
 
-    pub fn filepath(&self) -> PathBuf {
-        self.rom_path
-            .join("data/definitions/")
-            .join(self.filename.clone())
+    pub fn rom_path(&self) -> &PathBuf {
+        &self.rom_path
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
     }
 
     pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {

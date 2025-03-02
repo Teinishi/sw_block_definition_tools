@@ -1,11 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet};
-
-use super::State;
-use crate::sw_block_definition::{AttributeSpecifier, DefinitionAttributeValue, SwBlockDefinition};
+use super::{ui_attribute_value, State};
+use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, SwBlockDefinition};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
+use std::collections::{BTreeMap, BTreeSet};
 
-type DefinitionValuesItem<'a> = (usize, &'a SwBlockDefinition, DefinitionAttributeValue);
+type DefinitionValuesItem<'a> = (usize, &'a SwBlockDefinition, AttributeValue);
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 enum AttributeDetailTabs {
@@ -117,10 +116,8 @@ impl AttributeDetailWindow {
         definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: Option<usize>,
     ) -> Option<usize> {
-        let mut definition_map: BTreeMap<
-            usize,
-            (&'a SwBlockDefinition, BTreeSet<DefinitionAttributeValue>),
-        > = BTreeMap::new();
+        let mut definition_map: BTreeMap<usize, (&'a SwBlockDefinition, BTreeSet<AttributeValue>)> =
+            BTreeMap::new();
         for (i, definition, value) in definition_values {
             if let Some(entry) = definition_map.get_mut(&i) {
                 entry.1.insert(value);
@@ -160,7 +157,7 @@ impl AttributeDetailWindow {
                                     if i != 0 {
                                         ui.add_space(8.0);
                                     }
-                                    self.specifier.ui_value(ui, Some(value));
+                                    ui_attribute_value(ui, self.specifier.property(), Some(value));
                                 }
                             });
                         });
@@ -176,10 +173,8 @@ impl AttributeDetailWindow {
         definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: Option<usize>,
     ) -> Option<usize> {
-        let mut value_map: BTreeMap<
-            DefinitionAttributeValue,
-            BTreeMap<usize, &'a SwBlockDefinition>,
-        > = BTreeMap::new();
+        let mut value_map: BTreeMap<AttributeValue, BTreeMap<usize, &'a SwBlockDefinition>> =
+            BTreeMap::new();
         for (i, definition, value) in definition_values {
             if let Some(entries) = value_map.get_mut(&value) {
                 entries.insert(i, definition);
@@ -196,7 +191,7 @@ impl AttributeDetailWindow {
             .column(Column::remainder())
             .striped(true)
             .body(|body| {
-                let keys: Vec<DefinitionAttributeValue> = value_map.keys().cloned().collect();
+                let keys: Vec<AttributeValue> = value_map.keys().cloned().collect();
                 self.values_table_heights.resize(keys.len(), 20.0);
 
                 body.heterogeneous_rows(
@@ -231,7 +226,7 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            self.specifier.ui_value(ui, Some(key));
+                            ui_attribute_value(ui, self.specifier.property(), Some(key));
                         });
                     },
                 );

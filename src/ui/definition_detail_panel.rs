@@ -1,6 +1,8 @@
-use super::{AttributeDetailWindow, State};
+use super::{
+    attribute_value::AttributeValueAction, ui_attribute_value, AttributeDetailWindow, State,
+};
 use crate::sw_block_definition::{
-    AttributeEnum, AttributeSpecifier, DefinitionAttribute, DefinitionAttributeValue, SfxData,
+    AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, SfxData,
     SfxDataAttribute, SfxLayerAttribute,
 };
 use egui::{Grid, Id, Ui};
@@ -19,7 +21,7 @@ impl AttributeFilter {
         }
     }
 
-    fn check(&self, value: &Option<DefinitionAttributeValue>) -> bool {
+    fn check(&self, value: &Option<AttributeValue>) -> bool {
         let is_default = value.as_ref().is_some_and(|v| v.is_default());
         (self.show_all || value.is_some()) && !(self.hide_default && is_default)
     }
@@ -30,6 +32,8 @@ pub struct DefinitionDetailPanel {}
 
 impl DefinitionDetailPanel {
     pub fn ui(&mut self, ui: &mut Ui, state: &mut State) -> Option<AttributeDetailWindow> {
+        let attribute_filter = AttributeFilter::from_state(state);
+
         let definition = state.selected_definition();
         definition.as_ref()?;
         let definition = definition.unwrap();
@@ -56,28 +60,31 @@ impl DefinitionDetailPanel {
                 {
                     ui.add_space(10.0);
                     if ui.button("Open").clicked() {
-                        let _ = open::that(definition.filepath());
+                        let _ = open::that(definition.path());
                     }
                 }
             });
 
             ui.add_space(4.0);
 
-            let attribute_filter = AttributeFilter::from_state(state);
-
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
+            let mut action: Option<AttributeValueAction> = None;
+
             egui::CollapsingHeader::new("definition attributes")
                 .default_open(true)
                 .show_unindented(ui, |ui| {
-                    if let Some(clicked) = attribute_list(
+                    let mut clicked = None;
+                    attribute_list(
                         ui,
                         Id::new("definition_attribute_table"),
                         &attribute_filter,
-                        DefinitionAttribute::VARIANTS
-                            .iter()
-                            .map(|attr| (attr.clone(), attr.get_value(&data))),
-                    ) {
-                        clicked_attribute = Some(clicked.into());
+                        DefinitionAttribute::VARIANTS,
+                        &data,
+                        &mut clicked,
+                        &mut action,
+                    );
+                    if let Some(c) = clicked {
+                        clicked_attribute = Some(c.into());
                     }
                 });
 
@@ -88,16 +95,20 @@ impl DefinitionDetailPanel {
                         None => "sfx_data".to_string(),
                     };
                     ui.collapsing(title, |ui| {
-                        if let Some(clicked) = sfx_data_table(
+                        sfx_data_table(
                             ui,
                             Id::new(format!("sfx_data_table_{}", i)),
                             &attribute_filter,
                             item,
-                        ) {
-                            clicked_attribute = Some(clicked);
-                        }
+                            &mut clicked_attribute,
+                            &mut action,
+                        );
                     });
                 }
+            }
+
+            if let Some(action) = action {
+                AttributeValueAction::do_action(action, definition);
             }
 
             Some(AttributeDetailWindow::new(
@@ -114,29 +125,31 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
     ui: &mut Ui,
     id: Id,
     attribute_filter: &AttributeFilter,
-    items: impl IntoIterator<Item = (T, Option<DefinitionAttributeValue>)>,
-) -> Option<T> {
-    let mut clicked = None;
-
+    attributes: &[T],
+    data: &S,
+    clicked_attribute: &mut Option<T>,
+    action: &mut Option<AttributeValueAction>,
+) {
     Grid::new(id)
         .num_columns(3)
         .min_col_width(0.0)
         .spacing([10.0, 4.0])
         .striped(true)
         .show(ui, |ui| {
-            for (attr, value) in items {
+            for attr in attributes {
+                let value = attr.get_value(data);
                 if attribute_filter.check(&value) {
                     if ui.button("...").clicked() {
-                        clicked = Some(attr.clone());
+                        *clicked_attribute = Some(attr.clone());
                     }
                     ui.label(attr.to_string());
-                    attr.ui_value(ui, value.as_ref());
+                    if let Some(act) = ui_attribute_value(ui, attr.property(), value.as_ref()) {
+                        *action = Some(act);
+                    }
                     ui.end_row();
                 }
             }
         });
-
-    clicked
 }
 
 fn attribute_table<T: AttributeEnum<S>, S>(
@@ -145,6 +158,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
     attribute_filter: &AttributeFilter,
     attrs: &[T],
     items: &[S],
+    action: &mut Option<AttributeValueAction>,
 ) {
     let columns: Vec<&T> = attrs
         .iter()
@@ -167,7 +181,11 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    attr.ui_value(ui, attr.get_value(item).as_ref());
+                    if let Some(act) =
+                        ui_attribute_value(ui, attr.property(), attr.get_value(item).as_ref())
+                    {
+                        *action = Some(act);
+                    }
                 }
                 ui.end_row();
             }
@@ -179,18 +197,21 @@ fn sfx_data_table(
     id: Id,
     attribute_filter: &AttributeFilter,
     sfx_data: &SfxData,
-) -> Option<AttributeSpecifier> {
-    let mut clicked_attribute: Option<AttributeSpecifier> = None;
-
-    if let Some(clicked) = attribute_list(
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+    action: &mut Option<AttributeValueAction>,
+) {
+    let mut clicked = None;
+    attribute_list(
         ui,
         id,
         attribute_filter,
-        SfxDataAttribute::VARIANTS
-            .iter()
-            .map(|attr| (attr.clone(), attr.get_value(sfx_data))),
-    ) {
-        clicked_attribute = Some(clicked.into());
+        SfxDataAttribute::VARIANTS,
+        sfx_data,
+        &mut clicked,
+        action,
+    );
+    if let Some(c) = clicked {
+        *clicked_attribute = Some(c.into());
     }
 
     if let Some(layers) = sfx_data.sfx_layers.last() {
@@ -201,8 +222,7 @@ fn sfx_data_table(
             attribute_filter,
             SfxLayerAttribute::VARIANTS,
             &layers.sfx_layer,
+            action,
         );
     }
-
-    clicked_attribute
 }

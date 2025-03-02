@@ -1,7 +1,7 @@
 pub type Of32 = ordered_float::NotNan<f32>;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub enum DefinitionAttributeValue {
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+pub enum AttributeValue {
     Bool(bool),
     I32(i32),
     U64(u64),
@@ -9,7 +9,7 @@ pub enum DefinitionAttributeValue {
     String(String),
 }
 
-impl DefinitionAttributeValue {
+impl AttributeValue {
     pub fn debug_str(&self) -> String {
         match self {
             Self::Bool(value) => format!("{:?}", value),
@@ -31,32 +31,32 @@ impl DefinitionAttributeValue {
     }
 }
 
-impl From<bool> for DefinitionAttributeValue {
+impl From<bool> for AttributeValue {
     fn from(value: bool) -> Self {
-        DefinitionAttributeValue::Bool(value)
+        AttributeValue::Bool(value)
     }
 }
 
-impl From<i32> for DefinitionAttributeValue {
+impl From<i32> for AttributeValue {
     fn from(value: i32) -> Self {
-        DefinitionAttributeValue::I32(value)
+        AttributeValue::I32(value)
     }
 }
 
-impl From<u64> for DefinitionAttributeValue {
+impl From<u64> for AttributeValue {
     fn from(value: u64) -> Self {
-        DefinitionAttributeValue::U64(value)
+        AttributeValue::U64(value)
     }
 }
 
-impl From<Of32> for DefinitionAttributeValue {
+impl From<Of32> for AttributeValue {
     fn from(value: Of32) -> Self {
-        DefinitionAttributeValue::Of32(value)
+        AttributeValue::Of32(value)
     }
 }
 
-impl From<String> for DefinitionAttributeValue {
+impl From<String> for AttributeValue {
     fn from(value: String) -> Self {
-        DefinitionAttributeValue::String(value)
+        AttributeValue::String(value)
     }
 }

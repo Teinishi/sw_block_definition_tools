@@ -1,25 +1,15 @@
-use super::{
-    Definition, DefinitionAttribute, DefinitionAttributeValue, SfxDataAttribute, SfxLayerAttribute,
-};
+use super::{AttributeValue, Definition, DefinitionAttribute, SfxDataAttribute, SfxLayerAttribute};
+
+#[derive(Default)]
+pub struct AttributeProperty {
+    pub is_audio_file: bool,
+}
 
 pub trait AttributeEnum<T>: std::fmt::Display {
-    fn get_value(&self, d: &T) -> Option<DefinitionAttributeValue>;
-    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue>;
-    fn is_audio_file(&self) -> bool {
-        false
-    }
-    fn ui_value(&self, ui: &mut egui::Ui, value: Option<&DefinitionAttributeValue>) {
-        if let Some(value) = value {
-            ui.horizontal(|ui| {
-                // 音声ファイルのとき、再生ボタン
-                if self.is_audio_file() && ui.button("\u{25B6}").clicked() {
-                    todo!()
-                }
-                ui.label(value.debug_str());
-            });
-        } else {
-            ui.weak("Not defined");
-        }
+    fn get_value(&self, d: &T) -> Option<AttributeValue>;
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue>;
+    fn property(&self) -> AttributeProperty {
+        Default::default()
     }
 }
 
@@ -31,7 +21,7 @@ pub enum AttributeSpecifier {
 }
 
 impl AttributeSpecifier {
-    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    pub fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         match self {
             Self::Definition(attr) => attr.get_value_root(d),
             Self::SfxData(attr) => attr.get_value_root(d),
@@ -39,11 +29,11 @@ impl AttributeSpecifier {
         }
     }
 
-    pub fn ui_value(&self, ui: &mut egui::Ui, value: Option<&DefinitionAttributeValue>) {
+    pub fn property(&self) -> AttributeProperty {
         match self {
-            Self::Definition(attr) => attr.ui_value(ui, value),
-            Self::SfxData(attr) => attr.ui_value(ui, value),
-            Self::SfxLayer(attr) => attr.ui_value(ui, value),
+            Self::Definition(attr) => attr.property(),
+            Self::SfxData(attr) => attr.property(),
+            Self::SfxLayer(attr) => attr.property(),
         }
     }
 }

@@ -1,13 +1,14 @@
 use super::{
-    AttributeEnum, BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos,
-    ConnectorAxis, ConnectorUp, ConstraintPosChild, ConstraintPosParent, Couplings,
-    DefinitionAttributeValue, DoorBasePos, DoorNormal, DoorSide, DoorSize, DoorUp,
-    DynamicBodyPosition, DynamicRotationAxes, DynamicSideAxis, ForceDir, JetEngineConnectionsNext,
-    JetEngineConnectionsPrev, LightColor, LightForward, LightPosition, LogicNodes, MagnetOffset,
-    Of32, ParticleBounds, ParticleDirection, ParticleOffset, RewardProperties, RopeHookOffset,
-    SeatCamera, SeatExitPosition, SeatFront, SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces,
-    TooltipProperties, VoxelLocationChild, VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin,
-    Voxels, WeaponBreechNormal, WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
+    attribute_specifier::AttributeProperty, AttributeEnum, AttributeValue, BbPhysicsMax,
+    BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp,
+    ConstraintPosChild, ConstraintPosParent, Couplings, DoorBasePos, DoorNormal, DoorSide,
+    DoorSize, DoorUp, DynamicBodyPosition, DynamicRotationAxes, DynamicSideAxis, ForceDir,
+    JetEngineConnectionsNext, JetEngineConnectionsPrev, LightColor, LightForward, LightPosition,
+    LogicNodes, MagnetOffset, Of32, ParticleBounds, ParticleDirection, ParticleOffset,
+    RewardProperties, RopeHookOffset, SeatCamera, SeatExitPosition, SeatFront, SeatOffset,
+    SeatRender, SeatUp, SfxDatas, Surfaces, TooltipProperties, VoxelLocationChild, VoxelMax,
+    VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin, Voxels, WeaponBreechNormal, WeaponBreechPosition,
+    WeaponCartPosition, WeaponCartVelocity,
 };
 use serde::{Deserialize, Serialize};
 
@@ -431,7 +432,7 @@ pub enum DefinitionAttribute {
 }
 
 impl AttributeEnum<Definition> for DefinitionAttribute {
-    fn get_value(&self, d: &Definition) -> Option<DefinitionAttributeValue> {
+    fn get_value(&self, d: &Definition) -> Option<AttributeValue> {
         match self {
             Self::Name => Some(d.name.clone()?.into()),
             Self::Category => Some(d.category?.into()),
@@ -557,19 +558,21 @@ impl AttributeEnum<Definition> for DefinitionAttribute {
         }
     }
 
-    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         self.get_value(d).into_iter().collect()
     }
 
-    fn is_audio_file(&self) -> bool {
-        matches!(
-            self,
-            Self::AudioFilenameStart
-                | Self::AudioFilenameLoop
-                | Self::AudioFilenameEnd
-                | Self::AudioFilenameStartB
-                | Self::AudioFilenameLoopB
-                | Self::AudioFilenameEndB
-        )
+    fn property(&self) -> AttributeProperty {
+        AttributeProperty {
+            is_audio_file: matches!(
+                self,
+                Self::AudioFilenameStart
+                    | Self::AudioFilenameLoop
+                    | Self::AudioFilenameEnd
+                    | Self::AudioFilenameStartB
+                    | Self::AudioFilenameLoopB
+                    | Self::AudioFilenameEndB
+            ),
+        }
     }
 }

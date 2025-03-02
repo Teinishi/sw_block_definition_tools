@@ -1,4 +1,6 @@
-use super::{AttributeEnum, Definition, DefinitionAttributeValue, Of32};
+use super::{
+    attribute_specifier::AttributeProperty, AttributeEnum, AttributeValue, Definition, Of32,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -38,7 +40,7 @@ pub enum SfxDataAttribute {
 }
 
 impl AttributeEnum<SfxData> for SfxDataAttribute {
-    fn get_value(&self, d: &SfxData) -> Option<DefinitionAttributeValue> {
+    fn get_value(&self, d: &SfxData) -> Option<AttributeValue> {
         match self {
             Self::Name => Some(d.sfx_name.clone()?.into()),
             Self::RangeInner => Some(d.sfx_range_inner?.into()),
@@ -48,7 +50,7 @@ impl AttributeEnum<SfxData> for SfxDataAttribute {
         }
     }
 
-    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
                 .sfx_data
@@ -105,7 +107,7 @@ pub enum SfxLayerAttribute {
 }
 
 impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
-    fn get_value(&self, d: &SfxLayer) -> Option<DefinitionAttributeValue> {
+    fn get_value(&self, d: &SfxLayer) -> Option<AttributeValue> {
         match self {
             Self::FilenameStart => Some(d.sfx_filename_start.clone()?.into()),
             Self::FilenameLoop => Some(d.sfx_filename_loop.clone()?.into()),
@@ -118,7 +120,7 @@ impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
         }
     }
 
-    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
                 .sfx_data
@@ -141,10 +143,12 @@ impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
         }
     }
 
-    fn is_audio_file(&self) -> bool {
-        matches!(
-            self,
-            Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
-        )
+    fn property(&self) -> AttributeProperty {
+        AttributeProperty {
+            is_audio_file: matches!(
+                self,
+                Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
+            ),
+        }
     }
 }
