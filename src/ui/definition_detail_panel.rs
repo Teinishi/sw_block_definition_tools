@@ -51,9 +51,13 @@ impl DefinitionDetailPanel {
                     ui.add_space(10.0);
                 }
                 ui.weak(filename);
-                ui.add_space(10.0);
-                if ui.button("Open").clicked() {
-                    let _ = open::that(definition.filepath());
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    ui.add_space(10.0);
+                    if ui.button("Open").clicked() {
+                        let _ = open::that(definition.filepath());
+                    }
                 }
             });
 
