@@ -1,4 +1,5 @@
-use crate::sw_block_definition::{AttributeProperty, AttributeValue, SwBlockDefinition};
+use super::State;
+use crate::sw_block_definition::{AttributeProperty, AttributeValue};
 use std::{
     fmt::Display,
     fs::File,
@@ -12,20 +13,19 @@ pub fn ui_attribute_value(
     ui: &mut egui::Ui,
     attribute_property: AttributeProperty,
     value: Option<&AttributeValue>,
-) -> Option<AttributeValueAction> {
-    let mut action = None;
+    action: &mut Option<AttributeValueAction>,
+) {
     if let Some(value) = value {
         ui.horizontal(|ui| {
             // 音声ファイルのとき、再生ボタン
             if attribute_property.is_audio_file && ui.button("\u{25B6}").clicked() {
-                action = Some(AttributeValueAction::PlayAudio(value.clone()));
+                *action = Some(AttributeValueAction::PlayAudio(value.clone()));
             }
             ui.label(value.debug_str());
         });
     } else {
         ui.weak("Not defined");
     }
-    action
 }
 
 #[derive(Debug)]
@@ -34,12 +34,13 @@ pub enum AttributeValueAction {
 }
 
 impl AttributeValueAction {
-    pub fn do_action(action: AttributeValueAction, definition: &SwBlockDefinition) {
+    pub fn do_action(action: AttributeValueAction, state: &State) {
         match action {
             AttributeValueAction::PlayAudio(value) => {
                 if let AttributeValue::String(s) = value {
-                    let audio_path = definition.rom_path().join(s);
-                    play_audio(audio_path, 0.5); // TODO: rx でエラーを拾う 音量調節もできるようにする
+                    if let Some(rom_path) = state.rom_path() {
+                        play_audio(rom_path.join(s), 0.5); // TODO: rx でエラーを拾う 音量調節もできるようにする
+                    }
                 }
             }
         }

@@ -1,4 +1,4 @@
-use super::{ui_attribute_value, State};
+use super::{ui_attribute_value, AttributeValueAction, State};
 use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, SwBlockDefinition};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
@@ -95,17 +95,25 @@ impl AttributeDetailWindow {
                 definition_values.retain(|(_, _, v)| !v.is_default());
             }
 
-            let selected_definition_index = *state.selected_definition_index();
-            let set_selected_definition = match self.tab {
-                AttributeDetailTabs::Definitions => {
-                    self.ui_definitions_table(ui, definition_values, selected_definition_index)
-                }
-                AttributeDetailTabs::Values => {
-                    self.ui_values_table(ui, definition_values, selected_definition_index)
-                }
-            };
-            if let Some(i) = set_selected_definition {
-                state.set_selected_definition_index(Some(i));
+            let mut selected_definition_index = *state.selected_definition_index();
+            let mut action = None;
+            match self.tab {
+                AttributeDetailTabs::Definitions => self.ui_definitions_table(
+                    ui,
+                    definition_values,
+                    &mut selected_definition_index,
+                    &mut action,
+                ),
+                AttributeDetailTabs::Values => self.ui_values_table(
+                    ui,
+                    definition_values,
+                    &mut selected_definition_index,
+                    &mut action,
+                ),
+            }
+            state.set_selected_definition_index(selected_definition_index);
+            if let Some(action) = action {
+                AttributeValueAction::do_action(action, state);
             }
         });
     }
@@ -114,8 +122,9 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         definition_values: Vec<DefinitionValuesItem<'a>>,
-        selected_definition_index: Option<usize>,
-    ) -> Option<usize> {
+        selected_definition_index: &mut Option<usize>,
+        action: &mut Option<AttributeValueAction>,
+    ) {
         let mut definition_map: BTreeMap<usize, (&'a SwBlockDefinition, BTreeSet<AttributeValue>)> =
             BTreeMap::new();
         for (i, definition, value) in definition_values {
@@ -126,7 +135,6 @@ impl AttributeDetailWindow {
             }
         }
 
-        let mut select = None;
         TableBuilder::new(ui)
             .column(Column::exact(250.0))
             .column(Column::remainder())
@@ -139,7 +147,7 @@ impl AttributeDetailWindow {
                         let definition = *definition;
 
                         let filename = definition.filename();
-                        let checked = Some(i) == selected_definition_index;
+                        let checked = Some(i) == *selected_definition_index;
 
                         row.col(|ui| {
                             let label =
@@ -148,7 +156,7 @@ impl AttributeDetailWindow {
                                         ui.label(filename);
                                     });
                             if label.clicked() {
-                                select = Some(i);
+                                *selected_definition_index = Some(i);
                             }
                         });
                         row.col(|ui| {
@@ -157,22 +165,27 @@ impl AttributeDetailWindow {
                                     if i != 0 {
                                         ui.add_space(8.0);
                                     }
-                                    ui_attribute_value(ui, self.specifier.property(), Some(value));
+                                    ui_attribute_value(
+                                        ui,
+                                        self.specifier.property(),
+                                        Some(value),
+                                        action,
+                                    );
                                 }
                             });
                         });
                     }
                 });
             });
-        select
     }
 
     fn ui_values_table<'a>(
         &mut self,
         ui: &mut egui::Ui,
         definition_values: Vec<DefinitionValuesItem<'a>>,
-        selected_definition_index: Option<usize>,
-    ) -> Option<usize> {
+        selected_definition_index: &mut Option<usize>,
+        action: &mut Option<AttributeValueAction>,
+    ) {
         let mut value_map: BTreeMap<AttributeValue, BTreeMap<usize, &'a SwBlockDefinition>> =
             BTreeMap::new();
         for (i, definition, value) in definition_values {
@@ -185,7 +198,6 @@ impl AttributeDetailWindow {
             }
         }
 
-        let mut select = None;
         TableBuilder::new(ui)
             .column(Column::exact(250.0))
             .column(Column::remainder())
@@ -205,12 +217,12 @@ impl AttributeDetailWindow {
                             let collapsing_response =
                                 ui.collapsing(format!("{} definitions", definitions.len()), |ui| {
                                     for (i, definition) in definitions {
-                                        let checked = Some(*i) == selected_definition_index;
+                                        let checked = Some(*i) == *selected_definition_index;
                                         if ui
                                             .selectable_label(checked, definition.filename())
                                             .clicked()
                                         {
-                                            select = Some(*i);
+                                            *selected_definition_index = Some(*i);
                                         }
                                     }
                                 });
@@ -226,11 +238,10 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            ui_attribute_value(ui, self.specifier.property(), Some(key));
+                            ui_attribute_value(ui, self.specifier.property(), Some(key), action);
                         });
                     },
                 );
             });
-        select
     }
 }

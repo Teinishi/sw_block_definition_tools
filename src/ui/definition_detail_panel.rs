@@ -108,7 +108,7 @@ impl DefinitionDetailPanel {
             }
 
             if let Some(action) = action {
-                AttributeValueAction::do_action(action, definition);
+                AttributeValueAction::do_action(action, state);
             }
 
             Some(AttributeDetailWindow::new(
@@ -143,9 +143,7 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
                         *clicked_attribute = Some(attr.clone());
                     }
                     ui.label(attr.to_string());
-                    if let Some(act) = ui_attribute_value(ui, attr.property(), value.as_ref()) {
-                        *action = Some(act);
-                    }
+                    ui_attribute_value(ui, attr.property(), value.as_ref(), action);
                     ui.end_row();
                 }
             }
@@ -181,11 +179,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    if let Some(act) =
-                        ui_attribute_value(ui, attr.property(), attr.get_value(item).as_ref())
-                    {
-                        *action = Some(act);
-                    }
+                    ui_attribute_value(ui, attr.property(), attr.get_value(item).as_ref(), action);
                 }
                 ui.end_row();
             }

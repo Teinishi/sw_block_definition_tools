@@ -180,7 +180,7 @@ impl MainApp {
             dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
         }
         if let Some(pathbuf) = dialog.pick_folder() {
-            let _ = self.state.open_rom_directory(&pathbuf);
+            let _ = self.state.open_rom_directory(pathbuf);
         }
     }
 }

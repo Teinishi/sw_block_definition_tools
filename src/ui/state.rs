@@ -3,7 +3,7 @@ use crate::sw_block_definition::{
     SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
-use std::{fs, io, path::Path};
+use std::{fs, io, path::PathBuf};
 
 macro_rules! getter_setter {
     ($target:ident, $name:ident, $setter_name:ident, $type:ty) => {
@@ -24,6 +24,7 @@ macro_rules! getter_setter {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
+    rom_path: Option<PathBuf>,
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
     show_all_attributes: bool,
@@ -43,6 +44,7 @@ impl Default for State {
             show_mesh[key] = true;
         }
         Self {
+            rom_path: None,
             definitions: Vec::new(),
             selected_definition_index: None,
             show_all_attributes: false,
@@ -68,6 +70,10 @@ impl State {
 
     pub fn is_changed(&self) -> bool {
         self.changed.is_none() || self.changed.unwrap()
+    }
+
+    pub fn rom_path(&self) -> &Option<PathBuf> {
+        &self.rom_path
     }
 
     pub fn definitions(&self) -> &Vec<SwBlockDefinition> {
@@ -110,9 +116,9 @@ impl State {
             .load_meshes()
     }
 
-    pub fn open_rom_directory<P: AsRef<Path>>(&mut self, rom_path: P) -> io::Result<()> {
+    pub fn open_rom_directory(&mut self, rom_path: PathBuf) -> io::Result<()> {
         // ディレクトリ内の .xml ファイルを列挙
-        match fs::read_dir(rom_path.as_ref().join("data\\definitions")) {
+        match fs::read_dir(rom_path.join("data\\definitions")) {
             Ok(dir) => {
                 self.definitions = dir
                     .filter_map(|entry| {
@@ -127,12 +133,14 @@ impl State {
                     })
                     .collect();
                 self.selected_definition_index = None;
+                self.rom_path = Some(rom_path);
                 self.changed();
                 Ok(())
             }
             Err(err) => {
                 self.definitions = Vec::new();
                 self.selected_definition_index = None;
+                self.rom_path = None;
                 Err(err)
             }
         }
