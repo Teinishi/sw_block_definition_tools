@@ -3,7 +3,7 @@ pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey, SwBlockDefinit
 mod definition_attribute_value;
 pub use definition_attribute_value::{DefinitionAttributeValue, Of32};
 mod attribute_specifier;
-pub use attribute_specifier::AttributeSpecifier;
+pub use attribute_specifier::{AttributeEnum, AttributeSpecifier};
 mod schema_definition;
 pub use schema_definition::*;
 mod schema_sfx;

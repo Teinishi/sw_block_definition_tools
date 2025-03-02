@@ -147,6 +147,7 @@ impl eframe::App for MainApp {
                 if let Some(w) = self.definition_detail_panel.ui(ui, &mut self.state) {
                     self.add_attribute_detail_window(w);
                 }
+                ui.add_space(10.0);
             });
         });
 

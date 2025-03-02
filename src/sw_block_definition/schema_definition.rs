@@ -1,13 +1,13 @@
 use super::{
-    BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp,
-    ConstraintPosChild, ConstraintPosParent, Couplings, DefinitionAttributeValue, DoorBasePos,
-    DoorNormal, DoorSide, DoorSize, DoorUp, DynamicBodyPosition, DynamicRotationAxes,
-    DynamicSideAxis, ForceDir, JetEngineConnectionsNext, JetEngineConnectionsPrev, LightColor,
-    LightForward, LightPosition, LogicNodes, MagnetOffset, Of32, ParticleBounds, ParticleDirection,
-    ParticleOffset, RewardProperties, RopeHookOffset, SeatCamera, SeatExitPosition, SeatFront,
-    SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces, TooltipProperties, VoxelLocationChild,
-    VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin, Voxels, WeaponBreechNormal,
-    WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
+    AttributeEnum, BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos,
+    ConnectorAxis, ConnectorUp, ConstraintPosChild, ConstraintPosParent, Couplings,
+    DefinitionAttributeValue, DoorBasePos, DoorNormal, DoorSide, DoorSize, DoorUp,
+    DynamicBodyPosition, DynamicRotationAxes, DynamicSideAxis, ForceDir, JetEngineConnectionsNext,
+    JetEngineConnectionsPrev, LightColor, LightForward, LightPosition, LogicNodes, MagnetOffset,
+    Of32, ParticleBounds, ParticleDirection, ParticleOffset, RewardProperties, RopeHookOffset,
+    SeatCamera, SeatExitPosition, SeatFront, SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces,
+    TooltipProperties, VoxelLocationChild, VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin,
+    Voxels, WeaponBreechNormal, WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
 };
 use serde::{Deserialize, Serialize};
 
@@ -430,8 +430,8 @@ pub enum DefinitionAttribute {
     ToolType,
 }
 
-impl DefinitionAttribute {
-    pub fn get_value(&self, d: &Definition) -> Option<DefinitionAttributeValue> {
+impl AttributeEnum<Definition> for DefinitionAttribute {
+    fn get_value(&self, d: &Definition) -> Option<DefinitionAttributeValue> {
         match self {
             Self::Name => Some(d.name.clone()?.into()),
             Self::Category => Some(d.category?.into()),
@@ -557,7 +557,7 @@ impl DefinitionAttribute {
         }
     }
 
-    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
         self.get_value(d).into_iter().collect()
     }
 }

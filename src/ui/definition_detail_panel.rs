@@ -1,8 +1,9 @@
 use super::{AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, DefinitionAttribute, DefinitionAttributeValue, SfxData, SfxDataAttribute,
+    AttributeEnum, AttributeSpecifier, DefinitionAttribute, DefinitionAttributeValue, SfxData,
+    SfxDataAttribute, SfxLayerAttribute,
 };
-use egui::{Id, Ui};
+use egui::{Grid, Id, Ui};
 use std::fmt::Display;
 use strum::VariantArray;
 
@@ -110,7 +111,7 @@ fn attribute_list<T: Clone + Display>(
 ) -> Option<T> {
     let mut clicked = None;
 
-    egui::Grid::new(id)
+    Grid::new(id)
         .num_columns(3)
         .min_col_width(0.0)
         .spacing([10.0, 4.0])
@@ -138,6 +139,70 @@ fn attribute_list<T: Clone + Display>(
     clicked
 }
 
+fn attribute_table<T: AttributeEnum<S>, S>(
+    ui: &mut Ui,
+    id: Id,
+    attribute_filter: &AttributeFilter,
+    attrs: &[T],
+    items: &[S],
+) {
+    let columns: Vec<&T> = attrs
+        .iter()
+        .filter(|attr| {
+            items
+                .iter()
+                .any(|item| attribute_filter.check(&attr.get_value(item)))
+        })
+        .collect();
+
+    Grid::new(id)
+        .num_columns(columns.len())
+        .spacing([10.0, 4.0])
+        .striped(true)
+        .show(ui, |ui| {
+            for attr in &columns {
+                ui.strong(attr.to_string());
+            }
+            ui.end_row();
+
+            for item in items {
+                for attr in &columns {
+                    if let Some(val) = attr.get_value(item) {
+                        ui.label(val.debug_str());
+                    } else {
+                        ui.weak("Not defined");
+                    }
+                }
+                ui.end_row();
+            }
+        });
+
+    /*TableBuilder::new(ui)
+    .columns(Column::auto(), columns.len())
+    .striped(true)
+    .header(20.0, |mut row| {
+        for attr in &columns {
+            row.col(|ui| {
+                ui.strong(attr.to_string());
+            });
+        }
+    })
+    .body(|body| {
+        body.rows(20.0, items.len(), |mut row| {
+            let item = &items[row.index()];
+            for attr in &columns {
+                row.col(|ui| {
+                    if let Some(val) = attr.get_value(item) {
+                        ui.label(val.debug_str());
+                    } else {
+                        ui.weak("Not defined");
+                    }
+                });
+            }
+        });
+    });*/
+}
+
 fn sfx_data_table(
     ui: &mut Ui,
     id: Id,
@@ -157,7 +222,16 @@ fn sfx_data_table(
         clicked_attribute = Some(clicked.into());
     }
 
-    // TODO: sfx_layer の表
+    if let Some(layers) = sfx_data.sfx_layers.last() {
+        ui.add_space(4.0);
+        attribute_table(
+            ui,
+            id.with("layer_table"),
+            attribute_filter,
+            SfxLayerAttribute::VARIANTS,
+            &layers.sfx_layer,
+        );
+    }
 
     clicked_attribute
 }

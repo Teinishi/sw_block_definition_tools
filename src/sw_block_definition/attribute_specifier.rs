@@ -2,6 +2,11 @@ use super::{
     Definition, DefinitionAttribute, DefinitionAttributeValue, SfxDataAttribute, SfxLayerAttribute,
 };
 
+pub trait AttributeEnum<T>: std::fmt::Display {
+    fn get_value(&self, d: &T) -> Option<DefinitionAttributeValue>;
+    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue>;
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum AttributeSpecifier {
     Definition(DefinitionAttribute),

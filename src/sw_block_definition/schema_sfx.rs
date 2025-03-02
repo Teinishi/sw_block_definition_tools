@@ -1,4 +1,4 @@
-use super::{Definition, DefinitionAttributeValue, Of32};
+use super::{AttributeEnum, Definition, DefinitionAttributeValue, Of32};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -37,8 +37,8 @@ pub enum SfxDataAttribute {
     IsUnderwaterAffected,
 }
 
-impl SfxDataAttribute {
-    pub fn get_value(&self, d: &SfxData) -> Option<DefinitionAttributeValue> {
+impl AttributeEnum<SfxData> for SfxDataAttribute {
+    fn get_value(&self, d: &SfxData) -> Option<DefinitionAttributeValue> {
         match self {
             Self::Name => Some(d.sfx_name.clone()?.into()),
             Self::RangeInner => Some(d.sfx_range_inner?.into()),
@@ -48,7 +48,7 @@ impl SfxDataAttribute {
         }
     }
 
-    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
                 .sfx_data
@@ -104,8 +104,8 @@ pub enum SfxLayerAttribute {
     PitchFadeSpeed,
 }
 
-impl SfxLayerAttribute {
-    pub fn get_value(&self, d: &SfxLayer) -> Option<DefinitionAttributeValue> {
+impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
+    fn get_value(&self, d: &SfxLayer) -> Option<DefinitionAttributeValue> {
         match self {
             Self::FilenameStart => Some(d.sfx_filename_start.clone()?.into()),
             Self::FilenameLoop => Some(d.sfx_filename_loop.clone()?.into()),
@@ -118,7 +118,7 @@ impl SfxLayerAttribute {
         }
     }
 
-    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+    fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
                 .sfx_data
