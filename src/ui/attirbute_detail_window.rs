@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::State;
 use crate::sw_block_definition::{AttributeSpecifier, DefinitionAttributeValue, SwBlockDefinition};
@@ -111,39 +111,60 @@ impl AttributeDetailWindow {
         });
     }
 
-    fn ui_definitions_table(
+    fn ui_definitions_table<'a>(
         &mut self,
         ui: &mut egui::Ui,
-        definition_values: Vec<DefinitionValuesItem<'_>>,
+        definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: Option<usize>,
     ) -> Option<usize> {
+        let mut definition_map: BTreeMap<
+            usize,
+            (&'a SwBlockDefinition, BTreeSet<DefinitionAttributeValue>),
+        > = BTreeMap::new();
+        for (i, definition, value) in definition_values {
+            if let Some(entry) = definition_map.get_mut(&i) {
+                entry.1.insert(value);
+            } else {
+                definition_map.insert(i, (definition, BTreeSet::from([value])));
+            }
+        }
+
         let mut select = None;
         TableBuilder::new(ui)
             .column(Column::exact(250.0))
             .column(Column::remainder())
             .striped(true)
             .body(|body| {
-                body.rows(20.0, definition_values.len(), |mut row| {
-                    let (i, definition, value) = &definition_values[row.index()];
-                    let i = *i;
-                    let definition = *definition;
+                body.rows(20.0, definition_map.len(), |mut row| {
+                    if let Some((i, (definition, values))) = definition_map.iter().nth(row.index())
+                    {
+                        let i = *i;
+                        let definition = *definition;
 
-                    let filename = definition.filename();
-                    let checked = Some(i) == selected_definition_index;
+                        let filename = definition.filename();
+                        let checked = Some(i) == selected_definition_index;
 
-                    row.col(|ui| {
-                        let label =
-                            ui.selectable_label(checked, filename.clone())
-                                .on_hover_ui(|ui| {
-                                    ui.label(filename);
-                                });
-                        if label.clicked() {
-                            select = Some(i);
-                        }
-                    });
-                    row.col(|ui| {
-                        ui.label(value.debug_str());
-                    });
+                        row.col(|ui| {
+                            let label =
+                                ui.selectable_label(checked, filename.clone())
+                                    .on_hover_ui(|ui| {
+                                        ui.label(filename);
+                                    });
+                            if label.clicked() {
+                                select = Some(i);
+                            }
+                        });
+                        row.col(|ui| {
+                            ui.horizontal(|ui| {
+                                for (i, value) in values.iter().enumerate() {
+                                    if i != 0 {
+                                        ui.add_space(8.0);
+                                    }
+                                    ui.label(value.debug_str());
+                                }
+                            });
+                        });
+                    }
                 });
             });
         select
@@ -155,13 +176,17 @@ impl AttributeDetailWindow {
         definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: Option<usize>,
     ) -> Option<usize> {
-        let mut value_map: BTreeMap<DefinitionAttributeValue, Vec<(usize, &'a SwBlockDefinition)>> =
-            BTreeMap::new();
+        let mut value_map: BTreeMap<
+            DefinitionAttributeValue,
+            BTreeMap<usize, &'a SwBlockDefinition>,
+        > = BTreeMap::new();
         for (i, definition, value) in definition_values {
             if let Some(entries) = value_map.get_mut(&value) {
-                entries.push((i, definition));
+                entries.insert(i, definition);
             } else {
-                value_map.insert(value, vec![(i, definition)]);
+                let mut entries = BTreeMap::new();
+                entries.insert(i, definition);
+                value_map.insert(value, entries);
             }
         }
 
