@@ -140,4 +140,11 @@ impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
             vec![]
         }
     }
+
+    fn is_audio_file(&self) -> bool {
+        matches!(
+            self,
+            Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
+        )
+    }
 }

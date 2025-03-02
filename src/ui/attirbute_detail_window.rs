@@ -160,7 +160,7 @@ impl AttributeDetailWindow {
                                     if i != 0 {
                                         ui.add_space(8.0);
                                     }
-                                    ui.label(value.debug_str());
+                                    self.specifier.ui_value(ui, Some(value));
                                 }
                             });
                         });
@@ -203,8 +203,8 @@ impl AttributeDetailWindow {
                     self.values_table_heights.clone().into_iter(),
                     |mut row| {
                         let row_index = row.index();
-                        let key = keys[row_index].clone();
-                        let definitions = value_map.get(&key).unwrap();
+                        let key = &keys[row_index];
+                        let definitions = value_map.get(key).unwrap();
 
                         row.col(|ui| {
                             let collapsing_response =
@@ -231,7 +231,7 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            ui.label(key.debug_str());
+                            self.specifier.ui_value(ui, Some(key));
                         });
                     },
                 );

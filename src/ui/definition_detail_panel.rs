@@ -4,7 +4,6 @@ use crate::sw_block_definition::{
     SfxDataAttribute, SfxLayerAttribute,
 };
 use egui::{Grid, Id, Ui};
-use std::fmt::Display;
 use strum::VariantArray;
 
 struct AttributeFilter {
@@ -107,7 +106,7 @@ impl DefinitionDetailPanel {
     }
 }
 
-fn attribute_list<T: Clone + Display>(
+fn attribute_list<T: AttributeEnum<S> + Clone, S>(
     ui: &mut Ui,
     id: Id,
     attribute_filter: &AttributeFilter,
@@ -126,15 +125,8 @@ fn attribute_list<T: Clone + Display>(
                     if ui.button("...").clicked() {
                         clicked = Some(attr.clone());
                     }
-
                     ui.label(attr.to_string());
-
-                    if let Some(val) = value {
-                        ui.label(val.debug_str());
-                    } else {
-                        ui.weak("Not defined");
-                    }
-
+                    attr.ui_value(ui, value.as_ref());
                     ui.end_row();
                 }
             }
@@ -171,11 +163,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    if let Some(val) = attr.get_value(item) {
-                        ui.label(val.debug_str());
-                    } else {
-                        ui.weak("Not defined");
-                    }
+                    attr.ui_value(ui, attr.get_value(item).as_ref());
                 }
                 ui.end_row();
             }

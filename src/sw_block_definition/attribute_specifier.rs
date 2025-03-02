@@ -5,6 +5,22 @@ use super::{
 pub trait AttributeEnum<T>: std::fmt::Display {
     fn get_value(&self, d: &T) -> Option<DefinitionAttributeValue>;
     fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue>;
+    fn is_audio_file(&self) -> bool {
+        false
+    }
+    fn ui_value(&self, ui: &mut egui::Ui, value: Option<&DefinitionAttributeValue>) {
+        if let Some(value) = value {
+            ui.horizontal(|ui| {
+                // 音声ファイルのとき、再生ボタン
+                if self.is_audio_file() && ui.button("\u{25B6}").clicked() {
+                    todo!()
+                }
+                ui.label(value.debug_str());
+            });
+        } else {
+            ui.weak("Not defined");
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -20,6 +36,14 @@ impl AttributeSpecifier {
             Self::Definition(attr) => attr.get_value_root(d),
             Self::SfxData(attr) => attr.get_value_root(d),
             Self::SfxLayer(attr) => attr.get_value_root(d),
+        }
+    }
+
+    pub fn ui_value(&self, ui: &mut egui::Ui, value: Option<&DefinitionAttributeValue>) {
+        match self {
+            Self::Definition(attr) => attr.ui_value(ui, value),
+            Self::SfxData(attr) => attr.ui_value(ui, value),
+            Self::SfxLayer(attr) => attr.ui_value(ui, value),
         }
     }
 }

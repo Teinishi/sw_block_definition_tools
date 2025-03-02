@@ -560,4 +560,16 @@ impl AttributeEnum<Definition> for DefinitionAttribute {
     fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
         self.get_value(d).into_iter().collect()
     }
+
+    fn is_audio_file(&self) -> bool {
+        matches!(
+            self,
+            Self::AudioFilenameStart
+                | Self::AudioFilenameLoop
+                | Self::AudioFilenameEnd
+                | Self::AudioFilenameStartB
+                | Self::AudioFilenameLoopB
+                | Self::AudioFilenameEndB
+        )
+    }
 }
