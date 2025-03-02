@@ -39,6 +39,7 @@ impl AttributeValueAction {
             AttributeValueAction::PlayAudio(value) => {
                 if let AttributeValue::String(s) = value {
                     if let Some(rom_path) = state.rom_path() {
+                        #[cfg(not(target_arch = "wasm32"))]
                         play_audio(rom_path.join(s), 0.5); // TODO: rx でエラーを拾う 音量調節もできるようにする
                     }
                 }
@@ -47,6 +48,7 @@ impl AttributeValueAction {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn play_audio(path: PathBuf, volume: f32) -> mpsc::Receiver<Result<(), PlayAudioErr>> {
     let (tx, rx) = mpsc::channel();
 
