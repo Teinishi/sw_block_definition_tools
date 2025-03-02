@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::State;
-use crate::sw_block_definition::{
-    DefinitionAttribute, DefinitionAttributeValue, SwBlockDefinition,
-};
+use crate::sw_block_definition::{AttributeSpecifier, DefinitionAttributeValue, SwBlockDefinition};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
 
@@ -19,7 +17,7 @@ enum AttributeDetailTabs {
 pub struct AttributeDetailWindow {
     open: bool,
     id: Option<egui::Id>,
-    specifier: DefinitionAttribute,
+    specifier: AttributeSpecifier,
     tab: AttributeDetailTabs,
     hide_default_value: bool,
     #[serde(skip)]
@@ -27,7 +25,7 @@ pub struct AttributeDetailWindow {
 }
 
 impl AttributeDetailWindow {
-    pub fn new(specifier: DefinitionAttribute, hide_default_value: bool) -> Self {
+    pub fn new(specifier: AttributeSpecifier, hide_default_value: bool) -> Self {
         Self {
             open: true,
             id: None,

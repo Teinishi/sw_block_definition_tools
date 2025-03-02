@@ -556,4 +556,8 @@ impl DefinitionAttribute {
             Self::ToolType => Some(d.tool_type?.into()),
         }
     }
+
+    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+        self.get_value(d).into_iter().collect()
+    }
 }

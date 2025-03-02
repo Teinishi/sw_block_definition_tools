@@ -1,6 +1,6 @@
 use super::{AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    DefinitionAttribute, DefinitionAttributeValue, SfxData, SfxDataAttribute,
+    AttributeSpecifier, DefinitionAttribute, DefinitionAttributeValue, SfxData, SfxDataAttribute,
 };
 use egui::{Id, Ui};
 use std::fmt::Display;
@@ -57,18 +57,20 @@ impl DefinitionDetailPanel {
 
             let attribute_filter = AttributeFilter::from_state(state);
 
-            let mut clicked_attribute = None;
+            let mut clicked_attribute: Option<AttributeSpecifier> = None;
             egui::CollapsingHeader::new("definition attributes")
                 .default_open(true)
                 .show_unindented(ui, |ui| {
-                    clicked_attribute = attribute_list(
+                    if let Some(clicked) = attribute_list(
                         ui,
                         Id::new("definition_attribute_table"),
                         &attribute_filter,
                         DefinitionAttribute::VARIANTS
                             .iter()
                             .map(|attr| (attr.clone(), attr.get_value(&data))),
-                    );
+                    ) {
+                        clicked_attribute = Some(clicked.into());
+                    }
                 });
 
             if let Some(sfx_datas) = data.sfx_datas.last() {
@@ -78,12 +80,14 @@ impl DefinitionDetailPanel {
                         None => "sfx_data".to_string(),
                     };
                     ui.collapsing(title, |ui| {
-                        sfx_data_table(
+                        if let Some(clicked) = sfx_data_table(
                             ui,
                             Id::new(format!("sfx_data_table_{}", i)),
                             &attribute_filter,
                             item,
-                        );
+                        ) {
+                            clicked_attribute = Some(clicked);
+                        }
                     });
                 }
             }
@@ -134,15 +138,26 @@ fn attribute_list<T: Clone + Display>(
     clicked
 }
 
-fn sfx_data_table(ui: &mut Ui, id: Id, attribute_filter: &AttributeFilter, sfx_data: &SfxData) {
-    let _ = attribute_list(
+fn sfx_data_table(
+    ui: &mut Ui,
+    id: Id,
+    attribute_filter: &AttributeFilter,
+    sfx_data: &SfxData,
+) -> Option<AttributeSpecifier> {
+    let mut clicked_attribute: Option<AttributeSpecifier> = None;
+
+    if let Some(clicked) = attribute_list(
         ui,
         id,
         attribute_filter,
         SfxDataAttribute::VARIANTS
             .iter()
             .map(|attr| (attr.clone(), attr.get_value(sfx_data))),
-    );
+    ) {
+        clicked_attribute = Some(clicked.into());
+    }
 
     // TODO: sfx_layer の表
+
+    clicked_attribute
 }

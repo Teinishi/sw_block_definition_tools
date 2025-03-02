@@ -1,4 +1,4 @@
-use super::{DefinitionAttributeValue, Of32};
+use super::{Definition, DefinitionAttributeValue, Of32};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -47,6 +47,18 @@ impl SfxDataAttribute {
             Self::IsUnderwaterAffected => Some(d.sfx_is_underwater_affected?.into()),
         }
     }
+
+    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+        if let Some(datas) = d.sfx_datas.last() {
+            datas
+                .sfx_data
+                .iter()
+                .filter_map(|item| self.get_value(item))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -75,4 +87,57 @@ pub struct SfxLayer {
     pub sfx_volume_fade_speed: Option<Of32>,
     #[serde(rename = "@sfx_pitch_fade_speed")]
     pub sfx_pitch_fade_speed: Option<Of32>,
+}
+
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+)]
+#[strum(serialize_all = "snake_case", prefix = "sfx_")]
+pub enum SfxLayerAttribute {
+    FilenameStart,
+    FilenameLoop,
+    FilenameEnd,
+    Gain,
+    LoopStartTime,
+    LoopBlendDuration,
+    VolumeFadeSpeed,
+    PitchFadeSpeed,
+}
+
+impl SfxLayerAttribute {
+    pub fn get_value(&self, d: &SfxLayer) -> Option<DefinitionAttributeValue> {
+        match self {
+            Self::FilenameStart => Some(d.sfx_filename_start.clone()?.into()),
+            Self::FilenameLoop => Some(d.sfx_filename_loop.clone()?.into()),
+            Self::FilenameEnd => Some(d.sfx_filename_end.clone()?.into()),
+            Self::Gain => Some(d.sfx_gain?.into()),
+            Self::LoopStartTime => Some(d.sfx_loop_start_time?.into()),
+            Self::LoopBlendDuration => Some(d.sfx_loop_blend_duration?.into()),
+            Self::VolumeFadeSpeed => Some(d.sfx_volume_fade_speed?.into()),
+            Self::PitchFadeSpeed => Some(d.sfx_pitch_fade_speed?.into()),
+        }
+    }
+
+    pub fn get_value_root(&self, d: &Definition) -> Vec<DefinitionAttributeValue> {
+        if let Some(datas) = d.sfx_datas.last() {
+            datas
+                .sfx_data
+                .iter()
+                .flat_map(|data| {
+                    data.sfx_layers
+                        .last()
+                        .iter()
+                        .flat_map(|layers| {
+                            layers
+                                .sfx_layer
+                                .iter()
+                                .filter_map(|layer| self.get_value(layer))
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect()
+        } else {
+            vec![]
+        }
+    }
 }
