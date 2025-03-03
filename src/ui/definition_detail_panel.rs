@@ -1,7 +1,7 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    GetAttributeValue, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
-    LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute, GetAttributeValue,
+    IsDefault, LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
     VoxelAttribute,
 };
 use egui::{Button, Grid, Id, Ui};

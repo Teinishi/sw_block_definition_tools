@@ -1,4 +1,4 @@
-use super::Of32;
+use super::{Of32, Position};
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_vec3 {
@@ -16,7 +16,6 @@ macro_rules! define_vec3 {
     };
 }
 
-define_vec3!(Position, i32);
 define_vec3!(Normal, i32);
 define_vec3!(VoxelMin, i32);
 define_vec3!(VoxelMax, i32);

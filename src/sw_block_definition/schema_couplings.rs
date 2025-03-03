@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, GetAttributeValue, AttributeSpecifier, AttributeValue,
-    Definition, Position,
+    attribute_specifier::GetAttributeValueRoot, AttributeSpecifier, AttributeValue, Definition,
+    GetAttributeValue, Position,
 };
 use serde::{Deserialize, Serialize};
 
@@ -43,9 +43,7 @@ pub struct Coupling {
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum CouplingAttribute {
-    X,
-    Y,
-    Z,
+    Position,
     Orientation,
     Alignment,
     CouplingType,
@@ -72,9 +70,7 @@ impl GetAttributeValueRoot for CouplingAttribute {
 impl GetAttributeValue<Coupling> for CouplingAttribute {
     fn get_value(&self, d: &Coupling) -> Option<AttributeValue> {
         match self {
-            Self::X => Some(d.position.last()?.x?.into()),
-            Self::Y => Some(d.position.last()?.y?.into()),
-            Self::Z => Some(d.position.last()?.z?.into()),
+            Self::Position => Some((*d.position.last()?).into()),
             Self::Orientation => Some(d.orientation?.into()),
             Self::Alignment => Some(d.alignment?.into()),
             Self::CouplingType => Some(d.coupling_type.clone()?.into()),

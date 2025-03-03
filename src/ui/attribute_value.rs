@@ -1,5 +1,5 @@
 use super::{play_stop_audio, State};
-use crate::sw_block_definition::{AttributeProperty, AttributeValue};
+use crate::sw_block_definition::{AttributeProperty, AttributeValue, DisplayAttributeValue};
 use egui::{Align, Button, Layout};
 
 pub fn ui_attribute_value(
@@ -37,7 +37,7 @@ pub fn ui_attribute_value(
                 Layout::left_to_right(Align::Center)
             };
             ui.with_layout(layout, |ui| {
-                ui.label(value.debug_string());
+                ui.label(value.display_string());
             });
         });
     } else {

@@ -1,6 +1,6 @@
 use super::{ui_attribute_value, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, SwBlockDefinition,
+    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault, SwBlockDefinition,
 };
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};

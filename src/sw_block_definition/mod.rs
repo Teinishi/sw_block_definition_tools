@@ -1,9 +1,13 @@
 mod definition;
 pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes};
 mod attribute_value;
-pub use attribute_value::{AttributeValue, Of32};
+pub use attribute_value::{
+    AttributeValue, DisplayAttributeValue, IsDefault, Matrix, Of32, Position,
+};
 mod attribute_specifier;
-pub use attribute_specifier::{GetAttributeValue, GetAttributeValueRoot, AttributeProperty, AttributeSpecifier};
+pub use attribute_specifier::{
+    AttributeProperty, AttributeSpecifier, GetAttributeValue, GetAttributeValueRoot,
+};
 mod schema_definition;
 pub use schema_definition::*;
 mod schema_sfx;

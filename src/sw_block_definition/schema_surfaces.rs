@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, GetAttributeValue, AttributeSpecifier, AttributeValue,
-    Definition, Position,
+    attribute_specifier::GetAttributeValueRoot, AttributeSpecifier, AttributeValue, Definition,
+    GetAttributeValue, Position,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,9 +50,7 @@ pub struct Surface {
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum SurfaceAttribute {
-    X,
-    Y,
-    Z,
+    Position,
     Orientation,
     Rotation,
     Shape,
@@ -79,9 +77,7 @@ impl GetAttributeValueRoot for SurfaceAttribute {
 impl GetAttributeValue<Surface> for SurfaceAttribute {
     fn get_value(&self, d: &Surface) -> Option<AttributeValue> {
         match self {
-            Self::X => Some(d.position.last()?.x?.into()),
-            Self::Y => Some(d.position.last()?.y?.into()),
-            Self::Z => Some(d.position.last()?.z?.into()),
+            Self::Position => Some((*d.position.last()?).into()),
             Self::Orientation => Some(d.orientation?.into()),
             Self::Rotation => Some(d.rotation?.into()),
             Self::Shape => Some(d.shape?.into()),
