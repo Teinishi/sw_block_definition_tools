@@ -3,7 +3,7 @@ use crate::sw_block_definition::{
     AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, SfxData,
     SfxDataAttribute, SfxLayerAttribute,
 };
-use egui::{Grid, Id, Ui};
+use egui::{Button, Grid, Id, Ui};
 use strum::VariantArray;
 
 struct AttributeFilter {
@@ -115,7 +115,7 @@ impl DefinitionDetailPanel {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn attribute_list<T: AttributeEnum<S> + Clone, S>(
+fn attribute_list<T: AttributeEnum<S>, S>(
     ui: &mut Ui,
     state: &mut State,
     id: Id,
@@ -133,8 +133,9 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
             for attr in attributes {
                 let value = attr.get_value(data);
                 if attribute_filter.check(&value) {
-                    if ui.button("...").clicked() {
-                        *clicked_attribute = Some(attr.clone());
+                    let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
+                    if button.clicked() {
+                        *clicked_attribute = Some(*attr);
                     }
                     ui.label(attr.to_string());
                     ui_attribute_value(ui, state, attr.property(), value.as_ref());
@@ -151,6 +152,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
     attribute_filter: &AttributeFilter,
     attrs: &[T],
     items: &[S],
+    clicked_attribute: &mut Option<T>,
 ) {
     let columns: Vec<&T> = attrs
         .iter()
@@ -167,7 +169,13 @@ fn attribute_table<T: AttributeEnum<S>, S>(
         .striped(true)
         .show(ui, |ui| {
             for attr in &columns {
-                ui.strong(attr.to_string());
+                ui.horizontal(|ui| {
+                    let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
+                    if button.clicked() {
+                        *clicked_attribute = Some(**attr);
+                    }
+                    ui.strong(attr.to_string());
+                });
             }
             ui.end_row();
 
@@ -202,6 +210,7 @@ fn sfx_data_table(
         *clicked_attribute = Some(c.into());
     }
 
+    let mut clicked: Option<SfxLayerAttribute> = None;
     if let Some(layers) = sfx_data.sfx_layers.last() {
         ui.add_space(4.0);
         attribute_table(
@@ -211,6 +220,10 @@ fn sfx_data_table(
             attribute_filter,
             SfxLayerAttribute::VARIANTS,
             &layers.sfx_layer,
+            &mut clicked,
         );
+    }
+    if let Some(c) = clicked {
+        *clicked_attribute = Some(c.into());
     }
 }

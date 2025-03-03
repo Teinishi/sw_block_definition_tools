@@ -306,7 +306,13 @@ pub struct Definition {
 }
 
 #[derive(
-    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum DefinitionAttribute {

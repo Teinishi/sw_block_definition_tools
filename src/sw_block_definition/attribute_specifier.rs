@@ -5,7 +5,7 @@ pub struct AttributeProperty {
     pub is_audio_file: bool,
 }
 
-pub trait AttributeEnum<T>: std::fmt::Display {
+pub trait AttributeEnum<T>: std::fmt::Display + Clone + Copy {
     fn get_value(&self, d: &T) -> Option<AttributeValue>;
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue>;
     fn property(&self) -> AttributeProperty {

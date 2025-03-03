@@ -28,7 +28,13 @@ pub struct SfxData {
 }
 
 #[derive(
-    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
 )]
 #[strum(serialize_all = "snake_case", prefix = "sfx_")]
 pub enum SfxDataAttribute {
@@ -92,7 +98,13 @@ pub struct SfxLayer {
 }
 
 #[derive(
-    serde::Serialize, serde::Deserialize, PartialEq, strum::Display, strum::VariantArray, Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
 )]
 #[strum(serialize_all = "snake_case", prefix = "sfx_")]
 pub enum SfxLayerAttribute {
