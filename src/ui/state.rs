@@ -3,7 +3,11 @@ use crate::sw_block_definition::{
     SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
-use std::{fs, io, path::PathBuf};
+use std::{
+    fs, io,
+    path::PathBuf,
+    sync::{mpsc, Arc},
+};
 
 macro_rules! getter_setter {
     ($target:ident, $name:ident, $setter_name:ident, $type:ty) => {
@@ -22,6 +26,8 @@ macro_rules! getter_setter {
     };
 }
 
+type PlayingAudio = (String, Arc<rodio::Sink>, mpsc::Receiver<bool>);
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
     rom_path: Option<PathBuf>,
@@ -33,6 +39,8 @@ pub struct State {
     show_surfaces: bool,
     show_surface_edge: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    #[serde(skip)]
+    playing_audio: Option<PlayingAudio>,
     #[serde(skip)]
     changed: Option<bool>,
 }
@@ -53,15 +61,23 @@ impl Default for State {
             show_surfaces: true,
             show_surface_edge: true,
             show_mesh,
+            playing_audio: None,
             changed: None,
         }
     }
 }
 
 impl State {
-    pub fn update(&mut self) {
+    pub fn update(&mut self, ctx: &egui::Context) {
         // 描画フレームごとに1回呼ぶ
         self.changed = Some(false);
+
+        if let Some((_, _, rx_done)) = &self.playing_audio {
+            ctx.request_repaint();
+            if rx_done.try_recv().is_ok() {
+                self.set_playing_audio(None);
+            }
+        }
     }
 
     fn changed(&mut self) {
@@ -114,6 +130,17 @@ impl State {
         self.definitions
             .get_mut(self.selected_definition_index?)?
             .load_meshes()
+    }
+
+    pub fn playing_audio(&self) -> &Option<PlayingAudio> {
+        &self.playing_audio
+    }
+
+    pub fn set_playing_audio(&mut self, value: Option<PlayingAudio>) {
+        if let Some((_, sink, _)) = &self.playing_audio {
+            sink.stop();
+        }
+        self.playing_audio = value;
     }
 
     pub fn open_rom_directory(&mut self, rom_path: PathBuf) -> io::Result<()> {

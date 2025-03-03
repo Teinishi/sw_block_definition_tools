@@ -100,12 +100,14 @@ impl AttributeDetailWindow {
             match self.tab {
                 AttributeDetailTabs::Definitions => self.ui_definitions_table(
                     ui,
+                    state,
                     definition_values,
                     &mut selected_definition_index,
                     &mut action,
                 ),
                 AttributeDetailTabs::Values => self.ui_values_table(
                     ui,
+                    state,
                     definition_values,
                     &mut selected_definition_index,
                     &mut action,
@@ -121,6 +123,7 @@ impl AttributeDetailWindow {
     fn ui_definitions_table<'a>(
         &mut self,
         ui: &mut egui::Ui,
+        state: &State,
         definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: &mut Option<usize>,
         action: &mut Option<AttributeValueAction>,
@@ -167,6 +170,7 @@ impl AttributeDetailWindow {
                                     }
                                     ui_attribute_value(
                                         ui,
+                                        state,
                                         self.specifier.property(),
                                         Some(value),
                                         action,
@@ -182,6 +186,7 @@ impl AttributeDetailWindow {
     fn ui_values_table<'a>(
         &mut self,
         ui: &mut egui::Ui,
+        state: &State,
         definition_values: Vec<DefinitionValuesItem<'a>>,
         selected_definition_index: &mut Option<usize>,
         action: &mut Option<AttributeValueAction>,
@@ -238,7 +243,13 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            ui_attribute_value(ui, self.specifier.property(), Some(key), action);
+                            ui_attribute_value(
+                                ui,
+                                state,
+                                self.specifier.property(),
+                                Some(key),
+                                action,
+                            );
                         });
                     },
                 );

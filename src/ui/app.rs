@@ -151,7 +151,7 @@ impl eframe::App for MainApp {
             });
         });
 
-        self.state.update();
+        self.state.update(ctx);
     }
 }
 

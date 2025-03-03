@@ -14,3 +14,5 @@ mod bottom_panel;
 pub use bottom_panel::BottomPanel;
 mod attirbute_detail_window;
 pub use attirbute_detail_window::AttributeDetailWindow;
+mod audio;
+pub use audio::{play_stop_audio, PlayAudioError};

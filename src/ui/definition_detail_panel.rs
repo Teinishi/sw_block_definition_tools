@@ -76,6 +76,7 @@ impl DefinitionDetailPanel {
                     let mut clicked = None;
                     attribute_list(
                         ui,
+                        state,
                         Id::new("definition_attribute_table"),
                         &attribute_filter,
                         DefinitionAttribute::VARIANTS,
@@ -97,6 +98,7 @@ impl DefinitionDetailPanel {
                     ui.collapsing(title, |ui| {
                         sfx_data_table(
                             ui,
+                            state,
                             Id::new(format!("sfx_data_table_{}", i)),
                             &attribute_filter,
                             item,
@@ -121,8 +123,10 @@ impl DefinitionDetailPanel {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn attribute_list<T: AttributeEnum<S> + Clone, S>(
     ui: &mut Ui,
+    state: &State,
     id: Id,
     attribute_filter: &AttributeFilter,
     attributes: &[T],
@@ -143,7 +147,7 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
                         *clicked_attribute = Some(attr.clone());
                     }
                     ui.label(attr.to_string());
-                    ui_attribute_value(ui, attr.property(), value.as_ref(), action);
+                    ui_attribute_value(ui, state, attr.property(), value.as_ref(), action);
                     ui.end_row();
                 }
             }
@@ -152,6 +156,7 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
 
 fn attribute_table<T: AttributeEnum<S>, S>(
     ui: &mut Ui,
+    state: &State,
     id: Id,
     attribute_filter: &AttributeFilter,
     attrs: &[T],
@@ -179,7 +184,13 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    ui_attribute_value(ui, attr.property(), attr.get_value(item).as_ref(), action);
+                    ui_attribute_value(
+                        ui,
+                        state,
+                        attr.property(),
+                        attr.get_value(item).as_ref(),
+                        action,
+                    );
                 }
                 ui.end_row();
             }
@@ -188,6 +199,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
 fn sfx_data_table(
     ui: &mut Ui,
+    state: &State,
     id: Id,
     attribute_filter: &AttributeFilter,
     sfx_data: &SfxData,
@@ -197,6 +209,7 @@ fn sfx_data_table(
     let mut clicked = None;
     attribute_list(
         ui,
+        state,
         id,
         attribute_filter,
         SfxDataAttribute::VARIANTS,
@@ -212,6 +225,7 @@ fn sfx_data_table(
         ui.add_space(4.0);
         attribute_table(
             ui,
+            state,
             id.with("layer_table"),
             attribute_filter,
             SfxLayerAttribute::VARIANTS,
