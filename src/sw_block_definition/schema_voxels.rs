@@ -1,4 +1,7 @@
-use super::{AttributeEnum, AttributeSpecifier, AttributeValue, Definition, Position};
+use super::{
+    attribute_specifier::GetAttributeValueRoot, GetAttributeValue, AttributeSpecifier, AttributeValue,
+    Definition, Position,
+};
 use serde::{Deserialize, Serialize};
 
 fn one() -> i32 {
@@ -85,18 +88,7 @@ pub enum VoxelAttribute {
     BuoyPipes,
 }
 
-impl AttributeEnum<Voxel> for VoxelAttribute {
-    fn get_value(&self, d: &Voxel) -> Option<AttributeValue> {
-        match self {
-            Self::X => Some(d.position.last()?.x?.into()),
-            Self::Y => Some(d.position.last()?.y?.into()),
-            Self::Z => Some(d.position.last()?.z?.into()),
-            Self::Flags => Some(d.flags?.into()),
-            Self::PhysicsShape => Some(d.physics_shape?.into()),
-            Self::BuoyPipes => Some(d.buoy_pipes?.into()),
-        }
-    }
-
+impl GetAttributeValueRoot for VoxelAttribute {
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         if let Some(voxels) = d.voxels.last() {
             voxels
@@ -106,6 +98,19 @@ impl AttributeEnum<Voxel> for VoxelAttribute {
                 .collect()
         } else {
             vec![]
+        }
+    }
+}
+
+impl GetAttributeValue<Voxel> for VoxelAttribute {
+    fn get_value(&self, d: &Voxel) -> Option<AttributeValue> {
+        match self {
+            Self::X => Some(d.position.last()?.x?.into()),
+            Self::Y => Some(d.position.last()?.y?.into()),
+            Self::Z => Some(d.position.last()?.z?.into()),
+            Self::Flags => Some(d.flags?.into()),
+            Self::PhysicsShape => Some(d.physics_shape?.into()),
+            Self::BuoyPipes => Some(d.buoy_pipes?.into()),
         }
     }
 }

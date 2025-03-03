@@ -1,4 +1,7 @@
-use super::{AttributeEnum, AttributeSpecifier, AttributeValue, Definition, Position};
+use super::{
+    attribute_specifier::GetAttributeValueRoot, GetAttributeValue, AttributeSpecifier, AttributeValue,
+    Definition, Position,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -49,7 +52,21 @@ pub enum LogicNodeAttribute {
     Flags,
 }
 
-impl AttributeEnum<LogicNode> for LogicNodeAttribute {
+impl GetAttributeValueRoot for LogicNodeAttribute {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(logic_nodes) = d.logic_nodes.last() {
+            logic_nodes
+                .logic_node
+                .iter()
+                .filter_map(|item| self.get_value(item))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
+
+impl GetAttributeValue<LogicNode> for LogicNodeAttribute {
     fn get_value(&self, d: &LogicNode) -> Option<AttributeValue> {
         match self {
             Self::X => Some(d.position.last()?.x?.into()),
@@ -61,18 +78,6 @@ impl AttributeEnum<LogicNode> for LogicNodeAttribute {
             Self::NodeType => Some(d.node_type?.into()),
             Self::Description => Some(d.description.clone()?.into()),
             Self::Flags => Some(d.flags?.into()),
-        }
-    }
-
-    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
-        if let Some(logic_nodes) = d.logic_nodes.last() {
-            logic_nodes
-                .logic_node
-                .iter()
-                .filter_map(|item| self.get_value(item))
-                .collect()
-        } else {
-            vec![]
         }
     }
 }

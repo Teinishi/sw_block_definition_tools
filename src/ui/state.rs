@@ -1,6 +1,6 @@
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, SwBlockDefinition, SwBlockDefinitionMeshKey,
-    SwBlockDefinitionMeshes,
+    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, SwBlockDefinition,
+    SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
 use std::{

@@ -1,4 +1,7 @@
-use super::{AttributeEnum, AttributeSpecifier, AttributeValue, Definition, Position};
+use super::{
+    attribute_specifier::GetAttributeValueRoot, GetAttributeValue, AttributeSpecifier, AttributeValue,
+    Definition, Position,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -52,7 +55,21 @@ pub enum CouplingAttribute {
     AllowBipolarALignment,
 }
 
-impl AttributeEnum<Coupling> for CouplingAttribute {
+impl GetAttributeValueRoot for CouplingAttribute {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(couplings) = d.couplings.last() {
+            couplings
+                .coupling
+                .iter()
+                .filter_map(|item| self.get_value(item))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
+
+impl GetAttributeValue<Coupling> for CouplingAttribute {
     fn get_value(&self, d: &Coupling) -> Option<AttributeValue> {
         match self {
             Self::X => Some(d.position.last()?.x?.into()),
@@ -65,18 +82,6 @@ impl AttributeEnum<Coupling> for CouplingAttribute {
             Self::CouplingGender => Some(d.coupling_gender?.into()),
             Self::AlignmentRequired => Some(d.alignment_required?.into()),
             Self::AllowBipolarALignment => Some(d.allow_bipolar_alignment?.into()),
-        }
-    }
-
-    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
-        if let Some(couplings) = d.couplings.last() {
-            couplings
-                .coupling
-                .iter()
-                .filter_map(|item| self.get_value(item))
-                .collect()
-        } else {
-            vec![]
         }
     }
 }

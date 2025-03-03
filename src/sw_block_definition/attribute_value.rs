@@ -1,6 +1,15 @@
+use ambassador::{delegatable_trait_remote, Delegate};
+use std::fmt::Debug;
+
+#[delegatable_trait_remote]
+trait Debug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error>;
+}
+
 pub type Of32 = ordered_float::NotNan<f32>;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Delegate)]
+#[delegate(Debug)]
 pub enum AttributeValue {
     Bool(bool),
     I32(i32),
@@ -10,14 +19,8 @@ pub enum AttributeValue {
 }
 
 impl AttributeValue {
-    pub fn debug_str(&self) -> String {
-        match self {
-            Self::Bool(value) => format!("{:?}", value),
-            Self::I32(value) => format!("{:?}", value),
-            Self::U64(value) => format!("{:?}", value),
-            Self::Of32(value) => format!("{:?}", value),
-            Self::String(value) => format!("{:?}", value),
-        }
+    pub fn debug_string(&self) -> String {
+        format!("{:?}", self)
     }
 
     pub fn is_default(&self) -> bool {

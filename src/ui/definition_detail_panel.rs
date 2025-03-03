@@ -1,6 +1,6 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeEnum, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
+    GetAttributeValue, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
     LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
     VoxelAttribute,
 };
@@ -177,7 +177,7 @@ impl DefinitionDetailPanel {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn attribute_list<T: AttributeEnum<S>, S>(
+fn attribute_list<T: GetAttributeValue<S>, S>(
     ui: &mut Ui,
     state: &mut State,
     id: Id,
@@ -206,7 +206,7 @@ fn attribute_list<T: AttributeEnum<S>, S>(
         });
 }
 
-fn attribute_table<T: AttributeEnum<S>, S>(
+fn attribute_table<T: GetAttributeValue<S>, S>(
     ui: &mut Ui,
     state: &mut State,
     id: Id,
@@ -294,7 +294,7 @@ fn sfx_data_table(
     }
 }
 
-fn elements_table<T: AttributeEnum<S>, S>(
+fn elements_table<T: GetAttributeValue<S>, S>(
     ui: &mut Ui,
     state: &mut State,
     name: &'_ str,

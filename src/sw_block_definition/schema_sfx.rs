@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::AttributeProperty, AttributeEnum, AttributeSpecifier, AttributeValue,
-    Definition, Of32,
+    attribute_specifier::{AttributeProperty, GetAttributeValueRoot},
+    GetAttributeValue, AttributeSpecifier, AttributeValue, Definition, Of32,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,17 +46,7 @@ pub enum SfxDataAttribute {
     IsUnderwaterAffected,
 }
 
-impl AttributeEnum<SfxData> for SfxDataAttribute {
-    fn get_value(&self, d: &SfxData) -> Option<AttributeValue> {
-        match self {
-            Self::Name => Some(d.sfx_name.clone()?.into()),
-            Self::RangeInner => Some(d.sfx_range_inner?.into()),
-            Self::RangeOuter => Some(d.sfx_range_outer?.into()),
-            Self::Priority => Some(d.sfx_priority?.into()),
-            Self::IsUnderwaterAffected => Some(d.sfx_is_underwater_affected?.into()),
-        }
-    }
-
+impl GetAttributeValueRoot for SfxDataAttribute {
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
@@ -66,6 +56,18 @@ impl AttributeEnum<SfxData> for SfxDataAttribute {
                 .collect()
         } else {
             vec![]
+        }
+    }
+}
+
+impl GetAttributeValue<SfxData> for SfxDataAttribute {
+    fn get_value(&self, d: &SfxData) -> Option<AttributeValue> {
+        match self {
+            Self::Name => Some(d.sfx_name.clone()?.into()),
+            Self::RangeInner => Some(d.sfx_range_inner?.into()),
+            Self::RangeOuter => Some(d.sfx_range_outer?.into()),
+            Self::Priority => Some(d.sfx_priority?.into()),
+            Self::IsUnderwaterAffected => Some(d.sfx_is_underwater_affected?.into()),
         }
     }
 }
@@ -125,20 +127,7 @@ pub enum SfxLayerAttribute {
     PitchFadeSpeed,
 }
 
-impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
-    fn get_value(&self, d: &SfxLayer) -> Option<AttributeValue> {
-        match self {
-            Self::FilenameStart => Some(d.sfx_filename_start.clone()?.into()),
-            Self::FilenameLoop => Some(d.sfx_filename_loop.clone()?.into()),
-            Self::FilenameEnd => Some(d.sfx_filename_end.clone()?.into()),
-            Self::Gain => Some(d.sfx_gain?.into()),
-            Self::LoopStartTime => Some(d.sfx_loop_start_time?.into()),
-            Self::LoopBlendDuration => Some(d.sfx_loop_blend_duration?.into()),
-            Self::VolumeFadeSpeed => Some(d.sfx_volume_fade_speed?.into()),
-            Self::PitchFadeSpeed => Some(d.sfx_pitch_fade_speed?.into()),
-        }
-    }
-
+impl GetAttributeValueRoot for SfxLayerAttribute {
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         if let Some(datas) = d.sfx_datas.last() {
             datas
@@ -168,6 +157,21 @@ impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
                 self,
                 Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
             ),
+        }
+    }
+}
+
+impl GetAttributeValue<SfxLayer> for SfxLayerAttribute {
+    fn get_value(&self, d: &SfxLayer) -> Option<AttributeValue> {
+        match self {
+            Self::FilenameStart => Some(d.sfx_filename_start.clone()?.into()),
+            Self::FilenameLoop => Some(d.sfx_filename_loop.clone()?.into()),
+            Self::FilenameEnd => Some(d.sfx_filename_end.clone()?.into()),
+            Self::Gain => Some(d.sfx_gain?.into()),
+            Self::LoopStartTime => Some(d.sfx_loop_start_time?.into()),
+            Self::LoopBlendDuration => Some(d.sfx_loop_blend_duration?.into()),
+            Self::VolumeFadeSpeed => Some(d.sfx_volume_fade_speed?.into()),
+            Self::PitchFadeSpeed => Some(d.sfx_pitch_fade_speed?.into()),
         }
     }
 }

@@ -37,7 +37,7 @@ pub fn ui_attribute_value(
                 Layout::left_to_right(Align::Center)
             };
             ui.with_layout(layout, |ui| {
-                ui.label(value.debug_str());
+                ui.label(value.debug_string());
             });
         });
     } else {
