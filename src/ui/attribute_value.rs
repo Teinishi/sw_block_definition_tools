@@ -17,7 +17,7 @@ pub fn ui_attribute_value(
                     let is_playing = state
                         .playing_audio()
                         .as_ref()
-                        .map_or(false, |(playing_path, _, _)| playing_path == path);
+                        .is_some_and(|(playing_path, _, _)| playing_path == path);
 
                     let button = ui.add_sized(
                         [20.0, 20.0],

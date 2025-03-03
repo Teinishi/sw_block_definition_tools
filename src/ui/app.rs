@@ -76,6 +76,7 @@ impl eframe::App for MainApp {
         }
     }
 
+    #[allow(unused_variables)]
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
         for window in &mut self.attribute_detail_windows {
             window.ui(ctx, &mut self.state);
