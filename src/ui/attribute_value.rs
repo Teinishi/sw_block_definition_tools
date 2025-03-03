@@ -39,7 +39,6 @@ impl AttributeValueAction {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn play_audio(
     path: std::path::PathBuf,
     volume: f32,
