@@ -69,7 +69,6 @@ fn play_audio(
     rx
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 enum PlayAudioErr {
     #[allow(dead_code)]
     Io(std::io::Error),
@@ -79,28 +78,24 @@ enum PlayAudioErr {
     Play(rodio::PlayError),
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl From<std::io::Error> for PlayAudioErr {
     fn from(value: std::io::Error) -> Self {
         Self::Io(value)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl From<rodio::StreamError> for PlayAudioErr {
     fn from(value: rodio::StreamError) -> Self {
         Self::Stream(value)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl From<rodio::PlayError> for PlayAudioErr {
     fn from(value: rodio::PlayError) -> Self {
         Self::Play(value)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl std::fmt::Display for PlayAudioErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -110,6 +105,3 @@ impl std::fmt::Display for PlayAudioErr {
         }
     }
 }
-
-#[cfg(target_arch = "wasm32")]
-fn play_audio(_: std::path::PathBuf, _: f32) {}

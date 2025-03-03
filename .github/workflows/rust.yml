@@ -5,8 +5,6 @@ name: CI
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  SDL_VIDEODRIVER: "dummy"
-  SDL_AUDIODRIVER: "disk"
 
 jobs:
   check:
@@ -14,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get install libasound2-dev librust-alsa-sys-dev
+      - run: sudo apt-get install libasound2-dev
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -51,7 +49,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libasound2-dev librust-alsa-sys-dev
+      - run: sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libasound2-dev
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -78,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get install libasound2-dev librust-alsa-sys-dev
+      - run: sudo apt-get install libasound2-dev
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
