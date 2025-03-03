@@ -1,6 +1,5 @@
 use super::State;
 use crate::sw_block_definition::{AttributeProperty, AttributeValue};
-use std::{fmt::Display, io};
 
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
@@ -53,7 +52,7 @@ fn play_audio(
             Ok(file) => match rodio::OutputStream::try_default() {
                 Err(err) => Err(err.into()),
                 Ok((_stream, stream_handle)) => {
-                    match stream_handle.play_once(io::BufReader::new(file)) {
+                    match stream_handle.play_once(std::io::BufReader::new(file)) {
                         Err(err) => Err(err.into()),
                         Ok(sink) => {
                             sink.set_volume(volume);
@@ -73,7 +72,7 @@ fn play_audio(
 #[cfg(not(target_arch = "wasm32"))]
 enum PlayAudioErr {
     #[allow(dead_code)]
-    Io(io::Error),
+    Io(std::io::Error),
     #[allow(dead_code)]
     Stream(rodio::StreamError),
     #[allow(dead_code)]
@@ -81,8 +80,8 @@ enum PlayAudioErr {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl From<io::Error> for PlayAudioErr {
-    fn from(value: io::Error) -> Self {
+impl From<std::io::Error> for PlayAudioErr {
+    fn from(value: std::io::Error) -> Self {
         Self::Io(value)
     }
 }
@@ -102,7 +101,7 @@ impl From<rodio::PlayError> for PlayAudioErr {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl Display for PlayAudioErr {
+impl std::fmt::Display for PlayAudioErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Io(err) => err.fmt(f),

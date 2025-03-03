@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
+      - run: sudo apt-get install libasound2-dev librust-alsa-sys-dev
         with:
           profile: minimal
           toolchain: stable
@@ -78,6 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
+      - run: sudo apt-get install libasound2-dev librust-alsa-sys-dev
         with:
           profile: minimal
           toolchain: stable
