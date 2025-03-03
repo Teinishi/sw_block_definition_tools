@@ -10,6 +10,21 @@ use std::{
 };
 
 macro_rules! getter_setter {
+    ($target:ident, $name:ident, $setter_name:ident, $type:ty, $change_fn:ident) => {
+        impl $target {
+            pub fn $name(&self) -> $type {
+                self.$name
+            }
+
+            pub fn $setter_name(&mut self, value: $type) {
+                if (self.$name != value) {
+                    self.$name = value;
+                    self.$change_fn();
+                }
+            }
+        }
+    };
+
     ($target:ident, $name:ident, $setter_name:ident, $type:ty) => {
         impl $target {
             pub fn $name(&self) -> $type {
@@ -19,7 +34,6 @@ macro_rules! getter_setter {
             pub fn $setter_name(&mut self, value: $type) {
                 if (self.$name != value) {
                     self.$name = value;
-                    self.changed();
                 }
             }
         }
@@ -39,10 +53,11 @@ pub struct State {
     show_surfaces: bool,
     show_surface_edge: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    audio_volume: f32,
     #[serde(skip)]
     playing_audio: Option<PlayingAudio>,
     #[serde(skip)]
-    changed: Option<bool>,
+    changed_3d: Option<bool>,
 }
 
 impl Default for State {
@@ -61,8 +76,9 @@ impl Default for State {
             show_surfaces: true,
             show_surface_edge: true,
             show_mesh,
+            audio_volume: 0.5,
             playing_audio: None,
-            changed: None,
+            changed_3d: None,
         }
     }
 }
@@ -70,7 +86,7 @@ impl Default for State {
 impl State {
     pub fn update(&mut self, ctx: &egui::Context) {
         // 描画フレームごとに1回呼ぶ
-        self.changed = Some(false);
+        self.changed_3d = Some(false);
 
         if let Some((_, _, rx_done)) = &self.playing_audio {
             ctx.request_repaint();
@@ -80,12 +96,12 @@ impl State {
         }
     }
 
-    fn changed(&mut self) {
-        self.changed = Some(true);
+    fn changed_3d(&mut self) {
+        self.changed_3d = Some(true);
     }
 
-    pub fn is_changed(&self) -> bool {
-        self.changed.is_none() || self.changed.unwrap()
+    pub fn is_changed_3d(&self) -> bool {
+        self.changed_3d.is_none() || self.changed_3d.unwrap()
     }
 
     pub fn rom_path(&self) -> &Option<PathBuf> {
@@ -103,7 +119,7 @@ impl State {
     pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
         if self.selected_definition_index != value {
             self.selected_definition_index = value;
-            self.changed();
+            self.changed_3d();
         }
     }
 
@@ -118,7 +134,7 @@ impl State {
     pub fn set_show_mesh(&mut self, key: SwBlockDefinitionMeshKey, value: bool) {
         if self.show_mesh[key.clone()] != value {
             self.show_mesh[key] = value;
-            self.changed();
+            self.changed_3d();
         }
     }
 
@@ -161,7 +177,7 @@ impl State {
                     .collect();
                 self.selected_definition_index = None;
                 self.rom_path = Some(rom_path);
-                self.changed();
+                self.changed_3d();
                 Ok(())
             }
             Err(err) => {
@@ -174,16 +190,30 @@ impl State {
     }
 }
 
-getter_setter!(State, show_all_attributes, set_show_all_sttributes, bool);
+getter_setter!(
+    State,
+    show_all_attributes,
+    set_show_all_sttributes,
+    bool,
+    changed_3d
+);
 getter_setter!(
     State,
     hide_default_attributes,
     set_hide_default_attributes,
-    bool
+    bool,
+    changed_3d
 );
-getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool);
-getter_setter!(State, show_surfaces, set_show_surfaces, bool);
-getter_setter!(State, show_surface_edge, set_show_surface_edge, bool);
+getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool, changed_3d);
+getter_setter!(State, show_surfaces, set_show_surfaces, bool, changed_3d);
+getter_setter!(
+    State,
+    show_surface_edge,
+    set_show_surface_edge,
+    bool,
+    changed_3d
+);
+getter_setter!(State, audio_volume, set_audio_volume, f32);
 
 impl State {
     pub fn load_all_definitions(&mut self) {

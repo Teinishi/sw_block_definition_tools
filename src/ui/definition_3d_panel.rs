@@ -102,7 +102,7 @@ impl Definition3dPanel {
             mesh_loaded_now = false;
         }
 
-        if state.is_changed() || (mesh_loaded_now != self.mesh_loaded) {
+        if state.is_changed_3d() || (mesh_loaded_now != self.mesh_loaded) {
             self.update_scene(state);
         }
         self.mesh_loaded = mesh_loaded_now;

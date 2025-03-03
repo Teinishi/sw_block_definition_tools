@@ -101,6 +101,17 @@ impl eframe::App for MainApp {
                 }
 
                 egui::widgets::global_theme_preference_buttons(ui);
+
+                ui.separator();
+
+                let mut volume = self.state.audio_volume();
+                ui.add(
+                    Slider::new(&mut volume, 0.0..=1.0)
+                        .show_value(false)
+                        .trailing_fill(true)
+                        .text("Sound Volume"),
+                );
+                self.state.set_audio_volume(volume);
             });
         });
 
@@ -154,6 +165,7 @@ impl eframe::App for MainApp {
     }
 }
 
+use egui::Slider;
 #[cfg(not(target_arch = "wasm32"))]
 use raw_window_handle;
 
