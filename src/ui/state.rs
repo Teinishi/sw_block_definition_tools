@@ -204,10 +204,14 @@ getter_setter!(
 getter_setter!(State, audio_volume, set_audio_volume, f32);
 
 impl State {
-    pub fn load_all_definitions(&mut self) {
+    pub fn load_all_definitions(&mut self) -> i32 {
+        let mut loading_count = 0;
         for definition in &mut self.definitions {
-            let _ = definition.load_data();
+            if definition.load_data().is_none() {
+                loading_count += 1;
+            }
         }
+        loading_count
     }
 
     pub fn get_attribute_all_definitions(
