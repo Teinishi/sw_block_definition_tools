@@ -1,7 +1,7 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, LogicNodeAttribute,
-    SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    AttributeEnum, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
+    LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
 };
 use egui::{Button, Grid, Id, Ui};
 use strum::VariantArray;
@@ -14,8 +14,8 @@ struct AttributeFilter {
 impl AttributeFilter {
     fn from_state(state: &State) -> Self {
         Self {
-            show_all: state.show_all_attributes(),
-            hide_default: state.hide_default_attributes(),
+            show_all: state.show_all(),
+            hide_default: state.hide_default(),
         }
     }
 
@@ -107,65 +107,56 @@ impl DefinitionDetailPanel {
             }
 
             // <surfaces> のリスト
-            if let Some(surfaces) = data.surfaces.last() {
-                let surfaces = &surfaces.surface;
-                if !surfaces.is_empty() {
-                    ui.collapsing("surfaces", |ui| {
-                        if let Some(clicked) = attribute_table(
-                            ui,
-                            state,
-                            Id::new("surfaces_table"),
-                            &attribute_filter,
-                            SurfaceAttribute::VARIANTS,
-                            surfaces,
-                        ) {
-                            clicked_attribute = Some(clicked.into());
-                        }
-                    });
-                }
-            }
+            elements_table(
+                ui,
+                state,
+                "surfaces",
+                SurfaceAttribute::VARIANTS,
+                data.surfaces.last().map(|surfaces| &surfaces.surface),
+                &attribute_filter,
+                &mut clicked_attribute,
+            );
 
             // <buoyancy_surfaces> のリスト
-            if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
-                let surfaces = &buoyancy_surfaces.surface;
-                if !surfaces.is_empty() {
-                    ui.collapsing("buoyancy_surfaces", |ui| {
-                        if let Some(clicked) = attribute_table(
-                            ui,
-                            state,
-                            Id::new("buoyancy_surfaces_table"),
-                            &attribute_filter,
-                            SurfaceAttribute::VARIANTS,
-                            surfaces,
-                        ) {
-                            clicked_attribute = Some(clicked.into());
-                        }
-                    });
-                }
-            }
+            elements_table(
+                ui,
+                state,
+                "buoyancy_surfaces",
+                SurfaceAttribute::VARIANTS,
+                data.buoyancy_surfaces
+                    .last()
+                    .map(|surfaces| &surfaces.surface),
+                &attribute_filter,
+                &mut clicked_attribute,
+            );
 
             // <logic_nodes> のリスト
-            if let Some(logic_nodes) = data.logic_nodes.last() {
-                let logic_nodes = &logic_nodes.logic_node;
-                if !logic_nodes.is_empty() {
-                    ui.collapsing("logic_nodes", |ui| {
-                        if let Some(clicked) = attribute_table(
-                            ui,
-                            state,
-                            Id::new("logic_nodes_table"),
-                            &attribute_filter,
-                            LogicNodeAttribute::VARIANTS,
-                            logic_nodes,
-                        ) {
-                            clicked_attribute = Some(clicked.into());
-                        }
-                    });
-                }
-            }
+            elements_table(
+                ui,
+                state,
+                "logic_nodes",
+                LogicNodeAttribute::VARIANTS,
+                data.logic_nodes
+                    .last()
+                    .map(|logic_nodes| &logic_nodes.logic_node),
+                &attribute_filter,
+                &mut clicked_attribute,
+            );
+
+            // <couplings> のリスト
+            elements_table(
+                ui,
+                state,
+                "couplings",
+                CouplingAttribute::VARIANTS,
+                data.couplings.last().map(|couplings| &couplings.coupling),
+                &attribute_filter,
+                &mut clicked_attribute,
+            );
 
             Some(AttributeDetailWindow::new(
                 clicked_attribute?,
-                state.hide_default_attributes(),
+                state.hide_default(),
             ))
         } else {
             None
@@ -214,9 +205,10 @@ fn attribute_table<T: AttributeEnum<S>, S>(
     let columns: Vec<&T> = attrs
         .iter()
         .filter(|attr| {
-            items
-                .iter()
-                .any(|item| attribute_filter.check(&attr.get_value(item)))
+            attribute_filter.show_all
+                || items
+                    .iter()
+                    .any(|item| attribute_filter.check(&attr.get_value(item)))
         })
         .collect();
     let mut clicked = None;
@@ -227,11 +219,11 @@ fn attribute_table<T: AttributeEnum<S>, S>(
         .show(ui, |ui| {
             for attr in &columns {
                 ui.horizontal(|ui| {
+                    ui.strong(attr.to_string());
                     let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
                     if button.clicked() {
                         clicked = Some(**attr);
                     }
-                    ui.strong(attr.to_string());
                 });
             }
             ui.end_row();
@@ -288,4 +280,30 @@ fn sfx_data_table(
             *clicked_attribute = Some(clicked.into());
         }
     }
+}
+
+fn elements_table<T: AttributeEnum<S>, S>(
+    ui: &mut Ui,
+    state: &mut State,
+    name: &'_ str,
+    attrs: &[T],
+    data: Option<&Vec<S>>,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    if !attribute_filter.show_all && data.map_or(true, |v| v.is_empty()) {
+        return;
+    }
+    ui.collapsing(name, |ui| {
+        if let Some(clicked) = attribute_table(
+            ui,
+            state,
+            Id::new(name),
+            attribute_filter,
+            attrs,
+            data.map_or(&Vec::new(), |v| v),
+        ) {
+            *clicked_attribute = Some(clicked.into());
+        }
+    });
 }

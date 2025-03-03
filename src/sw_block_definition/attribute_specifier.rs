@@ -1,6 +1,6 @@
 use super::{
-    AttributeValue, Definition, DefinitionAttribute, LogicNodeAttribute, SfxDataAttribute,
-    SfxLayerAttribute, SurfaceAttribute,
+    AttributeValue, CouplingAttribute, Definition, DefinitionAttribute, LogicNodeAttribute,
+    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
 };
 
 #[derive(Default)]
@@ -8,7 +8,7 @@ pub struct AttributeProperty {
     pub is_audio_file: bool,
 }
 
-pub trait AttributeEnum<T>: std::fmt::Display + Clone + Copy {
+pub trait AttributeEnum<T>: std::fmt::Display + Clone + Copy + Into<AttributeSpecifier> {
     fn get_value(&self, d: &T) -> Option<AttributeValue>;
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue>;
     fn property(&self) -> AttributeProperty {
@@ -23,6 +23,7 @@ pub enum AttributeSpecifier {
     SfxLayer(SfxLayerAttribute),
     Surface(SurfaceAttribute),
     LogicNode(LogicNodeAttribute),
+    Coupling(CouplingAttribute),
 }
 
 impl AttributeSpecifier {
@@ -33,6 +34,7 @@ impl AttributeSpecifier {
             Self::SfxLayer(attr) => attr.get_value_root(d),
             Self::Surface(attr) => attr.get_value_root(d),
             Self::LogicNode(attr) => attr.get_value_root(d),
+            Self::Coupling(attr) => attr.get_value_root(d),
         }
     }
 
@@ -43,6 +45,7 @@ impl AttributeSpecifier {
             Self::SfxLayer(attr) => attr.property(),
             Self::Surface(attr) => attr.property(),
             Self::LogicNode(attr) => attr.property(),
+            Self::Coupling(attr) => attr.property(),
         }
     }
 }
@@ -55,6 +58,7 @@ impl std::fmt::Display for AttributeSpecifier {
             Self::SfxLayer(attr) => attr.fmt(f),
             Self::Surface(attr) => attr.fmt(f),
             Self::LogicNode(attr) => attr.fmt(f),
+            Self::Coupling(attr) => attr.fmt(f),
         }
     }
 }

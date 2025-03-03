@@ -47,8 +47,8 @@ pub struct State {
     rom_path: Option<PathBuf>,
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
-    show_all_attributes: bool,
-    hide_default_attributes: bool,
+    show_all: bool,
+    hide_default: bool,
     show_xyz_axis: bool,
     show_surfaces: bool,
     show_surface_edge: bool,
@@ -70,8 +70,8 @@ impl Default for State {
             rom_path: None,
             definitions: Vec::new(),
             selected_definition_index: None,
-            show_all_attributes: false,
-            hide_default_attributes: false,
+            show_all: false,
+            hide_default: false,
             show_xyz_axis: true,
             show_surfaces: true,
             show_surface_edge: true,
@@ -190,20 +190,8 @@ impl State {
     }
 }
 
-getter_setter!(
-    State,
-    show_all_attributes,
-    set_show_all_sttributes,
-    bool,
-    changed_3d
-);
-getter_setter!(
-    State,
-    hide_default_attributes,
-    set_hide_default_attributes,
-    bool,
-    changed_3d
-);
+getter_setter!(State, show_all, set_show_all, bool, changed_3d);
+getter_setter!(State, hide_default, set_hide_default, bool, changed_3d);
 getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool, changed_3d);
 getter_setter!(State, show_surfaces, set_show_surfaces, bool, changed_3d);
 getter_setter!(
