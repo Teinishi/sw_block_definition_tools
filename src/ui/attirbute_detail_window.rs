@@ -1,4 +1,4 @@
-use super::{ui_attribute_value, AttributeValueAction, State};
+use super::{ui_attribute_value, State};
 use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, SwBlockDefinition};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
@@ -90,66 +90,41 @@ impl AttributeDetailWindow {
         ScrollArea::vertical().show(ui, |ui| {
             state.load_all_definitions();
             let mut definition_values = state.get_attribute_all_definitions(&self.specifier);
-
             if self.hide_default_value {
                 definition_values.retain(|(_, _, v)| !v.is_default());
             }
 
             let mut selected_definition_index = *state.selected_definition_index();
-            let mut action = None;
             match self.tab {
-                AttributeDetailTabs::Definitions => self.ui_definitions_table(
-                    ui,
-                    state,
-                    definition_values,
-                    &mut selected_definition_index,
-                    &mut action,
-                ),
-                AttributeDetailTabs::Values => self.ui_values_table(
-                    ui,
-                    state,
-                    definition_values,
-                    &mut selected_definition_index,
-                    &mut action,
-                ),
+                AttributeDetailTabs::Definitions => {
+                    let map = definition_map(definition_values);
+                    self.ui_definitions_table(ui, state, map, &mut selected_definition_index);
+                }
+                AttributeDetailTabs::Values => {
+                    let map = value_map(definition_values);
+                    self.ui_values_table(ui, state, map, &mut selected_definition_index)
+                }
             }
             state.set_selected_definition_index(selected_definition_index);
-            if let Some(action) = action {
-                AttributeValueAction::do_action(action, state);
-            }
         });
     }
 
-    fn ui_definitions_table<'a>(
+    fn ui_definitions_table(
         &mut self,
         ui: &mut egui::Ui,
-        state: &State,
-        definition_values: Vec<DefinitionValuesItem<'a>>,
+        state: &mut State,
+        definition_map: BTreeMap<usize, (String, BTreeSet<AttributeValue>)>,
         selected_definition_index: &mut Option<usize>,
-        action: &mut Option<AttributeValueAction>,
     ) {
-        let mut definition_map: BTreeMap<usize, (&'a SwBlockDefinition, BTreeSet<AttributeValue>)> =
-            BTreeMap::new();
-        for (i, definition, value) in definition_values {
-            if let Some(entry) = definition_map.get_mut(&i) {
-                entry.1.insert(value);
-            } else {
-                definition_map.insert(i, (definition, BTreeSet::from([value])));
-            }
-        }
-
         TableBuilder::new(ui)
             .column(Column::exact(250.0))
             .column(Column::remainder())
             .striped(true)
             .body(|body| {
                 body.rows(20.0, definition_map.len(), |mut row| {
-                    if let Some((i, (definition, values))) = definition_map.iter().nth(row.index())
-                    {
+                    if let Some((i, (filename, values))) = definition_map.iter().nth(row.index()) {
                         let i = *i;
-                        let definition = *definition;
 
-                        let filename = definition.filename();
                         let checked = Some(i) == *selected_definition_index;
 
                         row.col(|ui| {
@@ -173,7 +148,6 @@ impl AttributeDetailWindow {
                                         state,
                                         self.specifier.property(),
                                         Some(value),
-                                        action,
                                     );
                                 }
                             });
@@ -183,26 +157,13 @@ impl AttributeDetailWindow {
             });
     }
 
-    fn ui_values_table<'a>(
+    fn ui_values_table(
         &mut self,
         ui: &mut egui::Ui,
-        state: &State,
-        definition_values: Vec<DefinitionValuesItem<'a>>,
+        state: &mut State,
+        value_map: BTreeMap<AttributeValue, BTreeMap<usize, String>>,
         selected_definition_index: &mut Option<usize>,
-        action: &mut Option<AttributeValueAction>,
     ) {
-        let mut value_map: BTreeMap<AttributeValue, BTreeMap<usize, &'a SwBlockDefinition>> =
-            BTreeMap::new();
-        for (i, definition, value) in definition_values {
-            if let Some(entries) = value_map.get_mut(&value) {
-                entries.insert(i, definition);
-            } else {
-                let mut entries = BTreeMap::new();
-                entries.insert(i, definition);
-                value_map.insert(value, entries);
-            }
-        }
-
         TableBuilder::new(ui)
             .column(Column::exact(250.0))
             .column(Column::remainder())
@@ -221,12 +182,9 @@ impl AttributeDetailWindow {
                         row.col(|ui| {
                             let collapsing_response =
                                 ui.collapsing(format!("{} definitions", definitions.len()), |ui| {
-                                    for (i, definition) in definitions {
+                                    for (i, filename) in definitions {
                                         let checked = Some(*i) == *selected_definition_index;
-                                        if ui
-                                            .selectable_label(checked, definition.filename())
-                                            .clicked()
-                                        {
+                                        if ui.selectable_label(checked, filename).clicked() {
                                             *selected_definition_index = Some(*i);
                                         }
                                     }
@@ -243,16 +201,40 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                self.specifier.property(),
-                                Some(key),
-                                action,
-                            );
+                            ui_attribute_value(ui, state, self.specifier.property(), Some(key));
                         });
                     },
                 );
             });
     }
+}
+
+fn definition_map(
+    definition_values: Vec<DefinitionValuesItem<'_>>,
+) -> BTreeMap<usize, (String, BTreeSet<AttributeValue>)> {
+    let mut map: BTreeMap<usize, (String, BTreeSet<AttributeValue>)> = BTreeMap::new();
+    for (i, definition, value) in definition_values {
+        if let Some(entry) = map.get_mut(&i) {
+            entry.1.insert(value);
+        } else {
+            map.insert(i, (definition.filename(), BTreeSet::from([value])));
+        }
+    }
+    map
+}
+
+fn value_map(
+    definition_values: Vec<DefinitionValuesItem<'_>>,
+) -> BTreeMap<AttributeValue, BTreeMap<usize, String>> {
+    let mut map: BTreeMap<AttributeValue, BTreeMap<usize, String>> = BTreeMap::new();
+    for (i, definition, value) in definition_values {
+        if let Some(entries) = map.get_mut(&value) {
+            entries.insert(i, definition.filename());
+        } else {
+            let mut entries = BTreeMap::new();
+            entries.insert(i, definition.filename());
+            map.insert(value, entries);
+        }
+    }
+    map
 }

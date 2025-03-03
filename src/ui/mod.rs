@@ -3,7 +3,7 @@ pub use app::MainApp;
 mod state;
 pub use state::State;
 mod attribute_value;
-pub use attribute_value::{ui_attribute_value, AttributeValueAction};
+pub use attribute_value::ui_attribute_value;
 mod definition_selelct_panel;
 pub use definition_selelct_panel::DefinitionSelectPanel;
 mod definition_detail_panel;

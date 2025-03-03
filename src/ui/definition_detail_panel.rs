@@ -1,6 +1,4 @@
-use super::{
-    attribute_value::AttributeValueAction, ui_attribute_value, AttributeDetailWindow, State,
-};
+use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, SfxData,
     SfxDataAttribute, SfxLayerAttribute,
@@ -68,7 +66,6 @@ impl DefinitionDetailPanel {
             ui.add_space(4.0);
 
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
-            let mut action: Option<AttributeValueAction> = None;
 
             egui::CollapsingHeader::new("definition attributes")
                 .default_open(true)
@@ -82,7 +79,6 @@ impl DefinitionDetailPanel {
                         DefinitionAttribute::VARIANTS,
                         &data,
                         &mut clicked,
-                        &mut action,
                     );
                     if let Some(c) = clicked {
                         clicked_attribute = Some(c.into());
@@ -103,14 +99,9 @@ impl DefinitionDetailPanel {
                             &attribute_filter,
                             item,
                             &mut clicked_attribute,
-                            &mut action,
                         );
                     });
                 }
-            }
-
-            if let Some(action) = action {
-                AttributeValueAction::do_action(action, state);
             }
 
             Some(AttributeDetailWindow::new(
@@ -126,13 +117,12 @@ impl DefinitionDetailPanel {
 #[allow(clippy::too_many_arguments)]
 fn attribute_list<T: AttributeEnum<S> + Clone, S>(
     ui: &mut Ui,
-    state: &State,
+    state: &mut State,
     id: Id,
     attribute_filter: &AttributeFilter,
     attributes: &[T],
     data: &S,
     clicked_attribute: &mut Option<T>,
-    action: &mut Option<AttributeValueAction>,
 ) {
     Grid::new(id)
         .num_columns(3)
@@ -147,7 +137,7 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
                         *clicked_attribute = Some(attr.clone());
                     }
                     ui.label(attr.to_string());
-                    ui_attribute_value(ui, state, attr.property(), value.as_ref(), action);
+                    ui_attribute_value(ui, state, attr.property(), value.as_ref());
                     ui.end_row();
                 }
             }
@@ -156,12 +146,11 @@ fn attribute_list<T: AttributeEnum<S> + Clone, S>(
 
 fn attribute_table<T: AttributeEnum<S>, S>(
     ui: &mut Ui,
-    state: &State,
+    state: &mut State,
     id: Id,
     attribute_filter: &AttributeFilter,
     attrs: &[T],
     items: &[S],
-    action: &mut Option<AttributeValueAction>,
 ) {
     let columns: Vec<&T> = attrs
         .iter()
@@ -184,13 +173,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    ui_attribute_value(
-                        ui,
-                        state,
-                        attr.property(),
-                        attr.get_value(item).as_ref(),
-                        action,
-                    );
+                    ui_attribute_value(ui, state, attr.property(), attr.get_value(item).as_ref());
                 }
                 ui.end_row();
             }
@@ -199,12 +182,11 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
 fn sfx_data_table(
     ui: &mut Ui,
-    state: &State,
+    state: &mut State,
     id: Id,
     attribute_filter: &AttributeFilter,
     sfx_data: &SfxData,
     clicked_attribute: &mut Option<AttributeSpecifier>,
-    action: &mut Option<AttributeValueAction>,
 ) {
     let mut clicked = None;
     attribute_list(
@@ -215,7 +197,6 @@ fn sfx_data_table(
         SfxDataAttribute::VARIANTS,
         sfx_data,
         &mut clicked,
-        action,
     );
     if let Some(c) = clicked {
         *clicked_attribute = Some(c.into());
@@ -230,7 +211,6 @@ fn sfx_data_table(
             attribute_filter,
             SfxLayerAttribute::VARIANTS,
             &layers.sfx_layer,
-            action,
         );
     }
 }

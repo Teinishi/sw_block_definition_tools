@@ -4,10 +4,9 @@ use egui::Button;
 
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
-    state: &State,
+    state: &mut State,
     attribute_property: AttributeProperty,
     value: Option<&AttributeValue>,
-    action: &mut Option<AttributeValueAction>,
 ) {
     if let Some(value) = value {
         ui.horizontal(|ui| {
@@ -24,7 +23,9 @@ pub fn ui_attribute_value(
                         Button::new(if is_playing { "\u{23F8}" } else { "\u{25B6}" }).truncate(),
                     );
                     if button.clicked() {
-                        *action = Some(AttributeValueAction::PlayAudio(path.clone()));
+                        if let Err(err) = play_stop_audio(path.clone(), state) {
+                            println!("{:?}", err); // TODO: GUI表示
+                        }
                     }
                 }
             }
@@ -32,20 +33,5 @@ pub fn ui_attribute_value(
         });
     } else {
         ui.weak("Not defined");
-    }
-}
-
-#[derive(Debug)]
-pub enum AttributeValueAction {
-    PlayAudio(String),
-}
-
-impl AttributeValueAction {
-    pub fn do_action(action: AttributeValueAction, state: &mut State) {
-        match action {
-            AttributeValueAction::PlayAudio(path) => {
-                play_stop_audio(path, state).unwrap(); // TODO: エラー表示
-            }
-        }
     }
 }
