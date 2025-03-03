@@ -2,6 +2,7 @@ use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeEnum, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
     LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    VoxelAttribute,
 };
 use egui::{Button, Grid, Id, Ui};
 use strum::VariantArray;
@@ -150,6 +151,17 @@ impl DefinitionDetailPanel {
                 "couplings",
                 CouplingAttribute::VARIANTS,
                 data.couplings.last().map(|couplings| &couplings.coupling),
+                &attribute_filter,
+                &mut clicked_attribute,
+            );
+
+            // <voxels> のリスト
+            elements_table(
+                ui,
+                state,
+                "voxels",
+                VoxelAttribute::VARIANTS,
+                data.voxels.last().map(|voxels| &voxels.voxel),
                 &attribute_filter,
                 &mut clicked_attribute,
             );

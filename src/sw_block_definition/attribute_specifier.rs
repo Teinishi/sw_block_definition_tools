@@ -1,6 +1,6 @@
 use super::{
     AttributeValue, CouplingAttribute, Definition, DefinitionAttribute, LogicNodeAttribute,
-    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
 };
 
 #[derive(Default)]
@@ -24,6 +24,7 @@ pub enum AttributeSpecifier {
     Surface(SurfaceAttribute),
     LogicNode(LogicNodeAttribute),
     Coupling(CouplingAttribute),
+    Voxel(VoxelAttribute),
 }
 
 impl AttributeSpecifier {
@@ -35,6 +36,7 @@ impl AttributeSpecifier {
             Self::Surface(attr) => attr.get_value_root(d),
             Self::LogicNode(attr) => attr.get_value_root(d),
             Self::Coupling(attr) => attr.get_value_root(d),
+            Self::Voxel(attr) => attr.get_value_root(d),
         }
     }
 
@@ -46,6 +48,7 @@ impl AttributeSpecifier {
             Self::Surface(attr) => attr.property(),
             Self::LogicNode(attr) => attr.property(),
             Self::Coupling(attr) => attr.property(),
+            Self::Voxel(attr) => attr.property(),
         }
     }
 }
@@ -59,6 +62,7 @@ impl std::fmt::Display for AttributeSpecifier {
             Self::Surface(attr) => attr.fmt(f),
             Self::LogicNode(attr) => attr.fmt(f),
             Self::Coupling(attr) => attr.fmt(f),
+            Self::Voxel(attr) => attr.fmt(f),
         }
     }
 }

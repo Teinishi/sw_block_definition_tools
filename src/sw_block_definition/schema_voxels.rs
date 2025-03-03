@@ -1,5 +1,9 @@
-use super::Position;
+use super::{AttributeEnum, AttributeSpecifier, AttributeValue, Definition, Position};
 use serde::{Deserialize, Serialize};
+
+fn one() -> i32 {
+    1
+}
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
@@ -61,6 +65,53 @@ impl Default for PhysicsShapeRotation {
     }
 }
 
-fn one() -> i32 {
-    1
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum VoxelAttribute {
+    X,
+    Y,
+    Z,
+    //PhysicsShapeRotation,
+    Flags,
+    PhysicsShape,
+    BuoyPipes,
+}
+
+impl AttributeEnum<Voxel> for VoxelAttribute {
+    fn get_value(&self, d: &Voxel) -> Option<AttributeValue> {
+        match self {
+            Self::X => Some(d.position.last()?.x?.into()),
+            Self::Y => Some(d.position.last()?.y?.into()),
+            Self::Z => Some(d.position.last()?.z?.into()),
+            Self::Flags => Some(d.flags?.into()),
+            Self::PhysicsShape => Some(d.physics_shape?.into()),
+            Self::BuoyPipes => Some(d.buoy_pipes?.into()),
+        }
+    }
+
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(voxels) = d.voxels.last() {
+            voxels
+                .voxel
+                .iter()
+                .filter_map(|item| self.get_value(item))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
+
+impl From<VoxelAttribute> for AttributeSpecifier {
+    fn from(value: VoxelAttribute) -> Self {
+        Self::Voxel(value)
+    }
 }
