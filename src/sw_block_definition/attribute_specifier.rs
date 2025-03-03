@@ -1,6 +1,6 @@
 use super::{
-    AttributeValue, Definition, DefinitionAttribute, SfxDataAttribute, SfxLayerAttribute,
-    SurfaceAttribute,
+    AttributeValue, Definition, DefinitionAttribute, LogicNodeAttribute, SfxDataAttribute,
+    SfxLayerAttribute, SurfaceAttribute,
 };
 
 #[derive(Default)]
@@ -22,6 +22,7 @@ pub enum AttributeSpecifier {
     SfxData(SfxDataAttribute),
     SfxLayer(SfxLayerAttribute),
     Surface(SurfaceAttribute),
+    LogicNode(LogicNodeAttribute),
 }
 
 impl AttributeSpecifier {
@@ -31,6 +32,7 @@ impl AttributeSpecifier {
             Self::SfxData(attr) => attr.get_value_root(d),
             Self::SfxLayer(attr) => attr.get_value_root(d),
             Self::Surface(attr) => attr.get_value_root(d),
+            Self::LogicNode(attr) => attr.get_value_root(d),
         }
     }
 
@@ -40,6 +42,7 @@ impl AttributeSpecifier {
             Self::SfxData(attr) => attr.property(),
             Self::SfxLayer(attr) => attr.property(),
             Self::Surface(attr) => attr.property(),
+            Self::LogicNode(attr) => attr.property(),
         }
     }
 }
@@ -51,6 +54,7 @@ impl std::fmt::Display for AttributeSpecifier {
             Self::SfxData(attr) => attr.fmt(f),
             Self::SfxLayer(attr) => attr.fmt(f),
             Self::Surface(attr) => attr.fmt(f),
+            Self::LogicNode(attr) => attr.fmt(f),
         }
     }
 }

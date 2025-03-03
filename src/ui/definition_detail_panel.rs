@@ -1,7 +1,7 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, SfxData,
-    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, LogicNodeAttribute,
+    SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
 };
 use egui::{Button, Grid, Id, Ui};
 use strum::VariantArray;
@@ -137,6 +137,25 @@ impl DefinitionDetailPanel {
                             &attribute_filter,
                             SurfaceAttribute::VARIANTS,
                             surfaces,
+                        ) {
+                            clicked_attribute = Some(clicked.into());
+                        }
+                    });
+                }
+            }
+
+            // <logic_nodes> のリスト
+            if let Some(logic_nodes) = data.logic_nodes.last() {
+                let logic_nodes = &logic_nodes.logic_node;
+                if !logic_nodes.is_empty() {
+                    ui.collapsing("logic_nodes", |ui| {
+                        if let Some(clicked) = attribute_table(
+                            ui,
+                            state,
+                            Id::new("logic_nodes_table"),
+                            &attribute_filter,
+                            LogicNodeAttribute::VARIANTS,
+                            logic_nodes,
                         ) {
                             clicked_attribute = Some(clicked.into());
                         }
