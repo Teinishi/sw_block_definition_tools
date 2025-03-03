@@ -29,6 +29,10 @@ impl AttributeValue {
             Self::String(value) => value.is_empty(),
         }
     }
+
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::I32(_) | Self::U64(_) | Self::Of32(_))
+    }
 }
 
 impl From<bool> for AttributeValue {

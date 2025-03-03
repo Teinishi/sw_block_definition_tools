@@ -1,7 +1,7 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeEnum, AttributeSpecifier, AttributeValue, DefinitionAttribute, SfxData,
-    SfxDataAttribute, SfxLayerAttribute,
+    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
 };
 use egui::{Button, Grid, Id, Ui};
 use strum::VariantArray;
@@ -67,6 +67,7 @@ impl DefinitionDetailPanel {
 
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
+            // <definition> の属性リスト
             egui::CollapsingHeader::new("definition attributes")
                 .default_open(true)
                 .show_unindented(ui, |ui| {
@@ -85,6 +86,7 @@ impl DefinitionDetailPanel {
                     }
                 });
 
+            // <sfx_datas> のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
                 for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
                     let title = match &item.sfx_name {
@@ -100,6 +102,44 @@ impl DefinitionDetailPanel {
                             item,
                             &mut clicked_attribute,
                         );
+                    });
+                }
+            }
+
+            // <surfaces> のリスト
+            if let Some(surfaces) = data.surfaces.last() {
+                let surfaces = &surfaces.surface;
+                if !surfaces.is_empty() {
+                    ui.collapsing("surfaces", |ui| {
+                        if let Some(clicked) = attribute_table(
+                            ui,
+                            state,
+                            Id::new("surfaces_table"),
+                            &attribute_filter,
+                            SurfaceAttribute::VARIANTS,
+                            surfaces,
+                        ) {
+                            clicked_attribute = Some(clicked.into());
+                        }
+                    });
+                }
+            }
+
+            // <buoyancy_surfaces> のリスト
+            if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
+                let surfaces = &buoyancy_surfaces.surface;
+                if !surfaces.is_empty() {
+                    ui.collapsing("buoyancy_surfaces", |ui| {
+                        if let Some(clicked) = attribute_table(
+                            ui,
+                            state,
+                            Id::new("buoyancy_surfaces_table"),
+                            &attribute_filter,
+                            SurfaceAttribute::VARIANTS,
+                            surfaces,
+                        ) {
+                            clicked_attribute = Some(clicked.into());
+                        }
                     });
                 }
             }
@@ -125,7 +165,6 @@ fn attribute_list<T: AttributeEnum<S>, S>(
     clicked_attribute: &mut Option<T>,
 ) {
     Grid::new(id)
-        .num_columns(3)
         .min_col_width(0.0)
         .spacing([10.0, 4.0])
         .striped(true)
@@ -138,7 +177,7 @@ fn attribute_list<T: AttributeEnum<S>, S>(
                         *clicked_attribute = Some(*attr);
                     }
                     ui.label(attr.to_string());
-                    ui_attribute_value(ui, state, attr.property(), value.as_ref());
+                    ui_attribute_value(ui, state, attr.property(), value.as_ref(), false);
                     ui.end_row();
                 }
             }
@@ -152,8 +191,7 @@ fn attribute_table<T: AttributeEnum<S>, S>(
     attribute_filter: &AttributeFilter,
     attrs: &[T],
     items: &[S],
-    clicked_attribute: &mut Option<T>,
-) {
+) -> Option<T> {
     let columns: Vec<&T> = attrs
         .iter()
         .filter(|attr| {
@@ -162,17 +200,17 @@ fn attribute_table<T: AttributeEnum<S>, S>(
                 .any(|item| attribute_filter.check(&attr.get_value(item)))
         })
         .collect();
+    let mut clicked = None;
 
     Grid::new(id)
-        .num_columns(columns.len())
-        .spacing([10.0, 4.0])
+        .spacing([20.0, 4.0])
         .striped(true)
         .show(ui, |ui| {
             for attr in &columns {
                 ui.horizontal(|ui| {
                     let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
                     if button.clicked() {
-                        *clicked_attribute = Some(**attr);
+                        clicked = Some(**attr);
                     }
                     ui.strong(attr.to_string());
                 });
@@ -181,11 +219,19 @@ fn attribute_table<T: AttributeEnum<S>, S>(
 
             for item in items {
                 for attr in &columns {
-                    ui_attribute_value(ui, state, attr.property(), attr.get_value(item).as_ref());
+                    ui_attribute_value(
+                        ui,
+                        state,
+                        attr.property(),
+                        attr.get_value(item).as_ref(),
+                        true,
+                    );
                 }
                 ui.end_row();
             }
         });
+
+    clicked
 }
 
 fn sfx_data_table(
@@ -210,20 +256,17 @@ fn sfx_data_table(
         *clicked_attribute = Some(c.into());
     }
 
-    let mut clicked: Option<SfxLayerAttribute> = None;
     if let Some(layers) = sfx_data.sfx_layers.last() {
         ui.add_space(4.0);
-        attribute_table(
+        if let Some(clicked) = attribute_table(
             ui,
             state,
             id.with("layer_table"),
             attribute_filter,
             SfxLayerAttribute::VARIANTS,
             &layers.sfx_layer,
-            &mut clicked,
-        );
-    }
-    if let Some(c) = clicked {
-        *clicked_attribute = Some(c.into());
+        ) {
+            *clicked_attribute = Some(clicked.into());
+        }
     }
 }

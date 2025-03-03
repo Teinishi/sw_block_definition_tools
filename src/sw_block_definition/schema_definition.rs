@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::AttributeProperty, AttributeEnum, AttributeValue, BbPhysicsMax,
-    BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp,
+    attribute_specifier::AttributeProperty, AttributeEnum, AttributeSpecifier, AttributeValue,
+    BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp,
     ConstraintPosChild, ConstraintPosParent, Couplings, DoorBasePos, DoorNormal, DoorSide,
     DoorSize, DoorUp, DynamicBodyPosition, DynamicRotationAxes, DynamicSideAxis, ForceDir,
     JetEngineConnectionsNext, JetEngineConnectionsPrev, LightColor, LightForward, LightPosition,
@@ -580,5 +580,11 @@ impl AttributeEnum<Definition> for DefinitionAttribute {
                     | Self::AudioFilenameEndB
             ),
         }
+    }
+}
+
+impl From<DefinitionAttribute> for AttributeSpecifier {
+    fn from(value: DefinitionAttribute) -> Self {
+        Self::Definition(value)
     }
 }

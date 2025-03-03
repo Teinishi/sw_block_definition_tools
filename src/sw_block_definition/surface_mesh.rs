@@ -53,7 +53,11 @@ pub fn create_surface_object(
     };
     let translation = match surface.position.last() {
         Some(position) => {
-            0.25 * Vec3::new(position.x as f32, position.y as f32, -position.z as f32)
+            0.25 * Vec3::new(
+                position.x.unwrap_or_default() as f32,
+                position.y.unwrap_or_default() as f32,
+                -position.z.unwrap_or_default() as f32,
+            )
         }
         None => Vec3::ZERO,
     };

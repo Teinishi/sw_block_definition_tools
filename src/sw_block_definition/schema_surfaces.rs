@@ -1,4 +1,4 @@
-use super::Position;
+use super::{AttributeEnum, AttributeSpecifier, AttributeValue, Definition, Position};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -34,4 +34,62 @@ pub struct Surface {
     pub is_two_sided: Option<bool>,
 
     pub position: Vec<Position>,
+}
+
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum SurfaceAttribute {
+    X,
+    Y,
+    Z,
+    Orientation,
+    Rotation,
+    Shape,
+    TransType,
+    Flags,
+    IsReverseNormals,
+    IsTwoSided,
+}
+
+impl AttributeEnum<Surface> for SurfaceAttribute {
+    fn get_value(&self, d: &Surface) -> Option<AttributeValue> {
+        match self {
+            Self::X => Some(d.position.last()?.x?.into()),
+            Self::Y => Some(d.position.last()?.y?.into()),
+            Self::Z => Some(d.position.last()?.z?.into()),
+            Self::Orientation => Some(d.orientation?.into()),
+            Self::Rotation => Some(d.rotation?.into()),
+            Self::Shape => Some(d.shape?.into()),
+            Self::TransType => Some(d.trans_type?.into()),
+            Self::Flags => Some(d.flags?.into()),
+            Self::IsReverseNormals => Some(d.is_reverse_normals?.into()),
+            Self::IsTwoSided => Some(d.is_two_sided?.into()),
+        }
+    }
+
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(surfaces) = d.surfaces.last() {
+            surfaces
+                .surface
+                .iter()
+                .filter_map(|item| self.get_value(item))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
+
+impl From<SurfaceAttribute> for AttributeSpecifier {
+    fn from(value: SurfaceAttribute) -> Self {
+        Self::Surface(value)
+    }
 }

@@ -1,12 +1,13 @@
 use super::{play_stop_audio, State};
 use crate::sw_block_definition::{AttributeProperty, AttributeValue};
-use egui::Button;
+use egui::{Align, Button, Layout};
 
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
     state: &mut State,
     attribute_property: AttributeProperty,
     value: Option<&AttributeValue>,
+    number_right: bool,
 ) {
     if let Some(value) = value {
         ui.horizontal(|ui| {
@@ -29,7 +30,15 @@ pub fn ui_attribute_value(
                     }
                 }
             }
-            ui.label(value.debug_str());
+
+            let layout = if number_right && value.is_number() {
+                Layout::right_to_left(Align::Center)
+            } else {
+                Layout::left_to_right(Align::Center)
+            };
+            ui.with_layout(layout, |ui| {
+                ui.label(value.debug_str());
+            });
         });
     } else {
         ui.weak("Not defined");

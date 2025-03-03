@@ -1,5 +1,6 @@
 use super::{
-    attribute_specifier::AttributeProperty, AttributeEnum, AttributeValue, Definition, Of32,
+    attribute_specifier::AttributeProperty, AttributeEnum, AttributeSpecifier, AttributeValue,
+    Definition, Of32,
 };
 use serde::{Deserialize, Serialize};
 
@@ -66,6 +67,12 @@ impl AttributeEnum<SfxData> for SfxDataAttribute {
         } else {
             vec![]
         }
+    }
+}
+
+impl From<SfxDataAttribute> for AttributeSpecifier {
+    fn from(value: SfxDataAttribute) -> Self {
+        Self::SfxData(value)
     }
 }
 
@@ -162,5 +169,11 @@ impl AttributeEnum<SfxLayer> for SfxLayerAttribute {
                 Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
             ),
         }
+    }
+}
+
+impl From<SfxLayerAttribute> for AttributeSpecifier {
+    fn from(value: SfxLayerAttribute) -> Self {
+        Self::SfxLayer(value)
     }
 }

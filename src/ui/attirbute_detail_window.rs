@@ -148,6 +148,7 @@ impl AttributeDetailWindow {
                                         state,
                                         self.specifier.property(),
                                         Some(value),
+                                        false,
                                     );
                                 }
                             });
@@ -201,7 +202,13 @@ impl AttributeDetailWindow {
                         });
 
                         row.col(|ui| {
-                            ui_attribute_value(ui, state, self.specifier.property(), Some(key));
+                            ui_attribute_value(
+                                ui,
+                                state,
+                                self.specifier.property(),
+                                Some(key),
+                                false,
+                            );
                         });
                     },
                 );

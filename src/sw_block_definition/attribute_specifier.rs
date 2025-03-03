@@ -1,4 +1,7 @@
-use super::{AttributeValue, Definition, DefinitionAttribute, SfxDataAttribute, SfxLayerAttribute};
+use super::{
+    AttributeValue, Definition, DefinitionAttribute, SfxDataAttribute, SfxLayerAttribute,
+    SurfaceAttribute,
+};
 
 #[derive(Default)]
 pub struct AttributeProperty {
@@ -18,6 +21,7 @@ pub enum AttributeSpecifier {
     Definition(DefinitionAttribute),
     SfxData(SfxDataAttribute),
     SfxLayer(SfxLayerAttribute),
+    Surface(SurfaceAttribute),
 }
 
 impl AttributeSpecifier {
@@ -26,6 +30,7 @@ impl AttributeSpecifier {
             Self::Definition(attr) => attr.get_value_root(d),
             Self::SfxData(attr) => attr.get_value_root(d),
             Self::SfxLayer(attr) => attr.get_value_root(d),
+            Self::Surface(attr) => attr.get_value_root(d),
         }
     }
 
@@ -34,6 +39,7 @@ impl AttributeSpecifier {
             Self::Definition(attr) => attr.property(),
             Self::SfxData(attr) => attr.property(),
             Self::SfxLayer(attr) => attr.property(),
+            Self::Surface(attr) => attr.property(),
         }
     }
 }
@@ -44,24 +50,7 @@ impl std::fmt::Display for AttributeSpecifier {
             Self::Definition(attr) => attr.fmt(f),
             Self::SfxData(attr) => attr.fmt(f),
             Self::SfxLayer(attr) => attr.fmt(f),
+            Self::Surface(attr) => attr.fmt(f),
         }
-    }
-}
-
-impl From<DefinitionAttribute> for AttributeSpecifier {
-    fn from(value: DefinitionAttribute) -> Self {
-        Self::Definition(value)
-    }
-}
-
-impl From<SfxDataAttribute> for AttributeSpecifier {
-    fn from(value: SfxDataAttribute) -> Self {
-        Self::SfxData(value)
-    }
-}
-
-impl From<SfxLayerAttribute> for AttributeSpecifier {
-    fn from(value: SfxLayerAttribute) -> Self {
-        Self::SfxLayer(value)
     }
 }

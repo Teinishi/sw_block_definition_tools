@@ -7,11 +7,11 @@ macro_rules! define_vec3 {
         #[serde(default)]
         pub struct $name {
             #[serde(rename = "@x")]
-            pub x: $type,
+            pub x: Option<$type>,
             #[serde(rename = "@y")]
-            pub y: $type,
+            pub y: Option<$type>,
             #[serde(rename = "@z")]
-            pub z: $type,
+            pub z: Option<$type>,
         }
     };
 }
