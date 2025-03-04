@@ -4,7 +4,7 @@ use crate::sw_block_definition::{
     IsDefault, LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
     VoxelAttribute,
 };
-use egui::{Button, Grid, Id, Ui};
+use egui::{Button, Grid, Id, RichText, Ui};
 use strum::VariantArray;
 
 struct AttributeFilter {
@@ -64,14 +64,14 @@ impl DefinitionDetailPanel {
                 }
             });
 
-            ui.add_space(4.0);
+            ui.separator();
 
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
             // <definition> の属性リスト
-            egui::CollapsingHeader::new("definition attributes")
+            egui::CollapsingHeader::new(RichText::new("Definition Attributes").heading())
                 .default_open(true)
-                .show_unindented(ui, |ui| {
+                .show(ui, |ui| {
                     let mut clicked = None;
                     attribute_list(
                         ui,
@@ -94,7 +94,7 @@ impl DefinitionDetailPanel {
                         Some(name) => format!("sfx_data ({})", name),
                         None => "sfx_data".to_string(),
                     };
-                    ui.collapsing(title, |ui| {
+                    egui::CollapsingHeader::new(RichText::new(title).heading()).show(ui, |ui| {
                         sfx_data_table(
                             ui,
                             state,
@@ -111,7 +111,7 @@ impl DefinitionDetailPanel {
             elements_table(
                 ui,
                 state,
-                "surfaces",
+                "Surfaces",
                 SurfaceAttribute::VARIANTS,
                 data.surfaces.last().map(|surfaces| &surfaces.surface),
                 &attribute_filter,
@@ -122,7 +122,7 @@ impl DefinitionDetailPanel {
             elements_table(
                 ui,
                 state,
-                "buoyancy_surfaces",
+                "Buoyancy Surfaces",
                 SurfaceAttribute::VARIANTS,
                 data.buoyancy_surfaces
                     .last()
@@ -135,7 +135,7 @@ impl DefinitionDetailPanel {
             elements_table(
                 ui,
                 state,
-                "logic_nodes",
+                "Logic Nodes",
                 LogicNodeAttribute::VARIANTS,
                 data.logic_nodes
                     .last()
@@ -148,7 +148,7 @@ impl DefinitionDetailPanel {
             elements_table(
                 ui,
                 state,
-                "couplings",
+                "Couplings",
                 CouplingAttribute::VARIANTS,
                 data.couplings.last().map(|couplings| &couplings.coupling),
                 &attribute_filter,
@@ -159,7 +159,7 @@ impl DefinitionDetailPanel {
             elements_table(
                 ui,
                 state,
-                "voxels",
+                "Voxels",
                 VoxelAttribute::VARIANTS,
                 data.voxels.last().map(|voxels| &voxels.voxel),
                 &attribute_filter,
@@ -306,7 +306,7 @@ fn elements_table<T: GetAttributeValue<S>, S>(
     if !attribute_filter.show_all && data.map_or(true, |v| v.is_empty()) {
         return;
     }
-    ui.collapsing(name, |ui| {
+    egui::CollapsingHeader::new(RichText::new(name).heading()).show(ui, |ui| {
         if let Some(clicked) = attribute_table(
             ui,
             state,

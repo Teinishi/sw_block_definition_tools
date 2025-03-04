@@ -1,6 +1,6 @@
 use super::{
     attribute_specifier::{AttributeProperty, GetAttributeValueRoot},
-    GetAttributeValue, AttributeSpecifier, AttributeValue, Definition, Of32,
+    AttributeSpecifier, AttributeValue, Definition, GetAttributeValue, Of32,
 };
 use serde::{Deserialize, Serialize};
 

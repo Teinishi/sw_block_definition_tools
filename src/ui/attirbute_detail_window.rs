@@ -120,7 +120,7 @@ impl AttributeDetailWindow {
 
             let prev_hide_default = self.hide_default;
             ui.with_layout(egui::Layout::right_to_left(egui::Align::LEFT), |ui| {
-                ui.checkbox(&mut self.hide_default, "Hide default value");
+                ui.checkbox(&mut self.hide_default, "Hide zero/empty");
             });
             if prev_hide_default != self.hide_default {
                 self.changed = true;

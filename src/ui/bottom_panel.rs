@@ -10,7 +10,7 @@ impl BottomPanel {
         state.set_show_all(c);
 
         let mut c = state.hide_default();
-        ui.checkbox(&mut c, "Hide default value");
+        ui.checkbox(&mut c, "Hide zero/empty");
         state.set_hide_default(c);
     }
 }
