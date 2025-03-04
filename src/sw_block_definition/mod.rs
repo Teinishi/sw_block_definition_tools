@@ -2,7 +2,7 @@ mod definition;
 pub use definition::{SwBlockDefinition, SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes};
 mod attribute_value;
 pub use attribute_value::{
-    AttributeValue, DisplayAttributeValue, IsDefault, Matrix, Of32, DefinitionVec3,
+    AttributeValue, DefinitionVec3, DisplayAttributeValue, IsDefault, Matrix, Of32,
 };
 mod attribute_specifier;
 pub use attribute_specifier::{

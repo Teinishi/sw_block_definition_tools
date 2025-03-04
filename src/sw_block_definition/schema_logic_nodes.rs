@@ -1,6 +1,6 @@
 use super::{
     attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, GetAttributeValue, DefinitionVec3,
+    AttributeValue, Definition, DefinitionVec3, GetAttributeValue,
 };
 use serde::{Deserialize, Serialize};
 
