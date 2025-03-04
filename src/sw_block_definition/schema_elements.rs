@@ -1,13 +1,13 @@
 use super::{
-    AttributeSpecifier, AttributeValue, Definition, GetAttributeValue, GetAttributeValueRoot, Of32,
-    Position, AttributeProperty
+    AttributeProperty, AttributeSpecifier, AttributeValue, Definition, DefinitionVec3,
+    GetAttributeValue, GetAttributeValueRoot, Of32,
 };
 use paste::paste;
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_vec3 {
     ($name:ident, $type:ty) => {
-        #[derive(Serialize, Deserialize, Default, Debug)]
+        #[derive(Serialize, Deserialize, Default, Debug, Clone, Copy)]
         #[serde(default)]
         pub struct $name {
             #[serde(rename = "@x")]
@@ -16,6 +16,16 @@ macro_rules! define_vec3 {
             pub y: Option<$type>,
             #[serde(rename = "@z")]
             pub z: Option<$type>,
+        }
+
+        impl From<$name> for DefinitionVec3<$type> {
+            fn from(value: $name) -> DefinitionVec3<$type> {
+                DefinitionVec3 {
+                    x: value.x,
+                    y: value.y,
+                    z: value.z,
+                }
+            }
         }
 
         paste! {
@@ -71,46 +81,70 @@ macro_rules! define_vec3 {
     };
 }
 
+macro_rules! define_vec3_int {
+    ($name:ident) => {
+        define_vec3!($name, i32);
+
+        impl From<$name> for AttributeValue {
+            fn from(value: $name) -> AttributeValue {
+                Self::VecI32(value.into())
+            }
+        }
+    };
+}
+
+macro_rules! define_vec3_float {
+    ($name:ident) => {
+        define_vec3!($name, Of32);
+
+        impl From<$name> for AttributeValue {
+            fn from(value: $name) -> AttributeValue {
+                Self::VecOf32(value.into())
+            }
+        }
+    };
+}
+
 //define_vec3!(Normal, NormalAttribute, i32);
-define_vec3!(VoxelMin, i32);
-define_vec3!(VoxelMax, i32);
-define_vec3!(VoxelPhysicsMin, i32);
-define_vec3!(VoxelPhysicsMax, i32);
-define_vec3!(BbPhysicsMin, Of32);
-define_vec3!(BbPhysicsMax, Of32);
-define_vec3!(CompartmentSamplePos, i32);
-define_vec3!(ConstraintPosParent, Of32);
-define_vec3!(ConstraintPosChild, Of32);
-define_vec3!(VoxelLocationChild, i32);
-define_vec3!(SeatOffset, Of32);
-define_vec3!(SeatFront, i32);
-define_vec3!(SeatUp, i32);
-define_vec3!(SeatCamera, Of32);
-define_vec3!(SeatRender, Of32);
-define_vec3!(ForceDir, Of32);
-define_vec3!(LightPosition, i32);
-define_vec3!(LightColor, Of32);
-define_vec3!(LightForward, Of32);
-define_vec3!(DoorSize, Of32);
-define_vec3!(DoorNormal, Of32);
-define_vec3!(DoorSide, Of32);
-define_vec3!(DoorUp, Of32);
-define_vec3!(DoorBasePos, Of32);
-define_vec3!(DynamicBodyPosition, i32);
-define_vec3!(DynamicRotationAxes, Of32);
-define_vec3!(DynamicSideAxis, Of32);
-define_vec3!(MagnetOffset, Of32);
-define_vec3!(ConnectorAxis, i32);
-define_vec3!(ConnectorUp, i32);
-define_vec3!(ParticleDirection, i32);
-define_vec3!(ParticleOffset, Of32);
-define_vec3!(ParticleBounds, Of32);
-define_vec3!(SeatExitPosition, i32);
-define_vec3!(WeaponBreechPosition, Of32);
-define_vec3!(WeaponBreechNormal, Of32);
-define_vec3!(WeaponCartPosition, Of32);
-define_vec3!(WeaponCartVelocity, Of32);
-define_vec3!(RopeHookOffset, Of32);
+define_vec3_int!(VoxelMin);
+define_vec3_int!(VoxelMax);
+define_vec3_int!(VoxelPhysicsMin);
+define_vec3_int!(VoxelPhysicsMax);
+define_vec3_float!(BbPhysicsMin);
+define_vec3_float!(BbPhysicsMax);
+define_vec3_int!(CompartmentSamplePos);
+define_vec3_float!(ConstraintPosParent);
+define_vec3_float!(ConstraintPosChild);
+define_vec3_int!(VoxelLocationChild);
+define_vec3_float!(SeatOffset);
+define_vec3_int!(SeatFront);
+define_vec3_int!(SeatUp);
+define_vec3_float!(SeatCamera);
+define_vec3_float!(SeatRender);
+define_vec3_float!(ForceDir);
+define_vec3_int!(LightPosition);
+define_vec3_float!(LightColor);
+define_vec3_float!(LightForward);
+define_vec3_float!(DoorSize);
+define_vec3_float!(DoorNormal);
+define_vec3_float!(DoorSide);
+define_vec3_float!(DoorUp);
+define_vec3_float!(DoorBasePos);
+define_vec3_int!(DynamicBodyPosition);
+define_vec3_float!(DynamicRotationAxes);
+define_vec3_float!(DynamicSideAxis);
+define_vec3_float!(MagnetOffset);
+define_vec3_int!(ConnectorAxis);
+define_vec3_int!(ConnectorUp);
+define_vec3_int!(ParticleDirection);
+define_vec3_float!(ParticleOffset);
+define_vec3_float!(ParticleBounds);
+define_vec3_int!(SeatExitPosition);
+define_vec3_float!(WeaponBreechPosition);
+define_vec3_float!(WeaponBreechNormal);
+define_vec3_float!(WeaponCartPosition);
+define_vec3_float!(WeaponCartVelocity);
+define_vec3_float!(RopeHookOffset);
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
@@ -138,8 +172,8 @@ pub struct JetEngineConnectionsNext {
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
 pub struct JetEngineConnection {
-    pub pos: Vec<Position>,
-    pub normal: Vec<Position>,
+    pub pos: Vec<DefinitionVec3<i32>>,
+    pub normal: Vec<DefinitionVec3<i32>>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]

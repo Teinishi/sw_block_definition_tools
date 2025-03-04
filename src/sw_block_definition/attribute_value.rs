@@ -57,22 +57,26 @@ impl IsDefault for String {
     Copy,
 )]
 #[serde(default)]
-pub struct Position {
+pub struct DefinitionVec3<T> {
     #[serde(rename = "@x")]
-    pub x: Option<i32>,
+    pub x: Option<T>,
     #[serde(rename = "@y")]
-    pub y: Option<i32>,
+    pub y: Option<T>,
     #[serde(rename = "@z")]
-    pub z: Option<i32>,
+    pub z: Option<T>,
 }
-impl IsDefault for Position {
+impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> IsDefault
+    for DefinitionVec3<T>
+{
     fn is_default(&self) -> bool {
-        self.x.map_or(true, |v| v == 0)
-            && self.y.map_or(true, |v| v == 0)
-            && self.z.map_or(true, |v| v == 0)
+        self.x.map_or(true, |v| v == Default::default())
+            && self.y.map_or(true, |v| v == Default::default())
+            && self.z.map_or(true, |v| v == Default::default())
     }
 }
-impl std::fmt::Display for Position {
+impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> std::fmt::Display
+    for DefinitionVec3<T>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(")?;
         if let Some(x) = self.x {
@@ -92,7 +96,9 @@ impl std::fmt::Display for Position {
         }
     }
 }
-impl DisplayAttributeValue for Position {
+impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> DisplayAttributeValue
+    for DefinitionVec3<T>
+{
     fn display_string(&self) -> String {
         format!("{}", self)
     }
@@ -185,7 +191,8 @@ pub enum AttributeValue {
     U64(u64),
     Of32(Of32),
     String(String),
-    Position(Position),
+    VecI32(DefinitionVec3<i32>),
+    VecOf32(DefinitionVec3<Of32>),
     Matrix(Matrix),
 }
 
@@ -225,9 +232,15 @@ impl From<String> for AttributeValue {
     }
 }
 
-impl From<Position> for AttributeValue {
-    fn from(value: Position) -> Self {
-        Self::Position(value)
+impl From<DefinitionVec3<i32>> for AttributeValue {
+    fn from(value: DefinitionVec3<i32>) -> Self {
+        Self::VecI32(value)
+    }
+}
+
+impl From<DefinitionVec3<Of32>> for AttributeValue {
+    fn from(value: DefinitionVec3<Of32>) -> Self {
+        Self::VecOf32(value)
     }
 }
 

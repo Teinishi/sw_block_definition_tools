@@ -264,9 +264,9 @@ pub struct Definition {
     pub voxel_max: Vec<VoxelMax>,
     pub voxel_physics_min: Vec<VoxelPhysicsMin>,
     pub voxel_physics_max: Vec<VoxelPhysicsMax>,
-    pub compartment_sample_pos: Vec<CompartmentSamplePos>,
     pub bb_physics_min: Vec<BbPhysicsMin>,
     pub bb_physics_max: Vec<BbPhysicsMax>,
+    pub compartment_sample_pos: Vec<CompartmentSamplePos>,
     pub constraint_pos_parent: Vec<ConstraintPosParent>,
     pub constraint_pos_child: Vec<ConstraintPosChild>,
     pub voxel_location_child: Vec<VoxelLocationChild>,
@@ -435,6 +435,49 @@ pub enum DefinitionAttribute {
     MetadataComponentType,
     OilComponentType,
     ToolType,
+    VoxelMin,
+    VoxelMax,
+    VoxelPhysicsMin,
+    VoxelPhysicsMax,
+    BbPhysicsMin,
+    BbPhysicsMax,
+    CompartmentSamplePos,
+    ConstraintPosParent,
+    ConstraintPosChild,
+    VoxelLocationChild,
+    SeatOffset,
+    SeatFront,
+    SeatUp,
+    SeatCamera,
+    SeatRender,
+    ForceDir,
+    LightPosition,
+    LightColor,
+    LightForward,
+    DoorSize,
+    DoorNormal,
+    DoorSide,
+    DoorUp,
+    DoorBasePos,
+    DynamicBodyPosition,
+    DynamicRotationAxes,
+    DynamicSideAxis,
+    MagnetOffset,
+    ConnectorAxis,
+    ConnectorUp,
+    /*TooltipProperties,
+    JetEngineConnectionsPrev,
+    JetEngineConnectionsNext,*/
+    ParticleDirection,
+    ParticleOffset,
+    ParticleBounds,
+    //RewardProperties,
+    SeatExitPosition,
+    WeaponBreechPosition,
+    WeaponBreechNormal,
+    WeaponCartPosition,
+    WeaponCartVelocity,
+    RopeHookOffset,
 }
 
 impl GetAttributeValueRoot for DefinitionAttribute {
@@ -467,6 +510,49 @@ impl GetAttributeValueRoot for DefinitionAttribute {
                     | Self::LightIesMap
                     | Self::DoorFlipped
                     | Self::WeaponAmmoFeed
+                    | Self::VoxelMin
+                    | Self::VoxelMax
+                    | Self::VoxelPhysicsMin
+                    | Self::VoxelPhysicsMax
+                    | Self::BbPhysicsMin
+                    | Self::BbPhysicsMax
+                    | Self::CompartmentSamplePos
+                    | Self::ConstraintPosParent
+                    | Self::ConstraintPosChild
+                    | Self::VoxelLocationChild
+                    | Self::SeatOffset
+                    | Self::SeatFront
+                    | Self::SeatUp
+                    | Self::SeatCamera
+                    | Self::SeatRender
+                    | Self::ForceDir
+                    | Self::LightPosition
+                    | Self::LightColor
+                    | Self::LightForward
+                    | Self::DoorSize
+                    | Self::DoorNormal
+                    | Self::DoorSide
+                    | Self::DoorUp
+                    | Self::DoorBasePos
+                    | Self::DynamicBodyPosition
+                    | Self::DynamicRotationAxes
+                    | Self::DynamicSideAxis
+                    | Self::MagnetOffset
+                    | Self::ConnectorAxis
+                    | Self::ConnectorUp
+                    /*| Self::TooltipProperties
+                    | Self::JetEngineConnectionsPrev
+                    | Self::JetEngineConnectionsNext*/
+                    | Self::ParticleDirection
+                    | Self::ParticleOffset
+                    | Self::ParticleBounds
+                    //| Self::RewardProperties
+                    | Self::SeatExitPosition
+                    | Self::WeaponBreechPosition
+                    | Self::WeaponBreechNormal
+                    | Self::WeaponCartPosition
+                    | Self::WeaponCartVelocity
+                    | Self::RopeHookOffset
             );
         AttributeProperty {
             is_audio_file,
@@ -599,6 +685,49 @@ impl GetAttributeValue<Definition> for DefinitionAttribute {
             Self::MetadataComponentType => Some(d.metadata_component_type?.into()),
             Self::OilComponentType => Some(d.oil_component_type?.into()),
             Self::ToolType => Some(d.tool_type?.into()),
+            Self::VoxelMin => Some((*d.voxel_min.last()?).into()),
+            Self::VoxelMax => Some((*d.voxel_max.last()?).into()),
+            Self::VoxelPhysicsMin => Some((*d.voxel_physics_min.last()?).into()),
+            Self::VoxelPhysicsMax => Some((*d.voxel_physics_max.last()?).into()),
+            Self::BbPhysicsMin => Some((*d.bb_physics_min.last()?).into()),
+            Self::BbPhysicsMax => Some((*d.bb_physics_max.last()?).into()),
+            Self::CompartmentSamplePos => Some((*d.compartment_sample_pos.last()?).into()),
+            Self::ConstraintPosParent => Some((*d.constraint_pos_parent.last()?).into()),
+            Self::ConstraintPosChild => Some((*d.constraint_pos_child.last()?).into()),
+            Self::VoxelLocationChild => Some((*d.voxel_location_child.last()?).into()),
+            Self::SeatOffset => Some((*d.seat_offset.last()?).into()),
+            Self::SeatFront => Some((*d.seat_front.last()?).into()),
+            Self::SeatUp => Some((*d.seat_up.last()?).into()),
+            Self::SeatCamera => Some((*d.seat_camera.last()?).into()),
+            Self::SeatRender => Some((*d.seat_render.last()?).into()),
+            Self::ForceDir => Some((*d.force_dir.last()?).into()),
+            Self::LightPosition => Some((*d.light_position.last()?).into()),
+            Self::LightColor => Some((*d.light_color.last()?).into()),
+            Self::LightForward => Some((*d.light_forward.last()?).into()),
+            Self::DoorSize => Some((*d.door_size.last()?).into()),
+            Self::DoorNormal => Some((*d.door_normal.last()?).into()),
+            Self::DoorSide => Some((*d.door_side.last()?).into()),
+            Self::DoorUp => Some((*d.door_up.last()?).into()),
+            Self::DoorBasePos => Some((*d.door_base_pos.last()?).into()),
+            Self::DynamicBodyPosition => Some((*d.dynamic_body_position.last()?).into()),
+            Self::DynamicRotationAxes => Some((*d.dynamic_rotation_axes.last()?).into()),
+            Self::DynamicSideAxis => Some((*d.dynamic_side_axis.last()?).into()),
+            Self::MagnetOffset => Some((*d.magnet_offset.last()?).into()),
+            Self::ConnectorAxis => Some((*d.connector_axis.last()?).into()),
+            Self::ConnectorUp => Some((*d.connector_up.last()?).into()),
+            /*Self::TooltipProperties => Some((*d.tooltip_properties.last()?).into()),
+            Self::JetEngineConnectionsPrev => Some((*d.jet_engine_connections_prev.last()?).into()),
+            Self::JetEngineConnectionsNext => Some((*d.jet_engine_connections_next.last()?).into()),*/
+            Self::ParticleDirection => Some((*d.particle_direction.last()?).into()),
+            Self::ParticleOffset => Some((*d.particle_offset.last()?).into()),
+            Self::ParticleBounds => Some((*d.particle_bounds.last()?).into()),
+            //Self::RewardProperties => Some((*d.reward_properties.last()?).into()),
+            Self::SeatExitPosition => Some((*d.seat_exit_position.last()?).into()),
+            Self::WeaponBreechPosition => Some((*d.weapon_breech_position.last()?).into()),
+            Self::WeaponBreechNormal => Some((*d.weapon_breech_normal.last()?).into()),
+            Self::WeaponCartPosition => Some((*d.weapon_cart_position.last()?).into()),
+            Self::WeaponCartVelocity => Some((*d.weapon_cart_velocity.last()?).into()),
+            Self::RopeHookOffset => Some((*d.rope_hook_offset.last()?).into()),
         }
     }
 }

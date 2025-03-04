@@ -1,6 +1,6 @@
 use super::{
     attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, GetAttributeValue, Position,
+    AttributeValue, Definition, GetAttributeValue, DefinitionVec3,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ pub struct Coupling {
     #[serde(rename = "@allow_bipolar_alignment")]
     pub allow_bipolar_alignment: Option<bool>,
 
-    pub position: Vec<Position>,
+    pub position: Vec<DefinitionVec3<i32>>,
 }
 
 #[derive(

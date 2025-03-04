@@ -1,6 +1,6 @@
 use super::{
     attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, GetAttributeValue, Matrix, Position,
+    AttributeValue, Definition, GetAttributeValue, Matrix, DefinitionVec3,
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +21,7 @@ pub struct Voxel {
     #[serde(rename = "@buoy_pipes")]
     pub buoy_pipes: Option<i32>,
 
-    pub position: Vec<Position>,
+    pub position: Vec<DefinitionVec3<i32>>,
     pub physics_shape_rotation: Vec<Matrix>,
 }
 

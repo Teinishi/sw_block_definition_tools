@@ -1,10 +1,11 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, BbPhysicsMaxAttribute, BbPhysicsMinAttribute,
+    CompartmentSamplePosAttribute, ConstraintPosChildAttribute, ConstraintPosParentAttribute,
     CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot,
     IsDefault, LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
-    VoxelAttribute, VoxelMaxAttribute, VoxelMinAttribute, VoxelPhysicsMaxAttribute,
-    VoxelPhysicsMinAttribute,
+    VoxelAttribute, VoxelLocationChildAttribute, VoxelMaxAttribute, VoxelMinAttribute,
+    VoxelPhysicsMaxAttribute, VoxelPhysicsMinAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -96,8 +97,8 @@ impl DefinitionDetailPanel {
             if let Some(sfx_datas) = data.sfx_datas.last() {
                 for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
                     let title = match &item.sfx_name {
-                        Some(name) => format!("sfx_data ({})", name),
-                        None => "sfx_data".to_string(),
+                        Some(name) => format!("Sfx data ({})", name),
+                        None => "Sfx data".to_string(),
                     };
                     collapsing_heading(
                         ui,
@@ -177,13 +178,10 @@ impl DefinitionDetailPanel {
             );
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
-            bounding_box_table(ui, state, &data);
+            bounding_boxes_table(ui, state, &data, &mut clicked_attribute);
 
-            // <compartment_sample_pos>
-
-            // <constraint_pos_parent> <constraint_pos_child>
-
-            // <voxel_location_child>
+            // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child>
+            positions_table(ui, state, &data, &mut clicked_attribute);
 
             // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render>
 
@@ -234,6 +232,21 @@ fn collapsing_heading<R>(
         .show(ui, add_body)
 }
 
+fn attribute_detail_button<T: Copy>(
+    ui: &mut Ui,
+    attr: &T,
+    clicked: &mut Option<T>,
+    label: Option<&'_ str>,
+) {
+    let res = match label {
+        Some(label) => ui.add(Button::new(label).small()),
+        _ => ui.add_sized([20.0, 20.0], Button::new("...").truncate()),
+    };
+    if res.clicked() {
+        *clicked = Some(*attr);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn attribute_list<T: GetAttributeValue<S>, S>(
     ui: &mut Ui,
@@ -252,10 +265,7 @@ fn attribute_list<T: GetAttributeValue<S>, S>(
             for attr in attributes {
                 let value = attr.get_value(data);
                 if attribute_filter.check(&value) {
-                    let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
-                    if button.clicked() {
-                        *clicked_attribute = Some(*attr);
-                    }
+                    attribute_detail_button(ui, attr, clicked_attribute, None);
                     ui.label(attr.to_string());
                     ui_attribute_value(ui, state, attr.property(), value.as_ref(), false, None);
                     ui.end_row();
@@ -284,17 +294,14 @@ fn attribute_table<T: GetAttributeValue<S>, S>(
     let mut clicked = None;
 
     Grid::new(id)
+        .min_col_width(0.0)
         .spacing([20.0, 4.0])
         .striped(true)
         .show(ui, |ui| {
             for attr in &columns {
                 ui.horizontal(|ui| {
                     ui.strong(attr.to_string());
-
-                    let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
-                    if button.clicked() {
-                        clicked = Some(**attr);
-                    }
+                    attribute_detail_button(ui, *attr, &mut clicked, None);
                 });
             }
             ui.end_row();
@@ -386,14 +393,24 @@ fn sfx_data_table(
     }
 }
 
-fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
+fn bounding_boxes_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    let mut clicked = None;
     collapsing_heading(
         ui,
         "Bounding Boxes",
         |ui| {
             Grid::new(Id::new("bounding_boxes_table"))
+                .min_col_width(0.0)
+                .spacing([10.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
+                    ui.label("");
+                    ui.label("");
                     ui.label("");
                     for label in ["min x", "min y", "min z", "max x", "max y", "max z"] {
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -402,6 +419,18 @@ fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
                     }
                     ui.end_row();
 
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::VoxelMin,
+                        &mut clicked,
+                        Some("min"),
+                    );
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::VoxelMax,
+                        &mut clicked,
+                        Some("max"),
+                    );
                     ui.label("Voxel");
                     for attr in VoxelMinAttribute::VARIANTS {
                         ui_attribute_value(
@@ -425,6 +454,18 @@ fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
                     }
                     ui.end_row();
 
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::VoxelPhysicsMin,
+                        &mut clicked,
+                        Some("min"),
+                    );
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::VoxelPhysicsMax,
+                        &mut clicked,
+                        Some("max"),
+                    );
                     ui.label("Voxel Physics");
                     for attr in VoxelPhysicsMinAttribute::VARIANTS {
                         ui_attribute_value(
@@ -448,6 +489,18 @@ fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
                     }
                     ui.end_row();
 
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::BbPhysicsMin,
+                        &mut clicked,
+                        Some("min"),
+                    );
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::BbPhysicsMax,
+                        &mut clicked,
+                        Some("max"),
+                    );
                     ui.label("BB Physics");
                     for attr in BbPhysicsMinAttribute::VARIANTS {
                         ui_attribute_value(
@@ -474,4 +527,116 @@ fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
         },
         false,
     );
+    if let Some(clicked) = clicked {
+        *clicked_attribute = Some(clicked.into());
+    }
+}
+
+fn positions_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    let mut clicked = None;
+    collapsing_heading(
+        ui,
+        "Positions",
+        |ui| {
+            Grid::new(Id::new("positions_table"))
+                .min_col_width(0.0)
+                .spacing([10.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("");
+                    ui.label("");
+                    for label in ["x", "y", "z"] {
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            ui.strong(label);
+                        });
+                    }
+                    ui.end_row();
+
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::CompartmentSamplePos,
+                        &mut clicked,
+                        None,
+                    );
+                    ui.label("Compartment sample pos");
+                    for attr in CompartmentSamplePosAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::ConstraintPosParent,
+                        &mut clicked,
+                        None,
+                    );
+                    ui.label("Constraint pos parent");
+                    for attr in ConstraintPosParentAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::ConstraintPosChild,
+                        &mut clicked,
+                        None,
+                    );
+                    ui.label("Constraint pos child");
+                    for attr in ConstraintPosChildAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+
+                    attribute_detail_button(
+                        ui,
+                        &DefinitionAttribute::VoxelLocationChild,
+                        &mut clicked,
+                        None,
+                    );
+                    ui.label("Voxel location child");
+                    for attr in VoxelLocationChildAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+                });
+        },
+        false,
+    );
+    if let Some(clicked) = clicked {
+        *clicked_attribute = Some(clicked.into());
+    }
 }

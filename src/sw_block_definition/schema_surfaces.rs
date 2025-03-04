@@ -1,6 +1,6 @@
 use super::{
     attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, GetAttributeValue, Position,
+    AttributeValue, Definition, GetAttributeValue, DefinitionVec3,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +36,7 @@ pub struct Surface {
     #[serde(rename = "@is_two_sided")]
     pub is_two_sided: Option<bool>,
 
-    pub position: Vec<Position>,
+    pub position: Vec<DefinitionVec3<i32>>,
 }
 
 #[derive(
