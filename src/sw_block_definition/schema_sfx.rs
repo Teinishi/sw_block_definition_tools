@@ -157,6 +157,14 @@ impl GetAttributeValueRoot for SfxLayerAttribute {
                 self,
                 Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
             ),
+            is_number: matches!(
+                self,
+                Self::Gain
+                    | Self::LoopStartTime
+                    | Self::LoopBlendDuration
+                    | Self::VolumeFadeSpeed
+                    | Self::PitchFadeSpeed
+            ),
         }
     }
 }

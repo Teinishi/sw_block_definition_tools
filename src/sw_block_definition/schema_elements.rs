@@ -1,4 +1,8 @@
-use super::{Of32, Position};
+use super::{
+    AttributeSpecifier, AttributeValue, Definition, GetAttributeValue, GetAttributeValueRoot, Of32,
+    Position, AttributeProperty
+};
+use paste::paste;
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_vec3 {
@@ -13,10 +17,61 @@ macro_rules! define_vec3 {
             #[serde(rename = "@z")]
             pub z: Option<$type>,
         }
+
+        paste! {
+            #[derive(
+                Serialize,
+                Deserialize,
+                PartialEq,
+                strum::Display,
+                strum::VariantArray,
+                Clone,
+                Copy,
+            )]
+            #[strum(serialize_all = "snake_case")]
+            pub enum [<$name Attribute>] {
+                X,
+                Y,
+                Z,
+            }
+
+            impl GetAttributeValueRoot for [<$name Attribute>] {
+                fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+                    if let Some(item) = d.[<$name:snake>].last() {
+                        self.get_value(item).into_iter().collect()
+                    } else {
+                        vec![]
+                    }
+                }
+
+                fn property(&self) -> AttributeProperty {
+                    AttributeProperty {
+                        is_audio_file: false,
+                        is_number: true,
+                    }
+                }
+            }
+
+            impl GetAttributeValue<$name> for [<$name Attribute>] {
+                fn get_value(&self, d: &$name) -> Option<AttributeValue> {
+                    match self {
+                        Self::X => Some(d.x?.into()),
+                        Self::Y => Some(d.y?.into()),
+                        Self::Z => Some(d.z?.into()),
+                    }
+                }
+            }
+
+            impl From<[<$name Attribute>]> for AttributeSpecifier {
+                fn from(value: [<$name Attribute>]) -> Self {
+                    Self::$name(value)
+                }
+            }
+        }
     };
 }
 
-define_vec3!(Normal, i32);
+//define_vec3!(Normal, NormalAttribute, i32);
 define_vec3!(VoxelMin, i32);
 define_vec3!(VoxelMax, i32);
 define_vec3!(VoxelPhysicsMin, i32);
@@ -84,7 +139,7 @@ pub struct JetEngineConnectionsNext {
 #[serde(default)]
 pub struct JetEngineConnection {
     pub pos: Vec<Position>,
-    pub normal: Vec<Normal>,
+    pub normal: Vec<Position>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]

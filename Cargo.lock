@@ -3557,6 +3557,7 @@ dependencies = [
  "log",
  "open",
  "ordered-float 5.0.0",
+ "paste",
  "quick-xml 0.37.2",
  "raw-window-handle",
  "rfd",

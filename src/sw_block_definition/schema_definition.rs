@@ -30,7 +30,7 @@ pub struct Definition {
     #[serde(rename = "@tags")]
     pub tags: Option<String>,
     #[serde(rename = "@phys_collision_dampen")]
-    pub phys_collision_dampen: Option<String>,
+    pub phys_collision_dampen: Option<i32>,
     #[serde(rename = "@audio_filename_start")]
     pub audio_filename_start: Option<String>,
     #[serde(rename = "@audio_filename_loop")]
@@ -443,16 +443,34 @@ impl GetAttributeValueRoot for DefinitionAttribute {
     }
 
     fn property(&self) -> AttributeProperty {
-        AttributeProperty {
-            is_audio_file: matches!(
+        let is_audio_file = matches!(
+            self,
+            Self::AudioFilenameStart
+                | Self::AudioFilenameLoop
+                | Self::AudioFilenameEnd
+                | Self::AudioFilenameStartB
+                | Self::AudioFilenameLoopB
+                | Self::AudioFilenameEndB
+        );
+        let is_not_number = is_audio_file
+            || matches!(
                 self,
-                Self::AudioFilenameStart
-                    | Self::AudioFilenameLoop
-                    | Self::AudioFilenameEnd
-                    | Self::AudioFilenameStartB
-                    | Self::AudioFilenameLoopB
-                    | Self::AudioFilenameEndB
-            ),
+                Self::Name
+                    | Self::Tags
+                    | Self::MeshDataName
+                    | Self::Mesh0Name
+                    | Self::Mesh1Name
+                    | Self::Mesh2Name
+                    | Self::MeshEditorOnlyName
+                    | Self::ChildName
+                    | Self::ExtenderName
+                    | Self::LightIesMap
+                    | Self::DoorFlipped
+                    | Self::WeaponAmmoFeed
+            );
+        AttributeProperty {
+            is_audio_file,
+            is_number: !is_not_number,
         }
     }
 }
@@ -467,7 +485,7 @@ impl GetAttributeValue<Definition> for DefinitionAttribute {
             Self::Value => Some(d.value?.into()),
             Self::Flags => Some(d.flags?.into()),
             Self::Tags => Some(d.tags.clone()?.into()),
-            Self::PhysCollisionDampen => Some(d.phys_collision_dampen.clone()?.into()),
+            Self::PhysCollisionDampen => Some(d.phys_collision_dampen?.into()),
             Self::AudioFilenameStart => Some(d.audio_filename_start.clone()?.into()),
             Self::AudioFilenameLoop => Some(d.audio_filename_loop.clone()?.into()),
             Self::AudioFilenameEnd => Some(d.audio_filename_end.clone()?.into()),
