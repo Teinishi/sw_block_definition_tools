@@ -5,7 +5,7 @@ use egui::{Align, Button, Layout};
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
     state: &mut State,
-    attribute_property: AttributeProperty,
+    attribute_property: &AttributeProperty,
     value: Option<&AttributeValue>,
     number_right: bool,
     margin: Option<(f32, f32)>,

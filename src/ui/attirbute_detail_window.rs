@@ -182,7 +182,7 @@ impl AttributeDetailWindow {
                                         ui_attribute_value(
                                             ui,
                                             state,
-                                            self.specifier.property(),
+                                            &self.specifier.property(),
                                             Some(value),
                                             false,
                                             None,
@@ -245,7 +245,7 @@ impl AttributeDetailWindow {
                                 ui_attribute_value(
                                     ui,
                                     state,
-                                    self.specifier.property(),
+                                    &self.specifier.property(),
                                     Some(key),
                                     false,
                                     None,
