@@ -1,12 +1,12 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, BbPhysicsMaxAttribute, BbPhysicsMinAttribute,
-    CouplingAttribute, DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot, IsDefault,
-    LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot,
+    IsDefault, LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
     VoxelAttribute, VoxelMaxAttribute, VoxelMinAttribute, VoxelPhysicsMaxAttribute,
     VoxelPhysicsMinAttribute,
 };
-use egui::{Button, CollapsingHeader, Grid, Id, RichText, Ui};
+use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
 
 struct AttributeFilter {
@@ -177,88 +177,7 @@ impl DefinitionDetailPanel {
             );
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
-            collapsing_heading(
-                ui,
-                "Bounding Boxes",
-                |ui| {
-                    Grid::new(Id::new("bounding_boxes_table"))
-                        .striped(true)
-                        .show(ui, |ui| {
-                            ui.label("");
-                            ui.strong("min x");
-                            ui.strong("min y");
-                            ui.strong("min z");
-                            ui.strong("max x");
-                            ui.strong("max y");
-                            ui.strong("max z");
-                            ui.end_row();
-
-                            ui.label("Voxel");
-                            for attr in VoxelMinAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            for attr in VoxelMaxAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            ui.end_row();
-
-                            ui.label("Voxel Physics");
-                            for attr in VoxelPhysicsMinAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            for attr in VoxelPhysicsMaxAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            ui.end_row();
-
-                            ui.label("BB Physics");
-                            for attr in BbPhysicsMinAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            for attr in BbPhysicsMaxAttribute::VARIANTS {
-                                ui_attribute_value(
-                                    ui,
-                                    state,
-                                    attr.property(),
-                                    attr.get_value_root(&data).last(),
-                                    true,
-                                );
-                            }
-                            ui.end_row();
-                        });
-                },
-                false,
-            );
+            bounding_box_table(ui, state, &data);
 
             // <compartment_sample_pos>
 
@@ -304,6 +223,17 @@ impl DefinitionDetailPanel {
     }
 }
 
+fn collapsing_heading<R>(
+    ui: &mut Ui,
+    title: impl Into<String>,
+    add_body: impl FnOnce(&mut Ui) -> R,
+    default_open: bool,
+) -> egui::CollapsingResponse<R> {
+    CollapsingHeader::new(RichText::new(title).heading())
+        .default_open(default_open)
+        .show(ui, add_body)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn attribute_list<T: GetAttributeValue<S>, S>(
     ui: &mut Ui,
@@ -327,7 +257,7 @@ fn attribute_list<T: GetAttributeValue<S>, S>(
                         *clicked_attribute = Some(*attr);
                     }
                     ui.label(attr.to_string());
-                    ui_attribute_value(ui, state, attr.property(), value.as_ref(), false);
+                    ui_attribute_value(ui, state, attr.property(), value.as_ref(), false, None);
                     ui.end_row();
                 }
             }
@@ -360,6 +290,7 @@ fn attribute_table<T: GetAttributeValue<S>, S>(
             for attr in &columns {
                 ui.horizontal(|ui| {
                     ui.strong(attr.to_string());
+
                     let button = ui.add_sized([20.0, 20.0], Button::new("...").truncate());
                     if button.clicked() {
                         clicked = Some(**attr);
@@ -370,12 +301,14 @@ fn attribute_table<T: GetAttributeValue<S>, S>(
 
             for item in items {
                 for attr in &columns {
+                    let is_number = attr.property().is_number;
                     ui_attribute_value(
                         ui,
                         state,
                         attr.property(),
                         attr.get_value(item).as_ref(),
                         true,
+                        if is_number { Some((0.0, 28.0)) } else { None },
                     );
                 }
                 ui.end_row();
@@ -383,6 +316,37 @@ fn attribute_table<T: GetAttributeValue<S>, S>(
         });
 
     clicked
+}
+
+fn elements_table<T: GetAttributeValue<S>, S>(
+    ui: &mut Ui,
+    state: &mut State,
+    name: &'_ str,
+    attrs: &[T],
+    data: Option<&Vec<S>>,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    if !attribute_filter.show_all && data.map_or(true, |v| v.is_empty()) {
+        return;
+    }
+    collapsing_heading(
+        ui,
+        name,
+        |ui| {
+            if let Some(clicked) = attribute_table(
+                ui,
+                state,
+                Id::new(name),
+                attribute_filter,
+                attrs,
+                data.map_or(&Vec::new(), |v| v),
+            ) {
+                *clicked_attribute = Some(clicked.into());
+            }
+        },
+        false,
+    );
 }
 
 fn sfx_data_table(
@@ -422,44 +386,92 @@ fn sfx_data_table(
     }
 }
 
-fn elements_table<T: GetAttributeValue<S>, S>(
-    ui: &mut Ui,
-    state: &mut State,
-    name: &'_ str,
-    attrs: &[T],
-    data: Option<&Vec<S>>,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    if !attribute_filter.show_all && data.map_or(true, |v| v.is_empty()) {
-        return;
-    }
+fn bounding_box_table(ui: &mut Ui, state: &mut State, data: &Definition) {
     collapsing_heading(
         ui,
-        name,
+        "Bounding Boxes",
         |ui| {
-            if let Some(clicked) = attribute_table(
-                ui,
-                state,
-                Id::new(name),
-                attribute_filter,
-                attrs,
-                data.map_or(&Vec::new(), |v| v),
-            ) {
-                *clicked_attribute = Some(clicked.into());
-            }
+            Grid::new(Id::new("bounding_boxes_table"))
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("");
+                    for label in ["min x", "min y", "min z", "max x", "max y", "max z"] {
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            ui.strong(label);
+                        });
+                    }
+                    ui.end_row();
+
+                    ui.label("Voxel");
+                    for attr in VoxelMinAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    for attr in VoxelMaxAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+
+                    ui.label("Voxel Physics");
+                    for attr in VoxelPhysicsMinAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    for attr in VoxelPhysicsMaxAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+
+                    ui.label("BB Physics");
+                    for attr in BbPhysicsMinAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    for attr in BbPhysicsMaxAttribute::VARIANTS {
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            attr.property(),
+                            attr.get_value_root(data).last(),
+                            true,
+                            None,
+                        );
+                    }
+                    ui.end_row();
+                });
         },
         false,
     );
-}
-
-fn collapsing_heading<R>(
-    ui: &mut Ui,
-    title: impl Into<String>,
-    add_body: impl FnOnce(&mut Ui) -> R,
-    default_open: bool,
-) -> egui::CollapsingResponse<R> {
-    CollapsingHeader::new(RichText::new(title).heading())
-        .default_open(default_open)
-        .show(ui, add_body)
 }

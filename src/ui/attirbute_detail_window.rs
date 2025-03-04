@@ -185,6 +185,7 @@ impl AttributeDetailWindow {
                                             self.specifier.property(),
                                             Some(value),
                                             false,
+                                            None,
                                         );
                                     }
                                 });
@@ -247,6 +248,7 @@ impl AttributeDetailWindow {
                                     self.specifier.property(),
                                     Some(key),
                                     false,
+                                    None,
                                 );
                             });
                         },

@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, AttributeSpecifier, AttributeValue, Definition,
-    GetAttributeValue, Position,
+    attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
+    AttributeValue, Definition, GetAttributeValue, Position,
 };
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +63,17 @@ impl GetAttributeValueRoot for CouplingAttribute {
                 .collect()
         } else {
             vec![]
+        }
+    }
+
+    fn property(&self) -> AttributeProperty {
+        let is_number = matches!(
+            self,
+            Self::Orientation | Self::Alignment | Self::CouplingGender
+        );
+        AttributeProperty {
+            is_audio_file: false,
+            is_number,
         }
     }
 }

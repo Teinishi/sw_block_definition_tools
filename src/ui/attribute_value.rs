@@ -8,6 +8,7 @@ pub fn ui_attribute_value(
     attribute_property: AttributeProperty,
     value: Option<&AttributeValue>,
     number_right: bool,
+    margin: Option<(f32, f32)>,
 ) {
     if let Some(value) = value {
         ui.horizontal(|ui| {
@@ -31,13 +32,28 @@ pub fn ui_attribute_value(
                 }
             }
 
-            let layout = if number_right && value.is_number() {
+            let is_r2l = number_right && attribute_property.is_number;
+
+            let (mut margin1, mut margin2) = margin
+                .map(|(l, r)| (Some(l), Some(r)))
+                .unwrap_or((None, None));
+            if is_r2l {
+                (margin1, margin2) = (margin2, margin1);
+            }
+
+            let layout = if is_r2l {
                 Layout::right_to_left(Align::Center)
             } else {
                 Layout::left_to_right(Align::Center)
             };
             ui.with_layout(layout, |ui| {
+                if let Some(m) = margin1 {
+                    ui.add_space(m);
+                }
                 ui.label(value.display_string());
+                if let Some(m) = margin2 {
+                    ui.add_space(m);
+                }
             });
         });
     } else {
