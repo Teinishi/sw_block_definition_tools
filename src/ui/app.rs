@@ -4,18 +4,17 @@ use super::{
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct MainApp<'a> {
+pub struct MainApp {
     state: State,
     definition_select_panel: DefinitionSelectPanel,
-    #[serde(skip)]
-    definition_detail_panel: DefinitionDetailPanel<'a>,
+    definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Option<Definition3dPanel>,
     bottom_panel: BottomPanel,
     window_id: i32,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
 }
 
-impl<'a> MainApp<'a> {
+impl MainApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
@@ -66,7 +65,7 @@ impl<'a> MainApp<'a> {
     }
 }
 
-impl<'a> eframe::App for MainApp<'a> {
+impl eframe::App for MainApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self);
     }
@@ -175,7 +174,7 @@ use raw_window_handle;
 const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'a> MainApp<'a> {
+impl MainApp {
     fn open_rom_folder<
         W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
     >(

@@ -1,8 +1,8 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, Definition,
-    DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot, IsDefault, LogicNodeAttribute,
-    SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
+    DefinitionAttribute, GetAttributeValue, IsDefault, LogicNodeAttribute, SfxDataAttribute,
+    SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -26,42 +26,10 @@ impl AttributeFilter {
     }
 }
 
-pub struct DefinitionDetailPanel<'a> {
-    definition_attributes_panel: CollapsingPanel<'a, DefinitionAttribute>,
-    /*sfx_data_panels: Vec<CollapsingPanel>,
-    surfaces_panel: CollapsingPanel,
-    buoyancy_surfaces_panel: CollapsingPanel,
-    logic_nodes_panel: CollapsingPanel,
-    couplings_panel: CollapsingPanel,
-    voxels_panel: CollapsingPanel,
-    bounding_boxes_panel: CollapsingPanel,
-    positions_panel: CollapsingPanel,
-    seat_panel: CollapsingPanel,
-    light_panel: CollapsingPanel,
-    door_panel: CollapsingPanel,
-    dynamic_panel: CollapsingPanel,
-    connector_panel: CollapsingPanel,
-    particle_panel: CollapsingPanel,
-    weapon_panel: CollapsingPanel,
-    others_panel: CollapsingPanel,*/
-}
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub struct DefinitionDetailPanel {}
 
-impl<'a> Default for DefinitionDetailPanel<'a> {
-    fn default() -> Self {
-        let definition_attributes_panel = CollapsingPanel::new(
-            "Definition Attributes",
-            Id::new("definition_attributes_panel"),
-        )
-        .default_open(true)
-        .list_attributes(&DefinitionAttribute::NON_ELEMENT_VARIANTS);
-
-        Self {
-            definition_attributes_panel,
-        }
-    }
-}
-
-impl<'a> DefinitionDetailPanel<'a> {
+impl DefinitionDetailPanel {
     pub fn ui(&mut self, ui: &mut Ui, state: &mut State) -> Option<AttributeDetailWindow> {
         let attribute_filter = AttributeFilter::from_state(state);
 
@@ -101,146 +69,249 @@ impl<'a> DefinitionDetailPanel<'a> {
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
             // <definition> の属性リスト
-            self.definition_attributes_panel
-                .ui(ui, state, &data, &mut clicked_attribute);
-            /*collapsing_heading(
-                ui,
-                "Definition Attributes",
-                |ui| {
-                    let mut clicked = None;
-                    attribute_list(
-                        ui,
-                        state,
-                        Id::new("definition_attribute_table"),
-                        &attribute_filter,
-                        &DefinitionAttribute::NON_ELEMENT_VARIANTS,
-                        &data,
-                        &mut clicked,
-                    );
-                    if let Some(c) = clicked {
-                        clicked_attribute = Some(c.into());
-                    }
-                },
-                true,
-            );*/
+            let mut list = AttributeList::new(
+                "definition_attribute_list",
+                &DefinitionAttribute::NON_ELEMENT_VARIANTS,
+            );
+            if list.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Definition Attributes")
+                    .default_open(true)
+                    .ui(ui, |ui| {
+                        list.ui(ui, state, &mut clicked_attribute);
+                    });
+            }
 
             // <sfx_datas> のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
                 for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
-                    let title = match &item.sfx_name {
-                        Some(name) => format!("Sfx data ({})", name),
-                        None => "Sfx data".to_string(),
-                    };
-                    collapsing_heading(
-                        ui,
-                        title,
-                        |ui| {
-                            sfx_data_table(
-                                ui,
-                                state,
-                                Id::new(format!("sfx_data_table_{}", i)),
-                                &attribute_filter,
-                                item,
-                                &mut clicked_attribute,
-                            );
-                        },
-                        false,
+                    let mut attribute_list = AttributeList::new(
+                        format!("sfx_attribute_list_{}", i),
+                        SfxDataAttribute::VARIANTS,
                     );
+                    let mut layers_table = ElementsTable::new(
+                        format!("sfx_layers_table_{}", i),
+                        SfxLayerAttribute::VARIANTS,
+                    );
+
+                    let mut show = attribute_list.update(&attribute_filter, item);
+                    if let Some(sfx_layers) = item.sfx_layers.last() {
+                        if layers_table.update(&attribute_filter, &sfx_layers.sfx_layer) {
+                            show = true;
+                        }
+                    }
+
+                    if show {
+                        let title = match &item.sfx_name {
+                            Some(name) => format!("Sfx data ({})", name),
+                            None => "Sfx data".to_string(),
+                        };
+                        CollapsingPanel::new(&title).ui(ui, |ui| {
+                            attribute_list.ui(ui, state, &mut clicked_attribute);
+                            layers_table.ui(ui, state, &mut clicked_attribute);
+                        });
+                    }
                 }
             }
 
             // <surfaces> のリスト
-            elements_table(
-                ui,
-                state,
-                "Surfaces",
-                SurfaceAttribute::VARIANTS,
-                data.surfaces.last().map(|surfaces| &surfaces.surface),
-                &attribute_filter,
-                &mut clicked_attribute,
-            );
+            if let Some(surfaces) = &data.surfaces.last() {
+                let mut table = ElementsTable::new("surfaces_table", SurfaceAttribute::VARIANTS);
+                if table.update(&attribute_filter, &surfaces.surface) {
+                    CollapsingPanel::new("Surfaces").ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
+                }
+            }
 
             // <buoyancy_surfaces> のリスト
-            elements_table(
-                ui,
-                state,
-                "Buoyancy Surfaces",
-                SurfaceAttribute::VARIANTS,
-                data.buoyancy_surfaces
-                    .last()
-                    .map(|surfaces| &surfaces.surface),
-                &attribute_filter,
-                &mut clicked_attribute,
-            );
+            if let Some(buoyancy_surfaces) = &data.buoyancy_surfaces.last() {
+                let mut table =
+                    ElementsTable::new("buoyancy_surfaces_table", SurfaceAttribute::VARIANTS);
+                if table.update(&attribute_filter, &buoyancy_surfaces.surface) {
+                    CollapsingPanel::new("Buoyancy surfaces").ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
+                }
+            }
 
             // <logic_nodes> のリスト
-            elements_table(
-                ui,
-                state,
-                "Logic Nodes",
-                LogicNodeAttribute::VARIANTS,
-                data.logic_nodes
-                    .last()
-                    .map(|logic_nodes| &logic_nodes.logic_node),
-                &attribute_filter,
-                &mut clicked_attribute,
-            );
+            if let Some(logic_nodes) = &data.logic_nodes.last() {
+                let mut table =
+                    ElementsTable::new("logic_nodes_table", LogicNodeAttribute::VARIANTS);
+                if table.update(&attribute_filter, &logic_nodes.logic_node) {
+                    CollapsingPanel::new("Logic nodes").ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
+                }
+            }
 
             // <couplings> のリスト
-            elements_table(
-                ui,
-                state,
-                "Couplings",
-                CouplingAttribute::VARIANTS,
-                data.couplings.last().map(|couplings| &couplings.coupling),
-                &attribute_filter,
-                &mut clicked_attribute,
-            );
+            if let Some(couplings) = &data.couplings.last() {
+                let mut table = ElementsTable::new("couplings_table", CouplingAttribute::VARIANTS);
+                if table.update(&attribute_filter, &couplings.coupling) {
+                    CollapsingPanel::new("Couplings").ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
+                }
+            }
 
             // <voxels> のリスト
-            elements_table(
-                ui,
-                state,
-                "Voxels",
-                VoxelAttribute::VARIANTS,
-                data.voxels.last().map(|voxels| &voxels.voxel),
-                &attribute_filter,
-                &mut clicked_attribute,
-            );
+            if let Some(voxels) = &data.voxels.last() {
+                let mut table = ElementsTable::new("voxels_table", VoxelAttribute::VARIANTS);
+                if table.update(&attribute_filter, &voxels.voxel) {
+                    CollapsingPanel::new("Voxels").ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
+                }
+            }
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
             bounding_boxes_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
-            // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child>
-            positions_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
-
             // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render> <seat_exit_position>
-            seat_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "seat_table",
+                &[
+                    (DefinitionAttribute::SeatOffset, "Offset"),
+                    (DefinitionAttribute::SeatFront, "Front"),
+                    (DefinitionAttribute::SeatUp, "Up"),
+                    (DefinitionAttribute::SeatCamera, "Camera"),
+                    (DefinitionAttribute::SeatRender, "Render"),
+                    (DefinitionAttribute::SeatExitPosition, "Exit position"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Seat").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <light_position> <light_forward> <light_color>
-            light_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "light_table",
+                &[
+                    (DefinitionAttribute::LightPosition, "Position"),
+                    (DefinitionAttribute::LightForward, "Forward"),
+                    (DefinitionAttribute::LightColor, "Color"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Light").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <door_size> <door_normal> <door_side> <door_up> <door_base_pos>
-            door_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "door_table",
+                &[
+                    (DefinitionAttribute::DoorSize, "Size"),
+                    (DefinitionAttribute::DoorNormal, "Normal"),
+                    (DefinitionAttribute::DoorSide, "Side"),
+                    (DefinitionAttribute::DoorUp, "Up"),
+                    (DefinitionAttribute::DoorBasePos, "BasePos"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Door").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
-            dynamic_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "dynamic_table",
+                &[
+                    (DefinitionAttribute::DynamicBodyPosition, "Body position"),
+                    (DefinitionAttribute::DynamicRotationAxes, "Rotation axes"),
+                    (DefinitionAttribute::DynamicSideAxis, "Side axis"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Dynamic").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <connector_axis> <connector_up>
-            connector_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "connector_table",
+                &[
+                    (DefinitionAttribute::ConnectorAxis, "Axis"),
+                    (DefinitionAttribute::ConnectorUp, "Up"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Connector").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <tooltip_properties> <reward_properties>
 
             // <jet_engine_connections_prev> <jet_engine_connections_next>
 
             // <particle_direction> <particle_offset> <particle_bounds>
-            particle_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "particle_table",
+                &[
+                    (DefinitionAttribute::ParticleDirection, "Direction"),
+                    (DefinitionAttribute::ParticleOffset, "Offset"),
+                    (DefinitionAttribute::ParticleBounds, "Bounds"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Particle").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <weapon_breech_position> <weapon_breech_normal> <weapon_cart_position> <weapon_cart_velocity>
-            weapon_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = VecTable::new(
+                "weapon_table",
+                &[
+                    (DefinitionAttribute::WeaponBreechPosition, "Breech position"),
+                    (DefinitionAttribute::WeaponBreechNormal, "Breech normal"),
+                    (DefinitionAttribute::WeaponCartPosition, "Cart position"),
+                    (DefinitionAttribute::WeaponCartVelocity, "Cart velocity"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Weapon").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
-            // <force_dir> <magnet_offset> <rope_hook_offset>
-            others_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child> <force_dir> <magnet_offset> <rope_hook_offset>
+            let mut table = VecTable::new(
+                "others_table",
+                &[
+                    (
+                        DefinitionAttribute::CompartmentSamplePos,
+                        "Compartment sample pos",
+                    ),
+                    (
+                        DefinitionAttribute::ConstraintPosParent,
+                        "Constraint pos parent",
+                    ),
+                    (
+                        DefinitionAttribute::ConstraintPosChild,
+                        "Constraint pos child",
+                    ),
+                    (
+                        DefinitionAttribute::VoxelLocationChild,
+                        "Voxel location child",
+                    ),
+                    (DefinitionAttribute::ForceDir, "Force dir"),
+                    (DefinitionAttribute::MagnetOffset, "Magnet offset"),
+                    (DefinitionAttribute::RopeHookOffset, "Rope hook offset"),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Others").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             Some(AttributeDetailWindow::new(
                 clicked_attribute?,
@@ -275,221 +346,6 @@ fn attribute_detail_button<T: Copy>(
     };
     if res.clicked() {
         *clicked = Some(*attr);
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn attribute_list<T: GetAttributeValue<S>, S>(
-    ui: &mut Ui,
-    state: &mut State,
-    id: Id,
-    attribute_filter: &AttributeFilter,
-    attributes: &[T],
-    data: &S,
-    clicked_attribute: &mut Option<T>,
-) {
-    Grid::new(id)
-        .min_col_width(0.0)
-        .spacing([10.0, 4.0])
-        .striped(true)
-        .show(ui, |ui| {
-            for attr in attributes {
-                let value = attr.get_value(data);
-                if attribute_filter.check(&value) {
-                    attribute_detail_button(ui, attr, clicked_attribute, None);
-                    ui.label(attr.to_string());
-                    ui_attribute_value(ui, state, &attr.property(), value.as_ref(), false, None);
-                    ui.end_row();
-                }
-            }
-        });
-}
-
-fn attribute_table<T: GetAttributeValue<S>, S>(
-    ui: &mut Ui,
-    state: &mut State,
-    id: Id,
-    attribute_filter: &AttributeFilter,
-    attrs: &[T],
-    items: &[S],
-) -> Option<T> {
-    let columns: Vec<&T> = attrs
-        .iter()
-        .filter(|attr| {
-            attribute_filter.show_all
-                || items
-                    .iter()
-                    .any(|item| attribute_filter.check(&attr.get_value(item)))
-        })
-        .collect();
-    let mut clicked = None;
-
-    Grid::new(id)
-        .min_col_width(0.0)
-        .spacing([20.0, 4.0])
-        .striped(true)
-        .show(ui, |ui| {
-            for attr in &columns {
-                ui.horizontal(|ui| {
-                    ui.strong(attr.to_string());
-                    attribute_detail_button(ui, *attr, &mut clicked, None);
-                });
-            }
-            ui.end_row();
-
-            for item in items {
-                for attr in &columns {
-                    let is_number = attr.property().is_number;
-                    ui_attribute_value(
-                        ui,
-                        state,
-                        &attr.property(),
-                        attr.get_value(item).as_ref(),
-                        true,
-                        if is_number { Some((0.0, 28.0)) } else { None },
-                    );
-                }
-                ui.end_row();
-            }
-        });
-
-    clicked
-}
-
-fn elements_table<T: GetAttributeValue<S>, S>(
-    ui: &mut Ui,
-    state: &mut State,
-    name: &'_ str,
-    attrs: &[T],
-    data: Option<&Vec<S>>,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    if !attribute_filter.show_all && data.map_or(true, |v| v.is_empty()) {
-        return;
-    }
-    collapsing_heading(
-        ui,
-        name,
-        |ui| {
-            if let Some(clicked) = attribute_table(
-                ui,
-                state,
-                Id::new(name),
-                attribute_filter,
-                attrs,
-                data.map_or(&Vec::new(), |v| v),
-            ) {
-                *clicked_attribute = Some(clicked.into());
-            }
-        },
-        false,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-fn vec3_table(
-    ui: &mut Ui,
-    state: &mut State,
-    title: impl Into<String>,
-    id: Id,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    elements: &[(DefinitionAttribute, &'_ str)],
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    let rows: Vec<(&DefinitionAttribute, &&str, [Option<AttributeValue>; 3])> = elements
-        .iter()
-        .filter_map(|(attr, label)| {
-            let values: Option<[Option<AttributeValue>; 3]> = attr
-                .get_value(data)
-                .and_then(|v| v.vec_as_attribute_values());
-
-            let values = values.unwrap_or([None, None, None]);
-            let show = values.iter().any(|value| attribute_filter.check(value));
-            if !show {
-                return None;
-            }
-
-            Some((attr, label, values))
-        })
-        .collect();
-
-    if rows.is_empty() {
-        return;
-    }
-
-    let mut clicked = None;
-    collapsing_heading(
-        ui,
-        title,
-        |ui| {
-            Grid::new(id)
-                .min_col_width(0.0)
-                .spacing([10.0, 4.0])
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label("");
-                    ui.label("");
-                    for label in ["x", "y", "z"] {
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            ui.strong(label);
-                        });
-                    }
-                    ui.end_row();
-
-                    for (attr, label, values) in rows {
-                        let property = attr.property();
-                        attribute_detail_button(ui, attr, &mut clicked, None);
-                        ui.label(*label);
-                        for value in &values {
-                            ui_attribute_value(ui, state, &property, value.as_ref(), true, None);
-                        }
-                        ui.end_row();
-                    }
-                });
-        },
-        false,
-    );
-    if let Some(clicked) = clicked {
-        *clicked_attribute = Some(clicked.into());
-    }
-}
-
-fn sfx_data_table(
-    ui: &mut Ui,
-    state: &mut State,
-    id: Id,
-    attribute_filter: &AttributeFilter,
-    sfx_data: &SfxData,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    let mut clicked = None;
-    attribute_list(
-        ui,
-        state,
-        id,
-        attribute_filter,
-        SfxDataAttribute::VARIANTS,
-        sfx_data,
-        &mut clicked,
-    );
-    if let Some(c) = clicked {
-        *clicked_attribute = Some(c.into());
-    }
-
-    if let Some(layers) = sfx_data.sfx_layers.last() {
-        ui.add_space(4.0);
-        if let Some(clicked) = attribute_table(
-            ui,
-            state,
-            id.with("layer_table"),
-            attribute_filter,
-            SfxLayerAttribute::VARIANTS,
-            &layers.sfx_layer,
-        ) {
-            *clicked_attribute = Some(clicked.into());
-        }
     }
 }
 
@@ -580,245 +436,15 @@ fn bounding_boxes_table(
     }
 }
 
-fn positions_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Positions",
-        Id::new("positions_table"),
-        data,
-        attribute_filter,
-        &[
-            (
-                DefinitionAttribute::CompartmentSamplePos,
-                "Compartment sample pos",
-            ),
-            (
-                DefinitionAttribute::ConstraintPosParent,
-                "Constraint pos parent",
-            ),
-            (
-                DefinitionAttribute::ConstraintPosChild,
-                "Constraint pos child",
-            ),
-            (
-                DefinitionAttribute::VoxelLocationChild,
-                "Voxel location child",
-            ),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn seat_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Seat",
-        Id::new("seat_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::SeatOffset, "Offset"),
-            (DefinitionAttribute::SeatFront, "Front"),
-            (DefinitionAttribute::SeatUp, "Up"),
-            (DefinitionAttribute::SeatCamera, "Camera"),
-            (DefinitionAttribute::SeatRender, "Render"),
-            (DefinitionAttribute::SeatExitPosition, "Exit position"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn light_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Light",
-        Id::new("light_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::LightPosition, "Position"),
-            (DefinitionAttribute::LightForward, "Forward"),
-            (DefinitionAttribute::LightColor, "Color"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn door_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Door",
-        Id::new("door_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::DoorSize, "Size"),
-            (DefinitionAttribute::DoorNormal, "Normal"),
-            (DefinitionAttribute::DoorSide, "Side"),
-            (DefinitionAttribute::DoorUp, "Up"),
-            (DefinitionAttribute::DoorBasePos, "BasePos"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn dynamic_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Dynamic",
-        Id::new("dynamic_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::DynamicBodyPosition, "Body position"),
-            (DefinitionAttribute::DynamicRotationAxes, "Rotation axes"),
-            (DefinitionAttribute::DynamicSideAxis, "Side axis"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn connector_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Connector",
-        Id::new("connector_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::ConnectorAxis, "Axis"),
-            (DefinitionAttribute::ConnectorUp, "Up"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn particle_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Particle",
-        Id::new("particle_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::ParticleDirection, "Direction"),
-            (DefinitionAttribute::ParticleOffset, "Offset"),
-            (DefinitionAttribute::ParticleBounds, "Bounds"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn weapon_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Weapon",
-        Id::new("weapon_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::WeaponBreechPosition, "Breech position"),
-            (DefinitionAttribute::WeaponBreechNormal, "Breech normal"),
-            (DefinitionAttribute::WeaponCartPosition, "Cart position"),
-            (DefinitionAttribute::WeaponCartVelocity, "Cart velocity"),
-        ],
-        clicked_attribute,
-    );
-}
-
-fn others_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    vec3_table(
-        ui,
-        state,
-        "Others",
-        Id::new("others_table"),
-        data,
-        attribute_filter,
-        &[
-            (DefinitionAttribute::ForceDir, "Force dir"),
-            (DefinitionAttribute::MagnetOffset, "Magnet offset"),
-            (DefinitionAttribute::RopeHookOffset, "Rope hook offset"),
-        ],
-        clicked_attribute,
-    );
-}
-
-struct CollapsingPanel<'a, T> {
+struct CollapsingPanel<'a> {
     title: &'a str,
-    id: Id,
     default_open: bool,
-    list_attributes: Option<&'a [T]>,
 }
-
-impl<'a, T> CollapsingPanel<'a, T> {
-    fn new(title: &'a str, id: Id) -> Self {
+impl<'a> CollapsingPanel<'a> {
+    fn new(title: &'a str) -> Self {
         Self {
             title,
-            id,
             default_open: false,
-            list_attributes: None,
         }
     }
 
@@ -827,75 +453,261 @@ impl<'a, T> CollapsingPanel<'a, T> {
         self
     }
 
-    fn list_attributes(mut self, value: &'a [T]) -> Self {
-        self.list_attributes = Some(value);
-        self
+    fn ui<R>(&self, ui: &mut Ui, add_body: impl FnOnce(&mut Ui) -> R) {
+        CollapsingHeader::new(RichText::new(self.title).heading())
+            .default_open(self.default_open)
+            .show(ui, add_body);
+    }
+}
+
+struct AttributeList<'a, T> {
+    id: Id,
+    attributes: &'a [T],
+    filtered_data: Option<Vec<(&'a T, Option<AttributeValue>)>>,
+}
+impl<'a, T> AttributeList<'a, T> {
+    fn new(id: impl std::hash::Hash, attributes: &'a [T]) -> Self {
+        Self {
+            id: Id::new(id),
+            attributes,
+            filtered_data: None,
+        }
     }
 
-    fn is_empty(&self) -> bool {
-        false
+    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
+    where
+        T: GetAttributeValue<S>,
+    {
+        let filtered_data: Vec<(&'a T, Option<AttributeValue>)> = self
+            .attributes
+            .iter()
+            .filter_map(|attr| {
+                let value = attr.get_value(data);
+                if attribute_filter.check(&value) {
+                    Some((attr, value))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if filtered_data.is_empty() {
+            self.filtered_data = None;
+            false
+        } else {
+            self.filtered_data = Some(filtered_data);
+            true
+        }
     }
 
     fn ui<S>(
         &self,
         ui: &mut Ui,
         state: &mut State,
-        data: &S,
         clicked_attribute: &mut Option<AttributeSpecifier>,
     ) where
-        T: GetAttributeValue<S>,
+        T: GetAttributeValue<S> + Into<AttributeSpecifier>,
     {
-        if self.is_empty() {
-            return;
-        }
-
-        let attribute_filter = AttributeFilter::from_state(state);
-
-        CollapsingHeader::new(RichText::new(self.title).heading())
-            .default_open(self.default_open)
-            .show(ui, |ui| {
-                self.ui_attribute_list(ui, state, &attribute_filter, data, clicked_attribute);
-            });
-    }
-
-    fn ui_attribute_list<S>(
-        &self,
-        ui: &mut Ui,
-        state: &mut State,
-        attribute_filter: &AttributeFilter,
-        data: &S,
-        clicked_attribute: &mut Option<AttributeSpecifier>,
-    ) where
-        T: GetAttributeValue<S>,
-    {
-        if let Some(attributes) = self.list_attributes {
+        if let Some(data) = &self.filtered_data {
             let mut clicked = None;
 
-            Grid::new(self.id.with("attribute_list"))
+            Grid::new(self.id)
                 .min_col_width(0.0)
                 .spacing([10.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    for attr in attributes {
-                        let value = attr.get_value(data);
-                        if attribute_filter.check(&value) {
-                            attribute_detail_button(ui, attr, &mut clicked, None);
-                            ui.label(attr.to_string());
+                    for (attr, value) in data {
+                        attribute_detail_button(ui, attr, &mut clicked, None);
+                        ui.label(attr.to_string());
+                        ui_attribute_value(
+                            ui,
+                            state,
+                            &attr.property(),
+                            value.as_ref(),
+                            false,
+                            None,
+                        );
+                        ui.end_row();
+                    }
+                });
+
+            if let Some(clicked) = clicked {
+                *clicked_attribute = Some((*clicked).into());
+            }
+        }
+    }
+}
+
+struct ElementsTable<'a, T, S>
+where
+    T: GetAttributeValue<S>,
+{
+    id: Id,
+    attributes: &'a [T],
+    columns_elements: Option<(Vec<&'a T>, &'a [S])>,
+}
+impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
+    fn new(id: impl std::hash::Hash, attributes: &'a [T]) -> Self {
+        Self {
+            id: Id::new(id),
+            attributes,
+            columns_elements: None,
+        }
+    }
+
+    fn update(&mut self, attribute_filter: &AttributeFilter, data: &'a [S]) -> bool {
+        let columns: Vec<&T> = self
+            .attributes
+            .iter()
+            .filter(|attr| {
+                attribute_filter.show_all
+                    || data
+                        .iter()
+                        .any(|item| attribute_filter.check(&attr.get_value(item)))
+            })
+            .collect();
+        if columns.is_empty() && data.is_empty() {
+            self.columns_elements = None;
+            false
+        } else {
+            self.columns_elements = Some((columns, data));
+            true
+        }
+    }
+
+    fn ui(
+        &self,
+        ui: &mut Ui,
+        state: &mut State,
+        clicked_attribute: &mut Option<AttributeSpecifier>,
+    ) {
+        if let Some((columns, elements)) = &self.columns_elements {
+            let mut clicked = None;
+
+            Grid::new(self.id)
+                .min_col_width(0.0)
+                .spacing([20.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    for attr in columns {
+                        ui.horizontal(|ui| {
+                            ui.strong(attr.to_string());
+                            attribute_detail_button(ui, *attr, &mut clicked, None);
+                        });
+                    }
+                    ui.end_row();
+
+                    for item in elements.iter() {
+                        for attr in columns {
+                            let is_number = attr.property().is_number;
                             ui_attribute_value(
                                 ui,
                                 state,
                                 &attr.property(),
-                                value.as_ref(),
-                                false,
-                                None,
+                                attr.get_value(item).as_ref(),
+                                true,
+                                if is_number { Some((0.0, 28.0)) } else { None },
                             );
-                            ui.end_row();
                         }
+                        ui.end_row();
                     }
                 });
 
             if let Some(clicked) = clicked {
                 *clicked_attribute = Some(clicked.into());
+            }
+        }
+    }
+}
+
+type VecTableRow<'a, T> = (&'a T, &'a str, [Option<AttributeValue>; 3]);
+
+struct VecTable<'a, T> {
+    id: Id,
+    elements: &'a [(T, &'a str)],
+    filtered_rows: Option<Vec<VecTableRow<'a, T>>>,
+}
+impl<'a, T> VecTable<'a, T> {
+    fn new(id: impl std::hash::Hash, elements: &'a [(T, &'_ str)]) -> Self {
+        Self {
+            id: Id::new(id),
+            elements,
+            filtered_rows: None,
+        }
+    }
+
+    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
+    where
+        T: GetAttributeValue<S>,
+    {
+        let rows: Vec<(&T, &str, [Option<AttributeValue>; 3])> = self
+            .elements
+            .iter()
+            .filter_map(|(element, label)| {
+                let values: Option<[Option<AttributeValue>; 3]> = element
+                    .get_value(data)
+                    .and_then(|v| v.vec_as_attribute_values());
+
+                let values = values.unwrap_or([None, None, None]);
+                let show = values.iter().any(|value| attribute_filter.check(value));
+                if !show {
+                    return None;
+                }
+
+                Some((element, *label, values))
+            })
+            .collect();
+
+        if rows.is_empty() {
+            self.filtered_rows = None;
+            false
+        } else {
+            self.filtered_rows = Some(rows);
+            true
+        }
+    }
+
+    fn ui<S>(
+        &self,
+        ui: &mut Ui,
+        state: &mut State,
+        clicked_attribute: &mut Option<AttributeSpecifier>,
+    ) where
+        T: GetAttributeValue<S> + Copy,
+    {
+        if let Some(rows) = &self.filtered_rows {
+            let property = AttributeProperty {
+                is_audio_file: false,
+                is_number: true,
+            };
+
+            let mut clicked = None;
+
+            Grid::new(self.id)
+                .min_col_width(0.0)
+                .spacing([10.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("");
+                    ui.label("");
+                    for label in ["x", "y", "z"] {
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            ui.strong(label);
+                        });
+                    }
+                    ui.end_row();
+
+                    for (element, label, values) in rows {
+                        attribute_detail_button(ui, element, &mut clicked, None);
+                        ui.label(*label);
+                        for value in values {
+                            ui_attribute_value(ui, state, &property, value.as_ref(), true, None);
+                        }
+                        ui.end_row();
+                    }
+                });
+
+            if let Some(clicked) = clicked {
+                *clicked_attribute = Some((*clicked).into());
             }
         }
     }
