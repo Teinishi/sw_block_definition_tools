@@ -75,6 +75,13 @@ impl<T: Copy + std::convert::Into<AttributeValue>> DefinitionVec3<T> {
     pub fn z_as_attribute_value(&self) -> Option<AttributeValue> {
         self.z.map(|z| z.into())
     }
+    pub fn as_attribute_values(&self) -> [Option<AttributeValue>; 3] {
+        [
+            self.x_as_attribute_value(),
+            self.y_as_attribute_value(),
+            self.z_as_attribute_value(),
+        ]
+    }
 }
 impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> IsDefault
     for DefinitionVec3<T>
@@ -210,6 +217,14 @@ pub enum AttributeValue {
 impl AttributeValue {
     pub fn is_number(&self) -> bool {
         matches!(self, Self::I32(_) | Self::U64(_) | Self::Of32(_))
+    }
+
+    pub fn vec_as_attribute_values(&self) -> Option<[Option<AttributeValue>; 3]> {
+        match self {
+            Self::VecI32(v) => Some(v.as_attribute_values()),
+            Self::VecOf32(v) => Some(v.as_attribute_values()),
+            _ => None,
+        }
     }
 }
 

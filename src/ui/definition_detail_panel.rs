@@ -1,10 +1,8 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, BbPhysicsMaxAttribute, BbPhysicsMinAttribute,
-    CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot,
-    IsDefault, LogicNodeAttribute, SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
-    VoxelAttribute, VoxelMaxAttribute, VoxelMinAttribute, VoxelPhysicsMaxAttribute,
-    VoxelPhysicsMinAttribute,
+    AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, Definition,
+    DefinitionAttribute, GetAttributeValue, GetAttributeValueRoot, IsDefault, LogicNodeAttribute,
+    SfxData, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -81,7 +79,7 @@ impl DefinitionDetailPanel {
                         state,
                         Id::new("definition_attribute_table"),
                         &attribute_filter,
-                        DefinitionAttribute::VARIANTS,
+                        &DefinitionAttribute::NON_ELEMENT_VARIANTS,
                         &data,
                         &mut clicked,
                     );
@@ -372,16 +370,8 @@ fn vec3_table(
         .filter_map(|(attr, label)| {
             let values: Option<[Option<AttributeValue>; 3]> =
                 attr.get_value(data).and_then(|value| match value {
-                    AttributeValue::VecI32(v) => Some([
-                        v.x_as_attribute_value(),
-                        v.y_as_attribute_value(),
-                        v.z_as_attribute_value(),
-                    ]),
-                    AttributeValue::VecOf32(v) => Some([
-                        v.x_as_attribute_value(),
-                        v.y_as_attribute_value(),
-                        v.z_as_attribute_value(),
-                    ]),
+                    AttributeValue::VecI32(v) => Some(v.as_attribute_values()),
+                    AttributeValue::VecOf32(v) => Some(v.as_attribute_values()),
                     _ => None,
                 });
             values.as_ref()?;
@@ -481,7 +471,45 @@ fn bounding_boxes_table(
     attribute_filter: &AttributeFilter,
     clicked_attribute: &mut Option<AttributeSpecifier>,
 ) {
-    // TODO: 表示が0行だったとき完全に非表示
+    let mut rows = Vec::with_capacity(3);
+    for (name, attr_min, attr_max) in [
+        (
+            "Voxel",
+            DefinitionAttribute::VoxelMin,
+            DefinitionAttribute::VoxelMax,
+        ),
+        (
+            "Voxel physics",
+            DefinitionAttribute::VoxelPhysicsMin,
+            DefinitionAttribute::VoxelPhysicsMax,
+        ),
+        (
+            "BB physics",
+            DefinitionAttribute::BbPhysicsMin,
+            DefinitionAttribute::BbPhysicsMax,
+        ),
+    ] {
+        let value_min = attr_min.get_value(data);
+        let value_max = attr_max.get_value(data);
+        let show = attribute_filter.check(&value_min) || attribute_filter.check(&value_max);
+        if show {
+            if let (Some(values_min), Some(values_max)) = (
+                value_min.and_then(|v| v.vec_as_attribute_values()),
+                value_max.and_then(|v| v.vec_as_attribute_values()),
+            ) {
+                rows.push((name, attr_min, attr_max, values_min, values_max));
+            }
+        }
+    }
+    if rows.is_empty() {
+        return;
+    }
+
+    let property = AttributeProperty {
+        is_audio_file: false,
+        is_number: true,
+    };
+
     let mut clicked = None;
     collapsing_heading(
         ui,
@@ -502,124 +530,15 @@ fn bounding_boxes_table(
                     }
                     ui.end_row();
 
-                    let show_voxel = attribute_filter
-                        .check(&DefinitionAttribute::VoxelMin.get_value(data))
-                        || attribute_filter.check(&DefinitionAttribute::VoxelMax.get_value(data));
-                    if show_voxel {
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::VoxelMin,
-                            &mut clicked,
-                            Some("min"),
-                        );
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::VoxelMax,
-                            &mut clicked,
-                            Some("max"),
-                        );
-                        ui.label("Voxel");
-                        for attr in VoxelMinAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
+                    for (name, attr_min, attr_max, values_min, values_max) in rows {
+                        attribute_detail_button(ui, &attr_min, &mut clicked, Some("min"));
+                        attribute_detail_button(ui, &attr_max, &mut clicked, Some("max"));
+                        ui.label(name);
+                        for v in values_min {
+                            ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
                         }
-                        for attr in VoxelMaxAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
-                        }
-                        ui.end_row();
-                    }
-
-                    let show_voxel_physics = attribute_filter
-                        .check(&DefinitionAttribute::VoxelPhysicsMin.get_value(data))
-                        || attribute_filter
-                            .check(&DefinitionAttribute::VoxelPhysicsMax.get_value(data));
-                    if show_voxel_physics {
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::VoxelPhysicsMin,
-                            &mut clicked,
-                            Some("min"),
-                        );
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::VoxelPhysicsMax,
-                            &mut clicked,
-                            Some("max"),
-                        );
-                        ui.label("Voxel Physics");
-                        for attr in VoxelPhysicsMinAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
-                        }
-                        for attr in VoxelPhysicsMaxAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
-                        }
-                        ui.end_row();
-                    }
-
-                    let show_bb_physics = attribute_filter
-                        .check(&DefinitionAttribute::BbPhysicsMin.get_value(data))
-                        || attribute_filter
-                            .check(&DefinitionAttribute::BbPhysicsMax.get_value(data));
-                    if show_bb_physics {
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::BbPhysicsMin,
-                            &mut clicked,
-                            Some("min"),
-                        );
-                        attribute_detail_button(
-                            ui,
-                            &DefinitionAttribute::BbPhysicsMax,
-                            &mut clicked,
-                            Some("max"),
-                        );
-                        ui.label("BB Physics");
-                        for attr in BbPhysicsMinAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
-                        }
-                        for attr in BbPhysicsMaxAttribute::VARIANTS {
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr.property(),
-                                attr.get_value_root(data).last(),
-                                true,
-                                None,
-                            );
+                        for v in values_max {
+                            ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
                         }
                         ui.end_row();
                     }
