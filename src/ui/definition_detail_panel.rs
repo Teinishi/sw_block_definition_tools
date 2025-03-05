@@ -200,10 +200,13 @@ impl DefinitionDetailPanel {
             // <jet_engine_connections_prev> <jet_engine_connections_next>
 
             // <particle_direction> <particle_offset> <particle_bounds>
+            particle_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <weapon_breech_position> <weapon_breech_normal> <weapon_cart_position> <weapon_cart_velocity>
+            weapon_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <force_dir> <magnet_offset> <rope_hook_offset>
+            others_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             Some(AttributeDetailWindow::new(
                 clicked_attribute?,
@@ -693,6 +696,76 @@ fn connector_table(
         &[
             (DefinitionAttribute::ConnectorAxis, "Axis"),
             (DefinitionAttribute::ConnectorUp, "Up"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn particle_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Particle",
+        Id::new("particle_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::ParticleDirection, "Direction"),
+            (DefinitionAttribute::ParticleOffset, "Offset"),
+            (DefinitionAttribute::ParticleBounds, "Bounds"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn weapon_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Weapon",
+        Id::new("weapon_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::WeaponBreechPosition, "Breech position"),
+            (DefinitionAttribute::WeaponBreechNormal, "Breech normal"),
+            (DefinitionAttribute::WeaponCartPosition, "Cart position"),
+            (DefinitionAttribute::WeaponCartVelocity, "Cart velocity"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn others_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Others",
+        Id::new("others_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::ForceDir, "Force dir"),
+            (DefinitionAttribute::MagnetOffset, "Magnet offset"),
+            (DefinitionAttribute::RopeHookOffset, "Rope hook offset"),
         ],
         clicked_attribute,
     );

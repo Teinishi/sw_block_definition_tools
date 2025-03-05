@@ -1,9 +1,10 @@
 use ambassador::{delegatable_trait, Delegate};
+use std::fmt::{self, Debug, Display};
 
 pub type Of32 = ordered_float::NotNan<f32>;
 
 #[delegatable_trait]
-pub trait DisplayAttributeValue: std::fmt::Debug {
+pub trait DisplayAttributeValue: Debug {
     fn display_string(&self) -> String {
         format!("{:?}", self)
     }
@@ -83,40 +84,34 @@ impl<T: Copy + std::convert::Into<AttributeValue>> DefinitionVec3<T> {
         ]
     }
 }
-impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> IsDefault
-    for DefinitionVec3<T>
-{
+impl<T: Copy + Default + PartialEq + Display + Debug> IsDefault for DefinitionVec3<T> {
     fn is_default(&self) -> bool {
         self.x.map_or(true, |v| v == Default::default())
             && self.y.map_or(true, |v| v == Default::default())
             && self.z.map_or(true, |v| v == Default::default())
     }
 }
-impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> std::fmt::Display
-    for DefinitionVec3<T>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T: Copy + Default + PartialEq + Display + Debug> Display for DefinitionVec3<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(")?;
         if let Some(x) = self.x {
             write!(f, "{:2}, ", x)?;
         } else {
-            write!(f, "- , ")?;
+            write!(f, "_ , ")?;
         }
         if let Some(y) = self.y {
             write!(f, "{:2}, ", y)?;
         } else {
-            write!(f, "- , ")?;
+            write!(f, "_ , ")?;
         }
         if let Some(z) = self.z {
             write!(f, "{:2})", z)
         } else {
-            write!(f, "- )")
+            write!(f, "_ )")
         }
     }
 }
-impl<T: Copy + Default + PartialEq + std::fmt::Display + std::fmt::Debug> DisplayAttributeValue
-    for DefinitionVec3<T>
-{
+impl<T: Copy + Default + PartialEq + Display + Debug> DisplayAttributeValue for DefinitionVec3<T> {
     fn display_string(&self) -> String {
         format!("{}", self)
     }
@@ -173,8 +168,8 @@ impl IsDefault for Matrix {
         self == &Self::IDENTITY
     }
 }
-impl std::fmt::Display for Matrix {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for Matrix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "({}, {}, {} / {}, {}, {} / {}, {}, {})",
