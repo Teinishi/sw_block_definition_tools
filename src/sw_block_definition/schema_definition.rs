@@ -465,9 +465,9 @@ pub enum DefinitionAttribute {
     MagnetOffset,
     ConnectorAxis,
     ConnectorUp,
-    /*TooltipProperties,
-    JetEngineConnectionsPrev,
-    JetEngineConnectionsNext,*/
+    //TooltipProperties,
+    //JetEngineConnectionsPrev,
+    //JetEngineConnectionsNext,
     ParticleDirection,
     ParticleOffset,
     ParticleBounds,
@@ -664,9 +664,9 @@ impl GetAttributeValueRoot for DefinitionAttribute {
                     | Self::MagnetOffset
                     | Self::ConnectorAxis
                     | Self::ConnectorUp
-                    /*| Self::TooltipProperties
-                    | Self::JetEngineConnectionsPrev
-                    | Self::JetEngineConnectionsNext*/
+                    //| Self::TooltipProperties
+                    //| Self::JetEngineConnectionsPrev
+                    //| Self::JetEngineConnectionsNext
                     | Self::ParticleDirection
                     | Self::ParticleOffset
                     | Self::ParticleBounds
@@ -839,9 +839,9 @@ impl GetAttributeValue<Definition> for DefinitionAttribute {
             Self::MagnetOffset => Some((*d.magnet_offset.last()?).into()),
             Self::ConnectorAxis => Some((*d.connector_axis.last()?).into()),
             Self::ConnectorUp => Some((*d.connector_up.last()?).into()),
-            /*Self::TooltipProperties => Some((*d.tooltip_properties.last()?).into()),
-            Self::JetEngineConnectionsPrev => Some((*d.jet_engine_connections_prev.last()?).into()),
-            Self::JetEngineConnectionsNext => Some((*d.jet_engine_connections_next.last()?).into()),*/
+            //Self::TooltipProperties => Some((*d.tooltip_properties.last()?).into()),
+            //Self::JetEngineConnectionsPrev => Some((*d.jet_engine_connections_prev.last()?).into()),
+            //Self::JetEngineConnectionsNext => Some((*d.jet_engine_connections_next.last()?).into()),
             Self::ParticleDirection => Some((*d.particle_direction.last()?).into()),
             Self::ParticleOffset => Some((*d.particle_offset.last()?).into()),
             Self::ParticleBounds => Some((*d.particle_bounds.last()?).into()),
@@ -859,5 +859,65 @@ impl GetAttributeValue<Definition> for DefinitionAttribute {
 impl From<DefinitionAttribute> for AttributeSpecifier {
     fn from(value: DefinitionAttribute) -> Self {
         Self::Definition(value)
+    }
+}
+
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum JetEngineConnectionAttribute {
+    PrevPos,
+    PrevNormal,
+    NextPos,
+    NextNormal,
+}
+
+impl GetAttributeValueRoot for JetEngineConnectionAttribute {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        self.get_value(d).into_iter().collect()
+    }
+}
+
+impl GetAttributeValue<Definition> for JetEngineConnectionAttribute {
+    fn get_value(&self, d: &Definition) -> Option<AttributeValue> {
+        match self {
+            Self::PrevPos => {
+                Some((*d.jet_engine_connections_prev.last()?.j.last()?.pos.last()?).into())
+            }
+            Self::PrevNormal => Some(
+                (*d.jet_engine_connections_prev
+                    .last()?
+                    .j
+                    .last()?
+                    .normal
+                    .last()?)
+                .into(),
+            ),
+            Self::NextPos => {
+                Some((*d.jet_engine_connections_next.last()?.j.last()?.pos.last()?).into())
+            }
+            Self::NextNormal => Some(
+                (*d.jet_engine_connections_next
+                    .last()?
+                    .j
+                    .last()?
+                    .normal
+                    .last()?)
+                .into(),
+            ),
+        }
+    }
+}
+
+impl From<JetEngineConnectionAttribute> for AttributeSpecifier {
+    fn from(value: JetEngineConnectionAttribute) -> Self {
+        Self::JetEngineConnection(value)
     }
 }

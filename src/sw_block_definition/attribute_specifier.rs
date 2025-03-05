@@ -30,6 +30,7 @@ pub trait GetAttributeValue<T>: GetAttributeValueRoot + Into<AttributeSpecifier>
 #[delegate(GetAttributeValueRoot)]
 pub enum AttributeSpecifier {
     Definition(crate::sw_block_definition::DefinitionAttribute),
+    JetEngineConnection(crate::sw_block_definition::JetEngineConnectionAttribute),
     SfxData(crate::sw_block_definition::SfxDataAttribute),
     SfxLayer(crate::sw_block_definition::SfxLayerAttribute),
     Surface(crate::sw_block_definition::SurfaceAttribute),

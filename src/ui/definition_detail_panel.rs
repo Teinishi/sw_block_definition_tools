@@ -1,8 +1,8 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
-    GetAttributeValue, IsDefault, LogicNodeAttribute, SfxDataAttribute, SfxLayerAttribute,
-    SurfaceAttribute, VoxelAttribute,
+    GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNodeAttribute,
+    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -21,7 +21,7 @@ impl AttributeFilter {
     }
 
     fn check(&self, value: &Option<AttributeValue>) -> bool {
-        let is_default = value.as_ref().is_some_and(|v| v.is_default());
+        let is_default = value.as_ref().is_none_or(|v| v.is_default());
         (self.show_all || value.is_some()) && !(self.hide_default && is_default)
     }
 }
@@ -278,6 +278,31 @@ impl DefinitionDetailPanel {
             // <tooltip_properties> <reward_properties>
 
             // <jet_engine_connections_prev> <jet_engine_connections_next>
+            let mut table = MultipleVecTable::new(
+                "jet_engine_connections_table",
+                Some(["pos", "normal"]),
+                [
+                    (
+                        "Prev",
+                        [
+                            JetEngineConnectionAttribute::PrevPos,
+                            JetEngineConnectionAttribute::PrevNormal,
+                        ],
+                    ),
+                    (
+                        "Next",
+                        [
+                            JetEngineConnectionAttribute::NextPos,
+                            JetEngineConnectionAttribute::NextNormal,
+                        ],
+                    ),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Jet engine connection").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <particle_direction> <particle_offset> <particle_bounds>
             let mut table = MultipleVecTable::single(
