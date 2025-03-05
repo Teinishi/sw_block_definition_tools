@@ -180,34 +180,27 @@ impl DefinitionDetailPanel {
             // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child>
             positions_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
-            // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render>
+            // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render> <seat_exit_position>
             seat_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
-            // <force_dir>
-
-            // <light_position> <light_color> <light_forward>
+            // <light_position> <light_forward> <light_color>
+            light_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <door_size> <door_normal> <door_side> <door_up> <door_base_pos>
 
             // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
 
-            // <magnet_offset>
-
             // <connector_axis> <connector_up>
 
-            // <tooltip_properties>
+            // <tooltip_properties> <reward_properties>
 
             // <jet_engine_connections_prev> <jet_engine_connections_next>
 
             // <particle_direction> <particle_offset> <particle_bounds>
 
-            // <reward_properties>
-
-            // <seat_exit_position>
-
             // <weapon_breech_position> <weapon_breech_normal> <weapon_cart_position> <weapon_cart_velocity>
 
-            // <rope_hook_offset>
+            // <force_dir> <magnet_offset> <rope_hook_offset>
 
             Some(AttributeDetailWindow::new(
                 clicked_attribute?,
@@ -368,15 +361,11 @@ fn vec3_table(
     let rows: Vec<(&DefinitionAttribute, &&str, [Option<AttributeValue>; 3])> = elements
         .iter()
         .filter_map(|(attr, label)| {
-            let values: Option<[Option<AttributeValue>; 3]> =
-                attr.get_value(data).and_then(|value| match value {
-                    AttributeValue::VecI32(v) => Some(v.as_attribute_values()),
-                    AttributeValue::VecOf32(v) => Some(v.as_attribute_values()),
-                    _ => None,
-                });
-            values.as_ref()?;
-            let values = values.unwrap();
+            let values: Option<[Option<AttributeValue>; 3]> = attr
+                .get_value(data)
+                .and_then(|v| v.vec_as_attribute_values());
 
+            let values = values.unwrap_or([None, None, None]);
             let show = values.iter().any(|value| attribute_filter.check(value));
             if !show {
                 return None;
@@ -607,6 +596,30 @@ fn seat_table(
             (DefinitionAttribute::SeatUp, "Up"),
             (DefinitionAttribute::SeatCamera, "Camera"),
             (DefinitionAttribute::SeatRender, "Render"),
+            (DefinitionAttribute::SeatExitPosition, "Exit position"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn light_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Light",
+        Id::new("light_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::LightPosition, "Position"),
+            (DefinitionAttribute::LightForward, "Forward"),
+            (DefinitionAttribute::LightColor, "Color"),
         ],
         clicked_attribute,
     );
