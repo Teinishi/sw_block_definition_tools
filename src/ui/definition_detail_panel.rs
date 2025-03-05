@@ -187,6 +187,7 @@ impl DefinitionDetailPanel {
             light_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <door_size> <door_normal> <door_side> <door_up> <door_base_pos>
+            door_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
 
@@ -620,6 +621,31 @@ fn light_table(
             (DefinitionAttribute::LightPosition, "Position"),
             (DefinitionAttribute::LightForward, "Forward"),
             (DefinitionAttribute::LightColor, "Color"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn door_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Door",
+        Id::new("door_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::DoorSize, "Size"),
+            (DefinitionAttribute::DoorNormal, "Normal"),
+            (DefinitionAttribute::DoorSide, "Side"),
+            (DefinitionAttribute::DoorUp, "Up"),
+            (DefinitionAttribute::DoorBasePos, "BasePos"),
         ],
         clicked_attribute,
     );
