@@ -148,15 +148,6 @@ define_vec3_float!(RopeHookOffset);
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
-pub struct TooltipProperties {
-    #[serde(rename = "@description")]
-    pub description: Option<String>,
-    #[serde(rename = "@short_description")]
-    pub short_description: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(default)]
 pub struct JetEngineConnectionsPrev {
     #[serde(default)]
     pub j: Vec<JetEngineConnection>,
@@ -178,9 +169,90 @@ pub struct JetEngineConnection {
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
+pub struct TooltipProperties {
+    #[serde(rename = "@description")]
+    pub description: Option<String>,
+    #[serde(rename = "@short_description")]
+    pub short_description: Option<String>,
+}
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum TooltipPropertiesAttribute {
+    Description,
+    ShortDescription,
+}
+impl GetAttributeValueRoot for TooltipPropertiesAttribute {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(tooltip_properties) = d.tooltip_properties.last() {
+            self.get_value(tooltip_properties).into_iter().collect()
+        } else {
+            vec![]
+        }
+    }
+}
+impl GetAttributeValue<TooltipProperties> for TooltipPropertiesAttribute {
+    fn get_value(&self, d: &TooltipProperties) -> Option<AttributeValue> {
+        match self {
+            Self::Description => Some(d.description.clone()?.into()),
+            Self::ShortDescription => Some(d.short_description.clone()?.into()),
+        }
+    }
+}
+impl From<TooltipPropertiesAttribute> for AttributeSpecifier {
+    fn from(value: TooltipPropertiesAttribute) -> Self {
+        Self::TooltipProperties(value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct RewardProperties {
     #[serde(rename = "@tier")]
     pub tier: Option<i32>,
     #[serde(rename = "@number_rewarded")]
     pub number_rewarded: Option<i32>,
+}
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    strum::Display,
+    strum::VariantArray,
+    Clone,
+    Copy,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum RewardPropertiesAttribute {
+    Tier,
+    NumberRewarded,
+}
+impl GetAttributeValueRoot for RewardPropertiesAttribute {
+    fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+        if let Some(reward_properties) = d.reward_properties.last() {
+            self.get_value(reward_properties).into_iter().collect()
+        } else {
+            vec![]
+        }
+    }
+}
+impl GetAttributeValue<RewardProperties> for RewardPropertiesAttribute {
+    fn get_value(&self, d: &RewardProperties) -> Option<AttributeValue> {
+        match self {
+            Self::Tier => Some(d.tier?.into()),
+            Self::NumberRewarded => Some(d.number_rewarded?.into()),
+        }
+    }
+}
+impl From<RewardPropertiesAttribute> for AttributeSpecifier {
+    fn from(value: RewardPropertiesAttribute) -> Self {
+        Self::RewardProperties(value)
+    }
 }

@@ -2,7 +2,8 @@ use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
     AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
     GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNodeAttribute,
-    SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
+    RewardPropertiesAttribute, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
+    TooltipPropertiesAttribute, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -73,7 +74,7 @@ impl DefinitionDetailPanel {
                 "definition_attribute_list",
                 &DefinitionAttribute::NON_ELEMENT_VARIANTS,
             );
-            if list.update(&attribute_filter, &data) {
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Definition Attributes")
                     .default_open(true)
                     .ui(ui, |ui| {
@@ -93,11 +94,13 @@ impl DefinitionDetailPanel {
                         SfxLayerAttribute::VARIANTS,
                     );
 
-                    let mut show = attribute_list.update(&attribute_filter, item);
-                    if let Some(sfx_layers) = item.sfx_layers.last() {
-                        if layers_table.update(&attribute_filter, &sfx_layers.sfx_layer) {
-                            show = true;
-                        }
+                    let mut show = attribute_list.update(&attribute_filter, Some(item));
+
+                    if layers_table.update(
+                        &attribute_filter,
+                        item.sfx_layers.last().map(|s| s.sfx_layer.as_slice()),
+                    ) {
+                        show = true;
                     }
 
                     if show {
@@ -114,55 +117,59 @@ impl DefinitionDetailPanel {
             }
 
             // <surfaces> のリスト
-            if let Some(surfaces) = &data.surfaces.last() {
-                let mut table = ElementsTable::new("surfaces_table", SurfaceAttribute::VARIANTS);
-                if table.update(&attribute_filter, &surfaces.surface) {
-                    CollapsingPanel::new("Surfaces").ui(ui, |ui| {
-                        table.ui(ui, state, &mut clicked_attribute);
-                    });
-                }
+            let mut table = ElementsTable::new("surfaces_table", SurfaceAttribute::VARIANTS);
+            if table.update(
+                &attribute_filter,
+                data.surfaces.last().map(|s| s.surface.as_slice()),
+            ) {
+                CollapsingPanel::new("Surfaces").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
             }
 
             // <buoyancy_surfaces> のリスト
-            if let Some(buoyancy_surfaces) = &data.buoyancy_surfaces.last() {
-                let mut table =
-                    ElementsTable::new("buoyancy_surfaces_table", SurfaceAttribute::VARIANTS);
-                if table.update(&attribute_filter, &buoyancy_surfaces.surface) {
-                    CollapsingPanel::new("Buoyancy surfaces").ui(ui, |ui| {
-                        table.ui(ui, state, &mut clicked_attribute);
-                    });
-                }
+            let mut table =
+                ElementsTable::new("buoyancy_surfaces_table", SurfaceAttribute::VARIANTS);
+            if table.update(
+                &attribute_filter,
+                data.buoyancy_surfaces.last().map(|s| s.surface.as_slice()),
+            ) {
+                CollapsingPanel::new("Buoyancy surfaces").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
             }
 
             // <logic_nodes> のリスト
-            if let Some(logic_nodes) = &data.logic_nodes.last() {
-                let mut table =
-                    ElementsTable::new("logic_nodes_table", LogicNodeAttribute::VARIANTS);
-                if table.update(&attribute_filter, &logic_nodes.logic_node) {
-                    CollapsingPanel::new("Logic nodes").ui(ui, |ui| {
-                        table.ui(ui, state, &mut clicked_attribute);
-                    });
-                }
+            let mut table = ElementsTable::new("logic_nodes_table", LogicNodeAttribute::VARIANTS);
+            if table.update(
+                &attribute_filter,
+                data.logic_nodes.last().map(|l| l.logic_node.as_slice()),
+            ) {
+                CollapsingPanel::new("Logic nodes").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
             }
 
             // <couplings> のリスト
-            if let Some(couplings) = &data.couplings.last() {
-                let mut table = ElementsTable::new("couplings_table", CouplingAttribute::VARIANTS);
-                if table.update(&attribute_filter, &couplings.coupling) {
-                    CollapsingPanel::new("Couplings").ui(ui, |ui| {
-                        table.ui(ui, state, &mut clicked_attribute);
-                    });
-                }
+            let mut table = ElementsTable::new("couplings_table", CouplingAttribute::VARIANTS);
+            if table.update(
+                &attribute_filter,
+                data.couplings.last().map(|c| c.coupling.as_slice()),
+            ) {
+                CollapsingPanel::new("Couplings").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
             }
 
             // <voxels> のリスト
-            if let Some(voxels) = &data.voxels.last() {
-                let mut table = ElementsTable::new("voxels_table", VoxelAttribute::VARIANTS);
-                if table.update(&attribute_filter, &voxels.voxel) {
-                    CollapsingPanel::new("Voxels").ui(ui, |ui| {
-                        table.ui(ui, state, &mut clicked_attribute);
-                    });
-                }
+            let mut table = ElementsTable::new("voxels_table", VoxelAttribute::VARIANTS);
+            if table.update(
+                &attribute_filter,
+                data.voxels.last().map(|v| v.voxel.as_slice()),
+            ) {
+                CollapsingPanel::new("Voxels").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
             }
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
@@ -190,7 +197,7 @@ impl DefinitionDetailPanel {
                     ),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Bouding boxes").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -208,7 +215,7 @@ impl DefinitionDetailPanel {
                     ("Exit position", DefinitionAttribute::SeatExitPosition),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Seat").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -223,7 +230,7 @@ impl DefinitionDetailPanel {
                     ("Color", DefinitionAttribute::LightColor),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Light").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -240,7 +247,7 @@ impl DefinitionDetailPanel {
                     ("BasePos", DefinitionAttribute::DoorBasePos),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Door").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -255,7 +262,7 @@ impl DefinitionDetailPanel {
                     ("Side axis", DefinitionAttribute::DynamicSideAxis),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Dynamic").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -269,13 +276,37 @@ impl DefinitionDetailPanel {
                     ("Up", DefinitionAttribute::ConnectorUp),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Connector").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <tooltip_properties> <reward_properties>
+            // <tooltip_properties>
+            let mut list = AttributeList::new(
+                "tooltip_properties_list",
+                TooltipPropertiesAttribute::VARIANTS,
+            );
+            if list.update(&attribute_filter, data.tooltip_properties.last()) {
+                CollapsingPanel::new("Tooltip properties")
+                    .default_open(true)
+                    .ui(ui, |ui| {
+                        list.ui(ui, state, &mut clicked_attribute);
+                    });
+            }
+
+            // <reward_properties>
+            let mut list = AttributeList::new(
+                "reward_properties_list",
+                RewardPropertiesAttribute::VARIANTS,
+            );
+            if list.update(&attribute_filter, data.reward_properties.last()) {
+                CollapsingPanel::new("Reward properties")
+                    .default_open(true)
+                    .ui(ui, |ui| {
+                        list.ui(ui, state, &mut clicked_attribute);
+                    });
+            }
 
             // <jet_engine_connections_prev> <jet_engine_connections_next>
             let mut table = MultipleVecTable::new(
@@ -298,7 +329,7 @@ impl DefinitionDetailPanel {
                     ),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Jet engine connection").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -313,7 +344,7 @@ impl DefinitionDetailPanel {
                     ("Bounds", DefinitionAttribute::ParticleBounds),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Particle").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -329,7 +360,7 @@ impl DefinitionDetailPanel {
                     ("Cart velocity", DefinitionAttribute::WeaponCartVelocity),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Weapon").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -360,7 +391,7 @@ impl DefinitionDetailPanel {
                     ("Rope hook offset", DefinitionAttribute::RopeHookOffset),
                 ],
             );
-            if table.update(&attribute_filter, &data) {
+            if table.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Others").ui(ui, |ui| {
                     table.ui(ui, state, &mut clicked_attribute);
                 });
@@ -429,7 +460,7 @@ impl<'a, T> AttributeList<'a, T> {
         }
     }
 
-    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
+    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: Option<&S>) -> bool
     where
         T: GetAttributeValue<S>,
     {
@@ -437,7 +468,7 @@ impl<'a, T> AttributeList<'a, T> {
             .attributes
             .iter()
             .filter_map(|attr| {
-                let value = attr.get_value(data);
+                let value = data.and_then(|d| attr.get_value(d));
                 if attribute_filter.check(&value) {
                     Some((attr, value))
                 } else {
@@ -509,22 +540,23 @@ impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
         }
     }
 
-    fn update(&mut self, attribute_filter: &AttributeFilter, data: &'a [S]) -> bool {
+    fn update(&mut self, attribute_filter: &AttributeFilter, data: Option<&'a [S]>) -> bool {
         let columns: Vec<&T> = self
             .attributes
             .iter()
             .filter(|attr| {
                 attribute_filter.show_all
-                    || data
-                        .iter()
-                        .any(|item| attribute_filter.check(&attr.get_value(item)))
+                    || data.is_some_and(|data| {
+                        data.iter()
+                            .any(|item| attribute_filter.check(&attr.get_value(item)))
+                    })
             })
             .collect();
-        if columns.is_empty() && data.is_empty() {
+        if columns.is_empty() && data.is_none_or(|data| data.is_empty()) {
             self.columns_elements = None;
             false
         } else {
-            self.columns_elements = Some((columns, data));
+            self.columns_elements = Some((columns, data.unwrap_or(&[])));
             true
         }
     }
@@ -605,15 +637,14 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
         }
     }
 
-    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
+    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: Option<&S>) -> bool
     where
         T: GetAttributeValue<S>,
     {
         let table_data: [(bool, [[Option<AttributeValue>; 3]; V_COUNT]); E_COUNT] =
             self.elements.map(|(_, elements)| {
                 let values: [[Option<AttributeValue>; 3]; V_COUNT] = elements.map(|element| {
-                    element
-                        .get_value(data)
+                    data.and_then(|data| element.get_value(data))
                         .and_then(|v| v.vec_as_attribute_values())
                         .unwrap_or([None, None, None])
                 });

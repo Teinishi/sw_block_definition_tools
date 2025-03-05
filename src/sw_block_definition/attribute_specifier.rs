@@ -30,7 +30,6 @@ pub trait GetAttributeValue<T>: GetAttributeValueRoot + Into<AttributeSpecifier>
 #[delegate(GetAttributeValueRoot)]
 pub enum AttributeSpecifier {
     Definition(crate::sw_block_definition::DefinitionAttribute),
-    JetEngineConnection(crate::sw_block_definition::JetEngineConnectionAttribute),
     SfxData(crate::sw_block_definition::SfxDataAttribute),
     SfxLayer(crate::sw_block_definition::SfxLayerAttribute),
     Surface(crate::sw_block_definition::SurfaceAttribute),
@@ -76,4 +75,7 @@ pub enum AttributeSpecifier {
     WeaponCartPosition(crate::sw_block_definition::WeaponCartPositionAttribute),
     WeaponCartVelocity(crate::sw_block_definition::WeaponCartVelocityAttribute),
     RopeHookOffset(crate::sw_block_definition::RopeHookOffsetAttribute),
+    JetEngineConnection(crate::sw_block_definition::JetEngineConnectionAttribute),
+    TooltipProperties(crate::sw_block_definition::TooltipPropertiesAttribute),
+    RewardProperties(crate::sw_block_definition::RewardPropertiesAttribute),
 }
