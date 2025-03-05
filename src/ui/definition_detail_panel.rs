@@ -190,8 +190,10 @@ impl DefinitionDetailPanel {
             door_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
+            dynamic_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <connector_axis> <connector_up>
+            connector_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
 
             // <tooltip_properties> <reward_properties>
 
@@ -646,6 +648,51 @@ fn door_table(
             (DefinitionAttribute::DoorSide, "Side"),
             (DefinitionAttribute::DoorUp, "Up"),
             (DefinitionAttribute::DoorBasePos, "BasePos"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn dynamic_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Dynamic",
+        Id::new("dynamic_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::DynamicBodyPosition, "Body position"),
+            (DefinitionAttribute::DynamicRotationAxes, "Rotation axes"),
+            (DefinitionAttribute::DynamicSideAxis, "Side axis"),
+        ],
+        clicked_attribute,
+    );
+}
+
+fn connector_table(
+    ui: &mut Ui,
+    state: &mut State,
+    data: &Definition,
+    attribute_filter: &AttributeFilter,
+    clicked_attribute: &mut Option<AttributeSpecifier>,
+) {
+    vec3_table(
+        ui,
+        state,
+        "Connector",
+        Id::new("connector_table"),
+        data,
+        attribute_filter,
+        &[
+            (DefinitionAttribute::ConnectorAxis, "Axis"),
+            (DefinitionAttribute::ConnectorUp, "Up"),
         ],
         clicked_attribute,
     );
