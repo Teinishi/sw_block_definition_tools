@@ -1,8 +1,8 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, Definition,
-    DefinitionAttribute, GetAttributeValue, IsDefault, LogicNodeAttribute, SfxDataAttribute,
-    SfxLayerAttribute, SurfaceAttribute, VoxelAttribute,
+    AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
+    GetAttributeValue, IsDefault, LogicNodeAttribute, SfxDataAttribute, SfxLayerAttribute,
+    SurfaceAttribute, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
 use strum::VariantArray;
@@ -166,10 +166,9 @@ impl DefinitionDetailPanel {
             }
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
-            //bounding_boxes_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
             let mut table = MultipleVecTable::new(
                 "bounding_boxes_table",
-                ["min", "max"],
+                Some(["min", "max"]),
                 [
                     (
                         "Voxel",
@@ -198,15 +197,15 @@ impl DefinitionDetailPanel {
             }
 
             // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render> <seat_exit_position>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "seat_table",
-                &[
-                    (DefinitionAttribute::SeatOffset, "Offset"),
-                    (DefinitionAttribute::SeatFront, "Front"),
-                    (DefinitionAttribute::SeatUp, "Up"),
-                    (DefinitionAttribute::SeatCamera, "Camera"),
-                    (DefinitionAttribute::SeatRender, "Render"),
-                    (DefinitionAttribute::SeatExitPosition, "Exit position"),
+                [
+                    ("Offset", DefinitionAttribute::SeatOffset),
+                    ("Front", DefinitionAttribute::SeatFront),
+                    ("Up", DefinitionAttribute::SeatUp),
+                    ("Camera", DefinitionAttribute::SeatCamera),
+                    ("Render", DefinitionAttribute::SeatRender),
+                    ("Exit position", DefinitionAttribute::SeatExitPosition),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -216,12 +215,12 @@ impl DefinitionDetailPanel {
             }
 
             // <light_position> <light_forward> <light_color>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "light_table",
-                &[
-                    (DefinitionAttribute::LightPosition, "Position"),
-                    (DefinitionAttribute::LightForward, "Forward"),
-                    (DefinitionAttribute::LightColor, "Color"),
+                [
+                    ("Position", DefinitionAttribute::LightPosition),
+                    ("Forward", DefinitionAttribute::LightForward),
+                    ("Color", DefinitionAttribute::LightColor),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -231,14 +230,14 @@ impl DefinitionDetailPanel {
             }
 
             // <door_size> <door_normal> <door_side> <door_up> <door_base_pos>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "door_table",
-                &[
-                    (DefinitionAttribute::DoorSize, "Size"),
-                    (DefinitionAttribute::DoorNormal, "Normal"),
-                    (DefinitionAttribute::DoorSide, "Side"),
-                    (DefinitionAttribute::DoorUp, "Up"),
-                    (DefinitionAttribute::DoorBasePos, "BasePos"),
+                [
+                    ("Size", DefinitionAttribute::DoorSize),
+                    ("Normal", DefinitionAttribute::DoorNormal),
+                    ("Side", DefinitionAttribute::DoorSide),
+                    ("Up", DefinitionAttribute::DoorUp),
+                    ("BasePos", DefinitionAttribute::DoorBasePos),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -248,12 +247,12 @@ impl DefinitionDetailPanel {
             }
 
             // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "dynamic_table",
-                &[
-                    (DefinitionAttribute::DynamicBodyPosition, "Body position"),
-                    (DefinitionAttribute::DynamicRotationAxes, "Rotation axes"),
-                    (DefinitionAttribute::DynamicSideAxis, "Side axis"),
+                [
+                    ("Body position", DefinitionAttribute::DynamicBodyPosition),
+                    ("Rotation axes", DefinitionAttribute::DynamicRotationAxes),
+                    ("Side axis", DefinitionAttribute::DynamicSideAxis),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -263,11 +262,11 @@ impl DefinitionDetailPanel {
             }
 
             // <connector_axis> <connector_up>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "connector_table",
-                &[
-                    (DefinitionAttribute::ConnectorAxis, "Axis"),
-                    (DefinitionAttribute::ConnectorUp, "Up"),
+                [
+                    ("Axis", DefinitionAttribute::ConnectorAxis),
+                    ("Up", DefinitionAttribute::ConnectorUp),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -281,12 +280,12 @@ impl DefinitionDetailPanel {
             // <jet_engine_connections_prev> <jet_engine_connections_next>
 
             // <particle_direction> <particle_offset> <particle_bounds>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "particle_table",
-                &[
-                    (DefinitionAttribute::ParticleDirection, "Direction"),
-                    (DefinitionAttribute::ParticleOffset, "Offset"),
-                    (DefinitionAttribute::ParticleBounds, "Bounds"),
+                [
+                    ("Direction", DefinitionAttribute::ParticleDirection),
+                    ("Offset", DefinitionAttribute::ParticleOffset),
+                    ("Bounds", DefinitionAttribute::ParticleBounds),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -296,13 +295,13 @@ impl DefinitionDetailPanel {
             }
 
             // <weapon_breech_position> <weapon_breech_normal> <weapon_cart_position> <weapon_cart_velocity>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "weapon_table",
-                &[
-                    (DefinitionAttribute::WeaponBreechPosition, "Breech position"),
-                    (DefinitionAttribute::WeaponBreechNormal, "Breech normal"),
-                    (DefinitionAttribute::WeaponCartPosition, "Cart position"),
-                    (DefinitionAttribute::WeaponCartVelocity, "Cart velocity"),
+                [
+                    ("Breech position", DefinitionAttribute::WeaponBreechPosition),
+                    ("Breech normal", DefinitionAttribute::WeaponBreechNormal),
+                    ("Cart position", DefinitionAttribute::WeaponCartPosition),
+                    ("Cart velocity", DefinitionAttribute::WeaponCartVelocity),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -312,28 +311,28 @@ impl DefinitionDetailPanel {
             }
 
             // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child> <force_dir> <magnet_offset> <rope_hook_offset>
-            let mut table = VecTable::new(
+            let mut table = MultipleVecTable::single(
                 "others_table",
-                &[
+                [
                     (
-                        DefinitionAttribute::CompartmentSamplePos,
                         "Compartment sample pos",
+                        DefinitionAttribute::CompartmentSamplePos,
                     ),
                     (
-                        DefinitionAttribute::ConstraintPosParent,
                         "Constraint pos parent",
+                        DefinitionAttribute::ConstraintPosParent,
                     ),
                     (
-                        DefinitionAttribute::ConstraintPosChild,
                         "Constraint pos child",
+                        DefinitionAttribute::ConstraintPosChild,
                     ),
                     (
-                        DefinitionAttribute::VoxelLocationChild,
                         "Voxel location child",
+                        DefinitionAttribute::VoxelLocationChild,
                     ),
-                    (DefinitionAttribute::ForceDir, "Force dir"),
-                    (DefinitionAttribute::MagnetOffset, "Magnet offset"),
-                    (DefinitionAttribute::RopeHookOffset, "Rope hook offset"),
+                    ("Force dir", DefinitionAttribute::ForceDir),
+                    ("Magnet offset", DefinitionAttribute::MagnetOffset),
+                    ("Rope hook offset", DefinitionAttribute::RopeHookOffset),
                 ],
             );
             if table.update(&attribute_filter, &data) {
@@ -550,110 +549,27 @@ impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
     }
 }
 
-type VecTableRow<'a, T> = (&'a T, &'a str, [Option<AttributeValue>; 3]);
-
-struct VecTable<'a, T> {
-    id: Id,
-    elements: &'a [(T, &'a str)],
-    filtered_rows: Option<Vec<VecTableRow<'a, T>>>,
-}
-impl<'a, T> VecTable<'a, T> {
-    fn new(id: impl std::hash::Hash, elements: &'a [(T, &'_ str)]) -> Self {
-        Self {
-            id: Id::new(id),
-            elements,
-            filtered_rows: None,
-        }
-    }
-
-    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
-    where
-        T: GetAttributeValue<S>,
-    {
-        let rows: Vec<(&T, &str, [Option<AttributeValue>; 3])> = self
-            .elements
-            .iter()
-            .filter_map(|(element, label)| {
-                let values: [Option<AttributeValue>; 3] = element
-                    .get_value(data)
-                    .and_then(|v| v.vec_as_attribute_values())
-                    .unwrap_or([None, None, None]);
-                let show = values.iter().any(|value| attribute_filter.check(value));
-                if show {
-                    Some((element, *label, values))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if rows.is_empty() {
-            self.filtered_rows = None;
-            false
-        } else {
-            self.filtered_rows = Some(rows);
-            true
-        }
-    }
-
-    fn ui<S>(
-        &self,
-        ui: &mut Ui,
-        state: &mut State,
-        clicked_attribute: &mut Option<AttributeSpecifier>,
-    ) where
-        T: GetAttributeValue<S> + Copy,
-    {
-        if let Some(rows) = &self.filtered_rows {
-            let property = AttributeProperty {
-                is_audio_file: false,
-                is_number: true,
-            };
-
-            let mut clicked = None;
-
-            Grid::new(self.id)
-                .min_col_width(0.0)
-                .spacing([10.0, 4.0])
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label("");
-                    ui.label("");
-                    for label in ["x", "y", "z"] {
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            ui.strong(label);
-                        });
-                    }
-                    ui.end_row();
-
-                    for (element, label, values) in rows {
-                        attribute_detail_button(ui, element, &mut clicked, None);
-                        ui.label(*label);
-                        for value in values {
-                            ui_attribute_value(ui, state, &property, value.as_ref(), true, None);
-                        }
-                        ui.end_row();
-                    }
-                });
-
-            if let Some(clicked) = clicked {
-                *clicked_attribute = Some((*clicked).into());
-            }
-        }
-    }
-}
-
 type MultipleVecTableRow<'a, const V_COUNT: usize> = (bool, [[Option<AttributeValue>; 3]; V_COUNT]);
 struct MultipleVecTable<'a, T, const V_COUNT: usize, const E_COUNT: usize> {
     id: Id,
-    variants: [&'a str; V_COUNT],
+    variants: Option<[&'a str; V_COUNT]>,
     elements: [(&'a str, [T; V_COUNT]); E_COUNT],
     table_data: Option<[MultipleVecTableRow<'a, V_COUNT>; E_COUNT]>,
+}
+impl<'a, T, const E_COUNT: usize> MultipleVecTable<'a, T, 1, E_COUNT> {
+    fn single(id: impl std::hash::Hash, elements: [(&'a str, T); E_COUNT]) -> Self {
+        Self {
+            id: Id::new(id),
+            variants: None,
+            elements: elements.map(|(label, element)| (label, [element])),
+            table_data: None,
+        }
+    }
 }
 impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, V_COUNT, E_COUNT> {
     fn new(
         id: impl std::hash::Hash,
-        variants: [&'a str; V_COUNT],
+        variants: Option<[&'a str; V_COUNT]>,
         elements: [(&'a str, [T; V_COUNT]); E_COUNT],
     ) -> Self {
         Self {
@@ -719,11 +635,21 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
                     for _ in 0..(V_COUNT + 1) {
                         ui.label("");
                     }
-                    for variant in self.variants {
-                        for axis in ["x", "y", "z"] {
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                ui.strong(format!("{} {}", variant, axis));
-                            });
+                    if let Some(variants) = self.variants {
+                        for variant in variants {
+                            for axis in ["x", "y", "z"] {
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    ui.strong(format!("{} {}", variant, axis));
+                                });
+                            }
+                        }
+                    } else {
+                        for _ in 0..V_COUNT {
+                            for axis in ["x", "y", "z"] {
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    ui.strong(axis);
+                                });
+                            }
                         }
                     }
                     ui.end_row();
@@ -734,9 +660,16 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
                         if !show_row {
                             continue;
                         }
-                        ui.label(*label);
-                        for (variant, element) in self.variants.iter().zip(elements.iter()) {
-                            attribute_detail_button(ui, &element, &mut clicked, Some(variant));
+                        if let Some(variants) = self.variants {
+                            ui.label(*label);
+                            for (variant, element) in variants.iter().zip(elements.iter()) {
+                                attribute_detail_button(ui, &element, &mut clicked, Some(variant));
+                            }
+                        } else {
+                            for element in elements {
+                                attribute_detail_button(ui, &element, &mut clicked, None);
+                            }
+                            ui.label(*label);
                         }
                         for vec in values {
                             for v in vec {

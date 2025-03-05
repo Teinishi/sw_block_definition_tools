@@ -86,9 +86,9 @@ impl<T: Copy + std::convert::Into<AttributeValue>> DefinitionVec3<T> {
 }
 impl<T: Copy + Default + PartialEq + Display + Debug> IsDefault for DefinitionVec3<T> {
     fn is_default(&self) -> bool {
-        self.x.map_or(true, |v| v == Default::default())
-            && self.y.map_or(true, |v| v == Default::default())
-            && self.z.map_or(true, |v| v == Default::default())
+        self.x.is_none_or(|v| v == Default::default())
+            && self.y.is_none_or(|v| v == Default::default())
+            && self.z.is_none_or(|v| v == Default::default())
     }
 }
 impl<T: Copy + Default + PartialEq + Display + Debug> Display for DefinitionVec3<T> {
