@@ -26,10 +26,42 @@ impl AttributeFilter {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct DefinitionDetailPanel {}
+pub struct DefinitionDetailPanel<'a> {
+    definition_attributes_panel: CollapsingPanel<'a, DefinitionAttribute>,
+    /*sfx_data_panels: Vec<CollapsingPanel>,
+    surfaces_panel: CollapsingPanel,
+    buoyancy_surfaces_panel: CollapsingPanel,
+    logic_nodes_panel: CollapsingPanel,
+    couplings_panel: CollapsingPanel,
+    voxels_panel: CollapsingPanel,
+    bounding_boxes_panel: CollapsingPanel,
+    positions_panel: CollapsingPanel,
+    seat_panel: CollapsingPanel,
+    light_panel: CollapsingPanel,
+    door_panel: CollapsingPanel,
+    dynamic_panel: CollapsingPanel,
+    connector_panel: CollapsingPanel,
+    particle_panel: CollapsingPanel,
+    weapon_panel: CollapsingPanel,
+    others_panel: CollapsingPanel,*/
+}
 
-impl DefinitionDetailPanel {
+impl<'a> Default for DefinitionDetailPanel<'a> {
+    fn default() -> Self {
+        let definition_attributes_panel = CollapsingPanel::new(
+            "Definition Attributes",
+            Id::new("definition_attributes_panel"),
+        )
+        .default_open(true)
+        .list_attributes(&DefinitionAttribute::NON_ELEMENT_VARIANTS);
+
+        Self {
+            definition_attributes_panel,
+        }
+    }
+}
+
+impl<'a> DefinitionDetailPanel<'a> {
     pub fn ui(&mut self, ui: &mut Ui, state: &mut State) -> Option<AttributeDetailWindow> {
         let attribute_filter = AttributeFilter::from_state(state);
 
@@ -69,7 +101,9 @@ impl DefinitionDetailPanel {
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
             // <definition> の属性リスト
-            collapsing_heading(
+            self.definition_attributes_panel
+                .ui(ui, state, &data, &mut clicked_attribute);
+            /*collapsing_heading(
                 ui,
                 "Definition Attributes",
                 |ui| {
@@ -88,7 +122,7 @@ impl DefinitionDetailPanel {
                     }
                 },
                 true,
-            );
+            );*/
 
             // <sfx_datas> のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
@@ -769,4 +803,100 @@ fn others_table(
         ],
         clicked_attribute,
     );
+}
+
+struct CollapsingPanel<'a, T> {
+    title: &'a str,
+    id: Id,
+    default_open: bool,
+    list_attributes: Option<&'a [T]>,
+}
+
+impl<'a, T> CollapsingPanel<'a, T> {
+    fn new(title: &'a str, id: Id) -> Self {
+        Self {
+            title,
+            id,
+            default_open: false,
+            list_attributes: None,
+        }
+    }
+
+    fn default_open(mut self, value: bool) -> Self {
+        self.default_open = value;
+        self
+    }
+
+    fn list_attributes(mut self, value: &'a [T]) -> Self {
+        self.list_attributes = Some(value);
+        self
+    }
+
+    fn is_empty(&self) -> bool {
+        false
+    }
+
+    fn ui<S>(
+        &self,
+        ui: &mut Ui,
+        state: &mut State,
+        data: &S,
+        clicked_attribute: &mut Option<AttributeSpecifier>,
+    ) where
+        T: GetAttributeValue<S>,
+    {
+        if self.is_empty() {
+            return;
+        }
+
+        let attribute_filter = AttributeFilter::from_state(state);
+
+        CollapsingHeader::new(RichText::new(self.title).heading())
+            .default_open(self.default_open)
+            .show(ui, |ui| {
+                self.ui_attribute_list(ui, state, &attribute_filter, data, clicked_attribute);
+            });
+    }
+
+    fn ui_attribute_list<S>(
+        &self,
+        ui: &mut Ui,
+        state: &mut State,
+        attribute_filter: &AttributeFilter,
+        data: &S,
+        clicked_attribute: &mut Option<AttributeSpecifier>,
+    ) where
+        T: GetAttributeValue<S>,
+    {
+        if let Some(attributes) = self.list_attributes {
+            let mut clicked = None;
+
+            Grid::new(self.id.with("attribute_list"))
+                .min_col_width(0.0)
+                .spacing([10.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    for attr in attributes {
+                        let value = attr.get_value(data);
+                        if attribute_filter.check(&value) {
+                            attribute_detail_button(ui, attr, &mut clicked, None);
+                            ui.label(attr.to_string());
+                            ui_attribute_value(
+                                ui,
+                                state,
+                                &attr.property(),
+                                value.as_ref(),
+                                false,
+                                None,
+                            );
+                            ui.end_row();
+                        }
+                    }
+                });
+
+            if let Some(clicked) = clicked {
+                *clicked_attribute = Some(clicked.into());
+            }
+        }
+    }
 }
