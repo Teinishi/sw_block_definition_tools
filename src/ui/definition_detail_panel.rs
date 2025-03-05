@@ -166,7 +166,36 @@ impl DefinitionDetailPanel {
             }
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
-            bounding_boxes_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            //bounding_boxes_table(ui, state, &data, &attribute_filter, &mut clicked_attribute);
+            let mut table = MultipleVecTable::new(
+                "bounding_boxes_table",
+                ["min", "max"],
+                [
+                    (
+                        "Voxel",
+                        [DefinitionAttribute::VoxelMin, DefinitionAttribute::VoxelMax],
+                    ),
+                    (
+                        "Voxel physics",
+                        [
+                            DefinitionAttribute::VoxelPhysicsMin,
+                            DefinitionAttribute::VoxelPhysicsMax,
+                        ],
+                    ),
+                    (
+                        "BB physics",
+                        [
+                            DefinitionAttribute::BbPhysicsMin,
+                            DefinitionAttribute::BbPhysicsMax,
+                        ],
+                    ),
+                ],
+            );
+            if table.update(&attribute_filter, &data) {
+                CollapsingPanel::new("Bouding boxes").ui(ui, |ui| {
+                    table.ui(ui, state, &mut clicked_attribute);
+                });
+            }
 
             // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render> <seat_exit_position>
             let mut table = VecTable::new(
@@ -323,17 +352,6 @@ impl DefinitionDetailPanel {
     }
 }
 
-fn collapsing_heading<R>(
-    ui: &mut Ui,
-    title: impl Into<String>,
-    add_body: impl FnOnce(&mut Ui) -> R,
-    default_open: bool,
-) -> egui::CollapsingResponse<R> {
-    CollapsingHeader::new(RichText::new(title).heading())
-        .default_open(default_open)
-        .show(ui, add_body)
-}
-
 fn attribute_detail_button<T: Copy>(
     ui: &mut Ui,
     attr: &T,
@@ -346,93 +364,6 @@ fn attribute_detail_button<T: Copy>(
     };
     if res.clicked() {
         *clicked = Some(*attr);
-    }
-}
-
-fn bounding_boxes_table(
-    ui: &mut Ui,
-    state: &mut State,
-    data: &Definition,
-    attribute_filter: &AttributeFilter,
-    clicked_attribute: &mut Option<AttributeSpecifier>,
-) {
-    let mut rows = Vec::with_capacity(3);
-    for (name, attr_min, attr_max) in [
-        (
-            "Voxel",
-            DefinitionAttribute::VoxelMin,
-            DefinitionAttribute::VoxelMax,
-        ),
-        (
-            "Voxel physics",
-            DefinitionAttribute::VoxelPhysicsMin,
-            DefinitionAttribute::VoxelPhysicsMax,
-        ),
-        (
-            "BB physics",
-            DefinitionAttribute::BbPhysicsMin,
-            DefinitionAttribute::BbPhysicsMax,
-        ),
-    ] {
-        let value_min = attr_min.get_value(data);
-        let value_max = attr_max.get_value(data);
-        let show = attribute_filter.check(&value_min) || attribute_filter.check(&value_max);
-        if show {
-            if let (Some(values_min), Some(values_max)) = (
-                value_min.and_then(|v| v.vec_as_attribute_values()),
-                value_max.and_then(|v| v.vec_as_attribute_values()),
-            ) {
-                rows.push((name, attr_min, attr_max, values_min, values_max));
-            }
-        }
-    }
-    if rows.is_empty() {
-        return;
-    }
-
-    let property = AttributeProperty {
-        is_audio_file: false,
-        is_number: true,
-    };
-
-    let mut clicked = None;
-    collapsing_heading(
-        ui,
-        "Bounding Boxes",
-        |ui| {
-            Grid::new(Id::new("bounding_boxes_table"))
-                .min_col_width(0.0)
-                .spacing([10.0, 4.0])
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label("");
-                    ui.label("");
-                    ui.label("");
-                    for label in ["min x", "min y", "min z", "max x", "max y", "max z"] {
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            ui.strong(label);
-                        });
-                    }
-                    ui.end_row();
-
-                    for (name, attr_min, attr_max, values_min, values_max) in rows {
-                        attribute_detail_button(ui, &attr_min, &mut clicked, Some("min"));
-                        attribute_detail_button(ui, &attr_max, &mut clicked, Some("max"));
-                        ui.label(name);
-                        for v in values_min {
-                            ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
-                        }
-                        for v in values_max {
-                            ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
-                        }
-                        ui.end_row();
-                    }
-                });
-        },
-        false,
-    );
-    if let Some(clicked) = clicked {
-        *clicked_attribute = Some(clicked.into());
     }
 }
 
@@ -643,17 +574,16 @@ impl<'a, T> VecTable<'a, T> {
             .elements
             .iter()
             .filter_map(|(element, label)| {
-                let values: Option<[Option<AttributeValue>; 3]> = element
+                let values: [Option<AttributeValue>; 3] = element
                     .get_value(data)
-                    .and_then(|v| v.vec_as_attribute_values());
-
-                let values = values.unwrap_or([None, None, None]);
+                    .and_then(|v| v.vec_as_attribute_values())
+                    .unwrap_or([None, None, None]);
                 let show = values.iter().any(|value| attribute_filter.check(value));
-                if !show {
-                    return None;
+                if show {
+                    Some((element, *label, values))
+                } else {
+                    None
                 }
-
-                Some((element, *label, values))
             })
             .collect();
 
@@ -701,6 +631,117 @@ impl<'a, T> VecTable<'a, T> {
                         ui.label(*label);
                         for value in values {
                             ui_attribute_value(ui, state, &property, value.as_ref(), true, None);
+                        }
+                        ui.end_row();
+                    }
+                });
+
+            if let Some(clicked) = clicked {
+                *clicked_attribute = Some((*clicked).into());
+            }
+        }
+    }
+}
+
+type MultipleVecTableRow<'a, const V_COUNT: usize> = (bool, [[Option<AttributeValue>; 3]; V_COUNT]);
+struct MultipleVecTable<'a, T, const V_COUNT: usize, const E_COUNT: usize> {
+    id: Id,
+    variants: [&'a str; V_COUNT],
+    elements: [(&'a str, [T; V_COUNT]); E_COUNT],
+    table_data: Option<[MultipleVecTableRow<'a, V_COUNT>; E_COUNT]>,
+}
+impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, V_COUNT, E_COUNT> {
+    fn new(
+        id: impl std::hash::Hash,
+        variants: [&'a str; V_COUNT],
+        elements: [(&'a str, [T; V_COUNT]); E_COUNT],
+    ) -> Self {
+        Self {
+            id: Id::new(id),
+            variants,
+            elements,
+            table_data: None,
+        }
+    }
+
+    fn update<S>(&mut self, attribute_filter: &AttributeFilter, data: &S) -> bool
+    where
+        T: GetAttributeValue<S>,
+    {
+        let table_data: [(bool, [[Option<AttributeValue>; 3]; V_COUNT]); E_COUNT] =
+            self.elements.map(|(_, elements)| {
+                let values: [[Option<AttributeValue>; 3]; V_COUNT] = elements.map(|element| {
+                    element
+                        .get_value(data)
+                        .and_then(|v| v.vec_as_attribute_values())
+                        .unwrap_or([None, None, None])
+                });
+
+                let show_row = values
+                    .iter()
+                    .any(|vec| vec.iter().any(|v| attribute_filter.check(v)));
+
+                (show_row, values)
+            });
+
+        let show_table = table_data.iter().any(|(show_row, _)| *show_row);
+
+        if show_table {
+            self.table_data = Some(table_data);
+            true
+        } else {
+            self.table_data = None;
+            false
+        }
+    }
+
+    fn ui<S>(
+        &self,
+        ui: &mut Ui,
+        state: &mut State,
+        clicked_attribute: &mut Option<AttributeSpecifier>,
+    ) where
+        T: GetAttributeValue<S> + Copy,
+    {
+        if let Some(rows) = &self.table_data {
+            let property = AttributeProperty {
+                is_audio_file: false,
+                is_number: true,
+            };
+
+            let mut clicked = None;
+
+            Grid::new(self.id)
+                .min_col_width(0.0)
+                .spacing([10.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    for _ in 0..(V_COUNT + 1) {
+                        ui.label("");
+                    }
+                    for variant in self.variants {
+                        for axis in ["x", "y", "z"] {
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                ui.strong(format!("{} {}", variant, axis));
+                            });
+                        }
+                    }
+                    ui.end_row();
+
+                    for ((label, elements), (show_row, values)) in
+                        self.elements.iter().zip(rows.iter())
+                    {
+                        if !show_row {
+                            continue;
+                        }
+                        ui.label(*label);
+                        for (variant, element) in self.variants.iter().zip(elements.iter()) {
+                            attribute_detail_button(ui, &element, &mut clicked, Some(variant));
+                        }
+                        for vec in values {
+                            for v in vec {
+                                ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
+                            }
                         }
                         ui.end_row();
                     }
