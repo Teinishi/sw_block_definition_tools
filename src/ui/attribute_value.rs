@@ -1,6 +1,8 @@
 use super::{play_stop_audio, State};
 use crate::sw_block_definition::{AttributeType, AttributeValue, DisplayAttributeValue};
-use egui::{Align, Button, Layout, RichText};
+use egui::{
+    text::LayoutJob, Align, Button, FontFamily, FontId, Layout, RichText, TextFormat, TextStyle,
+};
 
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
@@ -10,54 +12,54 @@ pub fn ui_attribute_value(
     number_right: bool,
     margin: Option<(f32, f32)>,
 ) {
-    ui.horizontal(|ui| {
-        let is_r2l = number_right && attribute_type.is_number();
+    let reverse = number_right && attribute_type.is_number();
 
-        let (mut margin1, mut margin2) = margin
-            .map(|(l, r)| (Some(l), Some(r)))
-            .unwrap_or((None, None));
-        if is_r2l {
-            (margin1, margin2) = (margin2, margin1);
-        }
+    let (margin1, margin2) = margin
+        .map(|(l, r)| (Some(l), Some(r)))
+        .unwrap_or((None, None));
 
-        let layout = if is_r2l {
-            Layout::right_to_left(Align::Center)
-        } else {
-            Layout::left_to_right(Align::Center)
-        };
-
-        if let Some(value) = value {
-            // 音声ファイルのとき、再生ボタン
-            if attribute_type.is_audio_file() {
-                if let AttributeValue::String(path) = value {
-                    let is_playing = state
-                        .playing_audio()
-                        .as_ref()
-                        .is_some_and(|(playing_path, _, _)| playing_path == path);
-
-                    let button = ui.add_sized(
-                        [20.0, 20.0],
-                        Button::new(if is_playing { "\u{23F8}" } else { "\u{25B6}" }).truncate(),
-                    );
-                    if button.clicked() {
-                        if let Err(err) = play_stop_audio(path.clone(), state) {
-                            println!("{:?}", err); // TODO: GUI表示
-                        }
+    let halign = if reverse { Align::RIGHT } else { Align::LEFT };
+    ui.with_layout(Layout::top_down(halign), |ui| {
+        ui.horizontal(|ui| {
+            if reverse {
+                add_space(ui, margin2);
+                value_display(ui, attribute_type, value);
+                add_space(ui, margin1);
+            } else {
+                add_space(ui, margin1);
+                if attribute_type.is_audio_file() {
+                    if let Some(AttributeValue::String(path)) = value {
+                        audio_play_button(ui, state, path);
                     }
                 }
-            }
-        }
-
-        ui.with_layout(layout, |ui| {
-            if let Some(m) = margin1 {
-                ui.add_space(m);
-            }
-            value_display(ui, attribute_type, value);
-            if let Some(m) = margin2 {
-                ui.add_space(m);
+                value_display(ui, attribute_type, value);
+                add_space(ui, margin2);
             }
         });
     });
+}
+
+fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &String) {
+    let is_playing = state
+        .playing_audio()
+        .as_ref()
+        .is_some_and(|(playing_path, _, _)| playing_path == path);
+
+    let button = ui.add_sized(
+        [20.0, 20.0],
+        Button::new(if is_playing { "\u{23F8}" } else { "\u{25B6}" }).truncate(),
+    );
+    if button.clicked() {
+        if let Err(err) = play_stop_audio(path.clone(), state) {
+            println!("{:?}", err); // TODO: GUI表示
+        }
+    }
+}
+
+fn add_space(ui: &mut egui::Ui, amount: Option<f32>) {
+    if let Some(a) = amount {
+        ui.add_space(a);
+    }
 }
 
 fn value_display(
@@ -65,46 +67,115 @@ fn value_display(
     attribute_type: &AttributeType,
     value: Option<&AttributeValue>,
 ) {
-    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-        //let width = ui.fonts(|f| f.glyph_width(&TextStyle::Body.resolve(ui.style()), ''));
-        ui.spacing_mut().item_spacing.x = 0.0;
-
-        if let Some(value) = value {
-            match value {
-                AttributeValue::VecI32(vec) => {
-                    ui.monospace("(");
-                    for (i, x) in [vec.x, vec.y, vec.z].iter().enumerate() {
-                        if i != 0 {
-                            ui.monospace(", ");
-                        }
-                        if let Some(x) = x {
-                            ui.monospace(format!("{:2}", x));
-                        } else {
-                            ui.monospace(RichText::new(" 0").weak());
-                        }
+    if let Some(value) = value {
+        match value {
+            AttributeValue::VecI32(vec) => {
+                let mut label = BlendColorLabel::with_capacity(7).monospace();
+                label.add("(");
+                for (i, x) in [vec.x, vec.y, vec.z].iter().enumerate() {
+                    if i != 0 {
+                        label.add(", ");
                     }
-                    ui.monospace(")");
-                }
-                AttributeValue::VecF32(vec) => {
-                    ui.monospace("(");
-                    for (i, x) in [vec.x, vec.y, vec.z].iter().enumerate() {
-                        if i != 0 {
-                            ui.monospace(", ");
-                        }
-                        if let Some(x) = x {
-                            ui.monospace(format!("{:>4?}", x));
-                        } else {
-                            ui.monospace(RichText::new(" 0.0").weak());
-                        }
+                    if let Some(x) = x {
+                        label.add(format!("{:2}", x));
+                    } else {
+                        label.add_weak(" 0");
                     }
-                    ui.monospace(")");
                 }
-                _ => {
-                    ui.monospace(value.display_string());
-                }
+                label.add(")");
+                label.show(ui);
             }
-        } else {
-            ui.monospace(RichText::new(attribute_type.undefined_text()).weak());
+            AttributeValue::VecF32(vec) => {
+                let mut label = BlendColorLabel::with_capacity(7).monospace();
+                label.add("(");
+                for (i, x) in [vec.x, vec.y, vec.z].iter().enumerate() {
+                    if i != 0 {
+                        label.add(", ");
+                    }
+                    if let Some(x) = x {
+                        label.add(format!("{:>4?}", x));
+                    } else {
+                        label.add_weak(" 0.0");
+                    }
+                }
+                label.add(")");
+                label.show(ui);
+            }
+            _ => {
+                ui.monospace(value.display_string());
+            }
         }
-    });
+    } else {
+        ui.monospace(RichText::new(attribute_type.undefined_text()).weak());
+    }
+}
+
+enum LabelText {
+    Text(String),
+    Weak(String),
+}
+
+struct BlendColorLabel {
+    text: Vec<LabelText>,
+    font_family: FontFamily,
+}
+
+impl BlendColorLabel {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            text: Vec::with_capacity(capacity),
+            font_family: FontFamily::Proportional,
+        }
+    }
+
+    fn monospace(mut self) -> Self {
+        self.font_family = FontFamily::Monospace;
+        self
+    }
+
+    fn add(&mut self, text: impl Into<String>) {
+        self.text.push(LabelText::Text(text.into()));
+    }
+
+    fn add_weak(&mut self, text: impl Into<String>) {
+        self.text.push(LabelText::Weak(text.into()));
+    }
+
+    fn show(&self, ui: &mut egui::Ui) {
+        let visuals = ui.visuals();
+        let text_color = visuals.text_color();
+        let weak_text_color = visuals.weak_text_color();
+
+        let size = ui
+            .style()
+            .text_styles
+            .iter()
+            .find_map(|(text_style, font_id)| {
+                if matches!(text_style, TextStyle::Body) {
+                    Some(font_id.size)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(12.5);
+
+        let mut job = LayoutJob::default();
+        for t in &self.text {
+            let (s, color) = match t {
+                LabelText::Text(s) => (s, text_color),
+                LabelText::Weak(s) => (s, weak_text_color),
+            };
+            job.append(
+                s,
+                0.0,
+                TextFormat {
+                    font_id: FontId::new(size, FontFamily::Monospace),
+                    color,
+                    ..Default::default()
+                },
+            )
+        }
+
+        ui.label(job);
+    }
 }

@@ -31,6 +31,7 @@ pub struct Voxel {
     PartialEq,
     strum::Display,
     strum::VariantArray,
+    strum::EnumCount,
     Clone,
     Copy,
 )]

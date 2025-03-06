@@ -1,12 +1,13 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeType, AttributeValue, CouplingAttribute, DefinitionAttribute,
-    GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNodeAttribute,
-    RewardPropertiesAttribute, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
-    TooltipPropertiesAttribute, VoxelAttribute,
+    AttributeSpecifier, AttributeType, AttributeValue, Coupling, CouplingAttribute,
+    DefinitionAttribute, GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNode,
+    LogicNodeAttribute, RewardPropertiesAttribute, SfxDataAttribute, SfxLayer, SfxLayerAttribute,
+    Surface, SurfaceAttribute, TooltipPropertiesAttribute, Voxel, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Grid, Id, Layout, RichText, Ui};
-use strum::VariantArray;
+use egui_extras::{Column, TableBuilder};
+use strum::{EnumCount, VariantArray};
 
 struct AttributeFilter {
     show_all: bool,
@@ -89,10 +90,12 @@ impl DefinitionDetailPanel {
                         format!("sfx_attribute_list_{}", i),
                         SfxDataAttribute::VARIANTS,
                     );
-                    let mut layers_table = ElementsTable::new(
-                        format!("sfx_layers_table_{}", i),
-                        SfxLayerAttribute::VARIANTS,
-                    );
+                    let mut layers_table: ElementsTable<
+                        '_,
+                        SfxLayerAttribute,
+                        SfxLayer,
+                        { SfxLayerAttribute::COUNT },
+                    > = ElementsTable::new(SfxLayerAttribute::VARIANTS.try_into().unwrap());
 
                     let mut show = attribute_list.update(&attribute_filter, Some(item));
 
@@ -117,7 +120,12 @@ impl DefinitionDetailPanel {
             }
 
             // <surfaces> のリスト
-            let mut table = ElementsTable::new("surfaces_table", SurfaceAttribute::VARIANTS);
+            let mut table: ElementsTable<
+                '_,
+                SurfaceAttribute,
+                Surface,
+                { SurfaceAttribute::COUNT },
+            > = ElementsTable::new(SurfaceAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.surfaces.last().map(|s| s.surface.as_slice()),
@@ -128,8 +136,12 @@ impl DefinitionDetailPanel {
             }
 
             // <buoyancy_surfaces> のリスト
-            let mut table =
-                ElementsTable::new("buoyancy_surfaces_table", SurfaceAttribute::VARIANTS);
+            let mut table: ElementsTable<
+                '_,
+                SurfaceAttribute,
+                Surface,
+                { SurfaceAttribute::COUNT },
+            > = ElementsTable::new(SurfaceAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.buoyancy_surfaces.last().map(|s| s.surface.as_slice()),
@@ -140,7 +152,12 @@ impl DefinitionDetailPanel {
             }
 
             // <logic_nodes> のリスト
-            let mut table = ElementsTable::new("logic_nodes_table", LogicNodeAttribute::VARIANTS);
+            let mut table: ElementsTable<
+                '_,
+                LogicNodeAttribute,
+                LogicNode,
+                { LogicNodeAttribute::COUNT },
+            > = ElementsTable::new(LogicNodeAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.logic_nodes.last().map(|l| l.logic_node.as_slice()),
@@ -151,7 +168,12 @@ impl DefinitionDetailPanel {
             }
 
             // <couplings> のリスト
-            let mut table = ElementsTable::new("couplings_table", CouplingAttribute::VARIANTS);
+            let mut table: ElementsTable<
+                '_,
+                CouplingAttribute,
+                Coupling,
+                { CouplingAttribute::COUNT },
+            > = ElementsTable::new(CouplingAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.couplings.last().map(|c| c.coupling.as_slice()),
@@ -162,7 +184,8 @@ impl DefinitionDetailPanel {
             }
 
             // <voxels> のリスト
-            let mut table = ElementsTable::new("voxels_table", VoxelAttribute::VARIANTS);
+            let mut table: ElementsTable<'_, VoxelAttribute, Voxel, { VoxelAttribute::COUNT }> =
+                ElementsTable::new(VoxelAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.voxels.last().map(|v| v.voxel.as_slice()),
@@ -523,40 +546,50 @@ impl<'a, T> AttributeList<'a, T> {
     }
 }
 
-struct ElementsTable<'a, T, S>
+struct ElementsTable<'a, T, S, const COUNT: usize>
 where
     T: GetAttributeValue<S>,
 {
-    id: Id,
-    attributes: &'a [T],
-    columns_elements: Option<(Vec<&'a T>, &'a [S])>,
+    attributes: [T; COUNT],
+    table_data: Option<([bool; COUNT], Vec<&'a S>)>,
 }
-impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
-    fn new(id: impl std::hash::Hash, attributes: &'a [T]) -> Self {
+impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S, COUNT> {
+    fn new(attributes: [T; COUNT]) -> Self {
         Self {
-            id: Id::new(id),
             attributes,
-            columns_elements: None,
+            table_data: None,
         }
     }
 
     fn update(&mut self, attribute_filter: &AttributeFilter, data: Option<&'a [S]>) -> bool {
-        let columns: Vec<&T> = self
-            .attributes
-            .iter()
-            .filter(|attr| {
-                attribute_filter.show_all
-                    || data.is_some_and(|data| {
-                        data.iter()
-                            .any(|item| attribute_filter.check(&attr.get_value(item)))
-                    })
-            })
-            .collect();
-        if columns.is_empty() && data.is_none_or(|data| data.is_empty()) {
-            self.columns_elements = None;
+        let is_empty = data.is_none_or(|data| data.is_empty());
+
+        let show_columns = self.attributes.map(|attr| {
+            attribute_filter.show_all
+                || data.is_some_and(|data| {
+                    data.iter()
+                        .any(|item| attribute_filter.check(&attr.get_value(item)))
+                })
+        });
+        let show_any = show_columns.iter().any(|s| *s);
+
+        if is_empty && !show_any {
+            self.table_data = None;
             false
         } else {
-            self.columns_elements = Some((columns, data.unwrap_or(&[])));
+            let data = data
+                .unwrap_or(&[])
+                .iter()
+                .filter(|item| {
+                    self.attributes
+                        .iter()
+                        .zip(show_columns.iter())
+                        .any(|(attr, show_attr)| {
+                            *show_attr && attribute_filter.check(&attr.get_value(item))
+                        })
+                })
+                .collect();
+            self.table_data = Some((show_columns, data));
             true
         }
     }
@@ -567,40 +600,60 @@ impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
         state: &mut State,
         clicked_attribute: &mut Option<AttributeSpecifier>,
     ) {
-        if let Some((columns, elements)) = &self.columns_elements {
+        if let Some((show_columns, elements)) = &self.table_data {
             let mut clicked = None;
 
-            Grid::new(self.id)
-                .min_col_width(0.0)
-                .spacing([20.0, 4.0])
-                .striped(true)
-                .show(ui, |ui| {
-                    for attr in columns {
-                        ui.horizontal(|ui| {
-                            ui.strong(attr.to_string());
-                            attribute_detail_button(ui, *attr, &mut clicked, None);
-                        });
-                    }
-                    ui.end_row();
+            let column_count = show_columns.iter().map(|s| *s as usize).sum();
 
-                    for item in elements.iter() {
-                        for attr in columns {
-                            let attr_type = attr.get_type();
-                            ui_attribute_value(
-                                ui,
-                                state,
-                                &attr_type,
-                                attr.get_value(item).as_ref(),
-                                true,
-                                if attr_type.is_number() {
-                                    Some((0.0, 28.0))
-                                } else {
-                                    None
+            TableBuilder::new(ui)
+                .columns(Column::auto_with_initial_suggestion(0.0), column_count)
+                .striped(true)
+                .vscroll(false)
+                .header(20.0, |mut row| {
+                    for (attr, show_column) in self.attributes.iter().zip(show_columns.iter()) {
+                        if !*show_column {
+                            continue;
+                        }
+                        row.col(|ui| {
+                            let reverse = attr.get_type().is_number();
+                            ui.with_layout(
+                                Layout::top_down(if reverse { Align::RIGHT } else { Align::LEFT }),
+                                |ui| {
+                                    ui.horizontal(|ui| {
+                                        if reverse {
+                                            attribute_detail_button(ui, attr, &mut clicked, None);
+                                            ui.strong(attr.to_string());
+                                        } else {
+                                            ui.strong(attr.to_string());
+                                            attribute_detail_button(ui, attr, &mut clicked, None);
+                                        }
+                                    });
                                 },
                             );
-                        }
-                        ui.end_row();
+                        });
                     }
+                })
+                .body(|body| {
+                    body.rows(20.0, elements.len(), |mut row| {
+                        let item = elements[row.index()];
+                        for attr in self.attributes {
+                            let attr_type = attr.get_type();
+                            row.col(|ui| {
+                                ui_attribute_value(
+                                    ui,
+                                    state,
+                                    &attr_type,
+                                    attr.get_value(item).as_ref(),
+                                    true,
+                                    if attr_type.is_number() {
+                                        Some((0.0, 28.0))
+                                    } else {
+                                        None
+                                    },
+                                );
+                            });
+                        }
+                    });
                 });
 
             if let Some(clicked) = clicked {

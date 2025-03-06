@@ -120,6 +120,7 @@ pub struct SfxLayer {
     PartialEq,
     strum::Display,
     strum::VariantArray,
+    strum::EnumCount,
     Clone,
     Copy,
 )]

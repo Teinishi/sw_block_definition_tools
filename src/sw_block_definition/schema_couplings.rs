@@ -38,6 +38,7 @@ pub struct Coupling {
     PartialEq,
     strum::Display,
     strum::VariantArray,
+    strum::EnumCount,
     Clone,
     Copy,
 )]

@@ -173,7 +173,7 @@ impl Display for Matrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "({}, {}, {} / {}, {}, {} / {}, {}, {})",
+            "({},{},{} / {},{},{} / {},{},{})",
             self.r00,
             self.r01,
             self.r02,
