@@ -10,10 +10,12 @@ Stormworks のパーツ定義 XML ファイルを見るためのツールです�
 
 [Rust のインストール](https://doc.rust-jp.rs/book-ja/ch01-01-installation.html) が必要です。
 
-次の手順でこのリポジトリをクローンし、ビルドすることができます。ビルドした実行可能ファイルは `target/release/sw_block_definition_tools.exe` にあります
+次の手順でこのリポジトリをクローンし、ビルドすることができます。
 
 ```
 > git clone https://github.com/Teinishi/sw_block_definition_tools.git
 > cd sw_block_definition_tools
 > cargo build --release
 ```
+
+ビルドした実行可能ファイルは `target/release/sw_block_definition_tools.exe` に作成されます。
