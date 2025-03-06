@@ -130,9 +130,12 @@ impl DefinitionDetailPanel {
                 &attribute_filter,
                 data.surfaces.last().map(|s| s.surface.as_slice()),
             ) {
-                CollapsingPanel::new("Surfaces").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
+                CollapsingPanel::new(&format!("Surfaces ({})", table.len().unwrap_or(0))).ui(
+                    ui,
+                    |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    },
+                );
             }
 
             // <buoyancy_surfaces> のリスト
@@ -146,9 +149,10 @@ impl DefinitionDetailPanel {
                 &attribute_filter,
                 data.buoyancy_surfaces.last().map(|s| s.surface.as_slice()),
             ) {
-                CollapsingPanel::new("Buoyancy surfaces").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
+                CollapsingPanel::new(&format!("Buoyancy surfaces ({})", table.len().unwrap_or(0)))
+                    .ui(ui, |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
             }
 
             // <logic_nodes> のリスト
@@ -162,9 +166,12 @@ impl DefinitionDetailPanel {
                 &attribute_filter,
                 data.logic_nodes.last().map(|l| l.logic_node.as_slice()),
             ) {
-                CollapsingPanel::new("Logic nodes").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
+                CollapsingPanel::new(&format!("Logic nodes ({})", table.len().unwrap_or(0))).ui(
+                    ui,
+                    |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    },
+                );
             }
 
             // <couplings> のリスト
@@ -178,9 +185,12 @@ impl DefinitionDetailPanel {
                 &attribute_filter,
                 data.couplings.last().map(|c| c.coupling.as_slice()),
             ) {
-                CollapsingPanel::new("Couplings").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
+                CollapsingPanel::new(&format!("Couplings ({})", table.len().unwrap_or(0))).ui(
+                    ui,
+                    |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    },
+                );
             }
 
             // <voxels> のリスト
@@ -190,9 +200,12 @@ impl DefinitionDetailPanel {
                 &attribute_filter,
                 data.voxels.last().map(|v| v.voxel.as_slice()),
             ) {
-                CollapsingPanel::new("Voxels").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
+                CollapsingPanel::new(&format!("Voxels ({})", table.len().unwrap_or(0))).ui(
+                    ui,
+                    |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    },
+                );
             }
 
             // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
@@ -466,6 +479,7 @@ impl<'a> CollapsingPanel<'a> {
         CollapsingHeader::new(RichText::new(self.title).heading())
             .default_open(self.default_open)
             .show(ui, add_body);
+        ui.add_space(8.0);
     }
 }
 
@@ -594,6 +608,10 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
         }
     }
 
+    fn len(&self) -> Option<usize> {
+        Some(self.table_data.clone()?.1.len())
+    }
+
     fn ui(
         &self,
         ui: &mut Ui,
@@ -636,7 +654,10 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
                 .body(|body| {
                     body.rows(20.0, elements.len(), |mut row| {
                         let item = elements[row.index()];
-                        for attr in self.attributes {
+                        for (attr, show_column) in self.attributes.iter().zip(show_columns.iter()) {
+                            if !*show_column {
+                                continue;
+                            }
                             let attr_type = attr.get_type();
                             row.col(|ui| {
                                 ui_attribute_value(
