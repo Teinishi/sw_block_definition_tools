@@ -1,5 +1,6 @@
 use ambassador::{delegatable_trait, Delegate};
 use std::fmt::{self, Debug, Display};
+use strum::EnumIs;
 
 pub type Of32 = ordered_float::NotNan<f32>;
 
@@ -97,17 +98,17 @@ impl<T: Copy + Default + PartialEq + Display + Debug> Display for DefinitionVec3
         if let Some(x) = self.x {
             write!(f, "{:2}, ", x)?;
         } else {
-            write!(f, "_ , ")?;
+            write!(f, " _, ")?;
         }
         if let Some(y) = self.y {
             write!(f, "{:2}, ", y)?;
         } else {
-            write!(f, "_ , ")?;
+            write!(f, " _, ")?;
         }
         if let Some(z) = self.z {
             write!(f, "{:2})", z)
         } else {
-            write!(f, "_ )")
+            write!(f, " _)")
         }
     }
 }
@@ -195,6 +196,35 @@ impl DisplayAttributeValue for Matrix {
     }
 }
 
+#[derive(EnumIs, Debug)]
+pub enum AttributeType {
+    Bool,
+    Int,
+    Float,
+    String,
+    Flags,
+    AudioFile,
+    MeshFile,
+    VecInt,
+    VecFloat,
+    Matrix,
+}
+
+impl AttributeType {
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::Int | Self::Flags | Self::Float)
+    }
+
+    pub fn undefined_text(&self) -> &str {
+        match self {
+            Self::Bool => "false",
+            Self::Int | Self::Flags => "0",
+            Self::Float => "0.0",
+            _ => "undefined",
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Delegate)]
 #[delegate(DisplayAttributeValue)]
 #[delegate(IsDefault)]
@@ -202,22 +232,22 @@ pub enum AttributeValue {
     Bool(bool),
     I32(i32),
     U64(u64),
-    Of32(Of32),
+    F32(Of32),
     String(String),
     VecI32(DefinitionVec3<i32>),
-    VecOf32(DefinitionVec3<Of32>),
+    VecF32(DefinitionVec3<Of32>),
     Matrix(Matrix),
 }
 
 impl AttributeValue {
     pub fn is_number(&self) -> bool {
-        matches!(self, Self::I32(_) | Self::U64(_) | Self::Of32(_))
+        matches!(self, Self::I32(_) | Self::U64(_) | Self::F32(_))
     }
 
     pub fn vec_as_attribute_values(&self) -> Option<[Option<AttributeValue>; 3]> {
         match self {
             Self::VecI32(v) => Some(v.as_attribute_values()),
-            Self::VecOf32(v) => Some(v.as_attribute_values()),
+            Self::VecF32(v) => Some(v.as_attribute_values()),
             _ => None,
         }
     }
@@ -243,7 +273,7 @@ impl From<u64> for AttributeValue {
 
 impl From<Of32> for AttributeValue {
     fn from(value: Of32) -> Self {
-        Self::Of32(value)
+        Self::F32(value)
     }
 }
 
@@ -261,7 +291,7 @@ impl From<DefinitionVec3<i32>> for AttributeValue {
 
 impl From<DefinitionVec3<Of32>> for AttributeValue {
     fn from(value: DefinitionVec3<Of32>) -> Self {
-        Self::VecOf32(value)
+        Self::VecF32(value)
     }
 }
 

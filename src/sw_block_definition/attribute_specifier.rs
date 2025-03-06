@@ -1,12 +1,6 @@
-use super::{AttributeValue, Definition};
+use super::{AttributeType, AttributeValue, Definition};
 use ambassador::{delegatable_trait, delegatable_trait_remote, Delegate};
 use std::fmt::Display;
-
-#[derive(Default)]
-pub struct AttributeProperty {
-    pub is_number: bool,
-    pub is_audio_file: bool,
-}
 
 #[delegatable_trait_remote]
 trait Display {
@@ -16,9 +10,7 @@ trait Display {
 #[delegatable_trait]
 pub trait GetAttributeValueRoot: Clone + Copy + Display {
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue>;
-    fn property(&self) -> AttributeProperty {
-        Default::default()
-    }
+    fn get_type(&self) -> AttributeType;
 }
 
 pub trait GetAttributeValue<T>: GetAttributeValueRoot + Into<AttributeSpecifier> {

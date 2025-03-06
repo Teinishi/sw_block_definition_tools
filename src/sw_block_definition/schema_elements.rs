@@ -1,5 +1,5 @@
 use super::{
-    AttributeProperty, AttributeSpecifier, AttributeValue, Definition, DefinitionVec3,
+    AttributeSpecifier, AttributeType, AttributeValue, Definition, DefinitionVec3,
     GetAttributeValue, GetAttributeValueRoot, Of32,
 };
 use paste::paste;
@@ -45,23 +45,6 @@ macro_rules! define_vec3 {
                 Z,
             }
 
-            impl GetAttributeValueRoot for [<$name Attribute>] {
-                fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
-                    if let Some(item) = d.[<$name:snake>].last() {
-                        self.get_value(item).into_iter().collect()
-                    } else {
-                        vec![]
-                    }
-                }
-
-                fn property(&self) -> AttributeProperty {
-                    AttributeProperty {
-                        is_audio_file: false,
-                        is_number: true,
-                    }
-                }
-            }
-
             impl GetAttributeValue<$name> for [<$name Attribute>] {
                 fn get_value(&self, d: &$name) -> Option<AttributeValue> {
                     match self {
@@ -90,6 +73,22 @@ macro_rules! define_vec3_int {
                 Self::VecI32(value.into())
             }
         }
+
+        paste! {
+            impl GetAttributeValueRoot for [<$name Attribute>] {
+                fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+                    if let Some(item) = d.[<$name:snake>].last() {
+                        self.get_value(item).into_iter().collect()
+                    } else {
+                        vec![]
+                    }
+                }
+
+                fn get_type(&self) -> AttributeType {
+                    AttributeType::Int
+                }
+            }
+        }
     };
 }
 
@@ -99,7 +98,23 @@ macro_rules! define_vec3_float {
 
         impl From<$name> for AttributeValue {
             fn from(value: $name) -> AttributeValue {
-                Self::VecOf32(value.into())
+                Self::VecF32(value.into())
+            }
+        }
+
+        paste! {
+            impl GetAttributeValueRoot for [<$name Attribute>] {
+                fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
+                    if let Some(item) = d.[<$name:snake>].last() {
+                        self.get_value(item).into_iter().collect()
+                    } else {
+                        vec![]
+                    }
+                }
+
+                fn get_type(&self) -> AttributeType {
+                    AttributeType::Float
+                }
             }
         }
     };
@@ -197,6 +212,10 @@ impl GetAttributeValueRoot for TooltipPropertiesAttribute {
             vec![]
         }
     }
+
+    fn get_type(&self) -> AttributeType {
+        AttributeType::String
+    }
 }
 impl GetAttributeValue<TooltipProperties> for TooltipPropertiesAttribute {
     fn get_value(&self, d: &TooltipProperties) -> Option<AttributeValue> {
@@ -241,6 +260,10 @@ impl GetAttributeValueRoot for RewardPropertiesAttribute {
         } else {
             vec![]
         }
+    }
+
+    fn get_type(&self) -> AttributeType {
+        AttributeType::Int
     }
 }
 impl GetAttributeValue<RewardProperties> for RewardPropertiesAttribute {

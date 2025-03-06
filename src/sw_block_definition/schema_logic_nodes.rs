@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, DefinitionVec3, GetAttributeValue,
+    attribute_specifier::GetAttributeValueRoot, AttributeSpecifier, AttributeType, AttributeValue,
+    Definition, DefinitionVec3, GetAttributeValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -63,11 +63,12 @@ impl GetAttributeValueRoot for LogicNodeAttribute {
         }
     }
 
-    fn property(&self) -> AttributeProperty {
-        let is_not_number = matches!(self, Self::Position | Self::Label | Self::Description);
-        AttributeProperty {
-            is_audio_file: false,
-            is_number: !is_not_number,
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Position => AttributeType::VecInt,
+            Self::Orientation | Self::Mode | Self::NodeType => AttributeType::Int,
+            Self::Label | Self::Description => AttributeType::String,
+            Self::Flags => AttributeType::Flags,
         }
     }
 }

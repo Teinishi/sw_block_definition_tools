@@ -29,12 +29,23 @@ impl MainApp {
                 "../../fonts/Roboto-Regular.ttf"
             ))),
         );
-        let font_families = fonts
+        fonts.font_data.insert(
+            "roboto_mono_regular".to_owned(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../../fonts/RobotoMono-Regular.ttf"
+            ))),
+        );
+        let font_families_proportional = fonts
             .families
             .get_mut(&egui::FontFamily::Proportional)
             .unwrap();
-        font_families.insert(0, "roboto_regular".to_owned());
-        font_families.insert(1, "noto_sans_jp_regular".to_owned());
+        font_families_proportional.insert(0, "roboto_regular".to_owned());
+        font_families_proportional.insert(1, "noto_sans_jp_regular".to_owned());
+        let font_families_monospace = fonts
+            .families
+            .get_mut(&egui::FontFamily::Monospace)
+            .unwrap();
+        font_families_monospace.insert(0, "roboto_mono_regular".to_owned());
         cc.egui_ctx.set_fonts(fonts);
 
         if let Some(storage) = cc.storage {

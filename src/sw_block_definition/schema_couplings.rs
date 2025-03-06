@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, DefinitionVec3, GetAttributeValue,
+    AttributeSpecifier, AttributeType, AttributeValue, Definition, DefinitionVec3,
+    GetAttributeValue, GetAttributeValueRoot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +50,7 @@ pub enum CouplingAttribute {
     CouplingName,
     CouplingGender,
     AlignmentRequired,
-    AllowBipolarALignment,
+    AllowBipolarAlignment,
 }
 
 impl GetAttributeValueRoot for CouplingAttribute {
@@ -66,14 +66,12 @@ impl GetAttributeValueRoot for CouplingAttribute {
         }
     }
 
-    fn property(&self) -> AttributeProperty {
-        let is_number = matches!(
-            self,
-            Self::Orientation | Self::Alignment | Self::CouplingGender
-        );
-        AttributeProperty {
-            is_audio_file: false,
-            is_number,
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Position => AttributeType::VecInt,
+            Self::Orientation | Self::Alignment | Self::CouplingGender => AttributeType::Int,
+            Self::CouplingType | Self::CouplingName => AttributeType::AudioFile,
+            Self::AlignmentRequired | Self::AllowBipolarAlignment => AttributeType::Bool,
         }
     }
 }
@@ -88,7 +86,7 @@ impl GetAttributeValue<Coupling> for CouplingAttribute {
             Self::CouplingName => Some(d.coupling_name.clone()?.into()),
             Self::CouplingGender => Some(d.coupling_gender?.into()),
             Self::AlignmentRequired => Some(d.alignment_required?.into()),
-            Self::AllowBipolarALignment => Some(d.allow_bipolar_alignment?.into()),
+            Self::AllowBipolarAlignment => Some(d.allow_bipolar_alignment?.into()),
         }
     }
 }

@@ -6,6 +6,8 @@ use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
 use std::collections::{BTreeMap, BTreeSet};
 
+const DEFAULT_ROW_HEIGHT: f32 = 18.0;
+
 type DefinitionValueItem<'a> = (usize, &'a SwBlockDefinition, AttributeValue);
 type DefinitionMap = BTreeMap<usize, (String, BTreeSet<AttributeValue>)>;
 type ValueMap = BTreeMap<AttributeValue, BTreeMap<usize, String>>;
@@ -155,7 +157,7 @@ impl AttributeDetailWindow {
                 .column(Column::remainder())
                 .striped(true)
                 .body(|body| {
-                    body.rows(20.0, definition_map.len(), |mut row| {
+                    body.rows(DEFAULT_ROW_HEIGHT, definition_map.len(), |mut row| {
                         if let Some((i, (filename, values))) =
                             definition_map.iter().nth(row.index())
                         {
@@ -182,7 +184,7 @@ impl AttributeDetailWindow {
                                         ui_attribute_value(
                                             ui,
                                             state,
-                                            &self.specifier.property(),
+                                            &self.specifier.get_type(),
                                             Some(value),
                                             false,
                                             None,
@@ -209,7 +211,8 @@ impl AttributeDetailWindow {
                 .striped(true)
                 .body(|body| {
                     let keys: Vec<AttributeValue> = value_map.keys().cloned().collect();
-                    self.values_table_heights.resize(keys.len(), 20.0);
+                    self.values_table_heights
+                        .resize(keys.len(), DEFAULT_ROW_HEIGHT);
 
                     body.heterogeneous_rows(
                         self.values_table_heights.clone().into_iter(),
@@ -219,24 +222,39 @@ impl AttributeDetailWindow {
                             let definitions = value_map.get(key).unwrap();
 
                             row.col(|ui| {
-                                let collapsing_response = ui.collapsing(
-                                    format!("{} definitions", definitions.len()),
-                                    |ui| {
-                                        for (i, filename) in definitions {
-                                            let checked = Some(*i) == *selected_definition_index;
-                                            if ui.selectable_label(checked, filename).clicked() {
-                                                *selected_definition_index = Some(*i);
+                                let mut rect;
+                                if definitions.len() == 1 {
+                                    let (i, filename) = definitions.iter().next().unwrap();
+                                    let checked = Some(*i) == *selected_definition_index;
+                                    let response = ui.selectable_label(checked, filename);
+                                    rect = response.rect;
+                                    if response.clicked() {
+                                        *selected_definition_index = Some(*i);
+                                    }
+                                } else {
+                                    let collapsing_response = ui.collapsing(
+                                        format!("{} definitions", definitions.len()),
+                                        |ui| {
+                                            for (i, filename) in definitions {
+                                                let checked =
+                                                    Some(*i) == *selected_definition_index;
+                                                if ui.selectable_label(checked, filename).clicked()
+                                                {
+                                                    *selected_definition_index = Some(*i);
+                                                }
                                             }
-                                        }
-                                    },
-                                );
+                                        },
+                                    );
 
-                                let mut rect = collapsing_response.header_response.rect;
-                                if let Some(body_res) = collapsing_response.body_response {
-                                    rect = rect.union(body_res.rect);
+                                    rect = collapsing_response.header_response.rect;
+                                    if let Some(body_res) = collapsing_response.body_response {
+                                        rect = rect.union(body_res.rect);
+                                    }
                                 }
+
                                 if row_index >= self.values_table_heights.len() {
-                                    self.values_table_heights.resize(row_index, 20.0);
+                                    self.values_table_heights
+                                        .resize(row_index, DEFAULT_ROW_HEIGHT);
                                 }
                                 self.values_table_heights.insert(row_index, rect.height());
                             });
@@ -245,7 +263,7 @@ impl AttributeDetailWindow {
                                 ui_attribute_value(
                                     ui,
                                     state,
-                                    &self.specifier.property(),
+                                    &self.specifier.get_type(),
                                     Some(key),
                                     false,
                                     None,

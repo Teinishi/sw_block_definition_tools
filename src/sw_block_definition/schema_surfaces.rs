@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, DefinitionVec3, GetAttributeValue,
+    AttributeSpecifier, AttributeType, AttributeValue, Definition, DefinitionVec3,
+    GetAttributeValue, GetAttributeValueRoot,
 };
 use serde::{Deserialize, Serialize};
 
@@ -73,14 +73,14 @@ impl GetAttributeValueRoot for SurfaceAttribute {
         }
     }
 
-    fn property(&self) -> AttributeProperty {
-        let is_not_number = matches!(
-            self,
-            Self::Position | Self::IsReverseNormals | Self::IsTwoSided
-        );
-        AttributeProperty {
-            is_audio_file: false,
-            is_number: !is_not_number,
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Position => AttributeType::VecInt,
+            Self::Orientation | Self::Rotation | Self::Shape | Self::TransType => {
+                AttributeType::Int
+            }
+            Self::Flags => AttributeType::Flags,
+            Self::IsReverseNormals | Self::IsTwoSided => AttributeType::Bool,
         }
     }
 }

@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::GetAttributeValueRoot, AttributeProperty, AttributeSpecifier,
-    AttributeValue, Definition, DefinitionVec3, GetAttributeValue, Matrix,
+    AttributeSpecifier, AttributeType, AttributeValue, Definition, DefinitionVec3,
+    GetAttributeValue, GetAttributeValueRoot, Matrix,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,11 +56,12 @@ impl GetAttributeValueRoot for VoxelAttribute {
         }
     }
 
-    fn property(&self) -> AttributeProperty {
-        let is_not_number = matches!(self, Self::Position | Self::PhysicsShapeRotation);
-        AttributeProperty {
-            is_audio_file: false,
-            is_number: !is_not_number,
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Position => AttributeType::VecInt,
+            Self::PhysicsShapeRotation => AttributeType::Matrix,
+            Self::Flags => AttributeType::Flags,
+            Self::PhysicsShape | Self::BuoyPipes => AttributeType::Int,
         }
     }
 }

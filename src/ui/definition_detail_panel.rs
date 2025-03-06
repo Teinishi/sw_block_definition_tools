@@ -1,6 +1,6 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeProperty, AttributeSpecifier, AttributeValue, CouplingAttribute, DefinitionAttribute,
+    AttributeSpecifier, AttributeType, AttributeValue, CouplingAttribute, DefinitionAttribute,
     GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNodeAttribute,
     RewardPropertiesAttribute, SfxDataAttribute, SfxLayerAttribute, SurfaceAttribute,
     TooltipPropertiesAttribute, VoxelAttribute,
@@ -507,7 +507,7 @@ impl<'a, T> AttributeList<'a, T> {
                         ui_attribute_value(
                             ui,
                             state,
-                            &attr.property(),
+                            &attr.get_type(),
                             value.as_ref(),
                             false,
                             None,
@@ -585,14 +585,18 @@ impl<'a, T: GetAttributeValue<S>, S> ElementsTable<'a, T, S> {
 
                     for item in elements.iter() {
                         for attr in columns {
-                            let is_number = attr.property().is_number;
+                            let attr_type = attr.get_type();
                             ui_attribute_value(
                                 ui,
                                 state,
-                                &attr.property(),
+                                &attr_type,
                                 attr.get_value(item).as_ref(),
                                 true,
-                                if is_number { Some((0.0, 28.0)) } else { None },
+                                if attr_type.is_number() {
+                                    Some((0.0, 28.0))
+                                } else {
+                                    None
+                                },
                             );
                         }
                         ui.end_row();
@@ -676,11 +680,6 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
         T: GetAttributeValue<S> + Copy,
     {
         if let Some(rows) = &self.table_data {
-            let property = AttributeProperty {
-                is_audio_file: false,
-                is_number: true,
-            };
-
             let mut clicked = None;
 
             Grid::new(self.id)
@@ -727,9 +726,14 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
                             }
                             ui.label(*label);
                         }
-                        for vec in values {
+                        for (vec, element) in values.iter().zip(elements.iter()) {
+                            let attr_type = match element.get_type() {
+                                AttributeType::VecInt => AttributeType::Int,
+                                AttributeType::VecFloat => AttributeType::Float,
+                                _ => AttributeType::String,
+                            };
                             for v in vec {
-                                ui_attribute_value(ui, state, &property, v.as_ref(), true, None);
+                                ui_attribute_value(ui, state, &attr_type, v.as_ref(), true, None);
                             }
                         }
                         ui.end_row();

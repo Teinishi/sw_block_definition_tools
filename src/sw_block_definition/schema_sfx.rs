@@ -1,6 +1,6 @@
 use super::{
-    attribute_specifier::{AttributeProperty, GetAttributeValueRoot},
-    AttributeSpecifier, AttributeValue, Definition, GetAttributeValue, Of32,
+    AttributeSpecifier, AttributeType, AttributeValue, Definition, GetAttributeValue,
+    GetAttributeValueRoot, Of32,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,6 +56,14 @@ impl GetAttributeValueRoot for SfxDataAttribute {
                 .collect()
         } else {
             vec![]
+        }
+    }
+
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Name => AttributeType::String,
+            Self::RangeInner | Self::RangeOuter | Self::Priority => AttributeType::Float,
+            Self::IsUnderwaterAffected => AttributeType::Bool,
         }
     }
 }
@@ -151,20 +159,16 @@ impl GetAttributeValueRoot for SfxLayerAttribute {
         }
     }
 
-    fn property(&self) -> AttributeProperty {
-        AttributeProperty {
-            is_audio_file: matches!(
-                self,
-                Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd
-            ),
-            is_number: matches!(
-                self,
-                Self::Gain
-                    | Self::LoopStartTime
-                    | Self::LoopBlendDuration
-                    | Self::VolumeFadeSpeed
-                    | Self::PitchFadeSpeed
-            ),
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::FilenameStart | Self::FilenameLoop | Self::FilenameEnd => {
+                AttributeType::AudioFile
+            }
+            Self::Gain
+            | Self::LoopStartTime
+            | Self::LoopBlendDuration
+            | Self::VolumeFadeSpeed
+            | Self::PitchFadeSpeed => AttributeType::Float,
         }
     }
 }

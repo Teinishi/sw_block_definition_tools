@@ -1,14 +1,14 @@
 use super::{
-    attribute_specifier::{AttributeProperty, GetAttributeValueRoot},
-    AttributeSpecifier, AttributeValue, BbPhysicsMax, BbPhysicsMin, BuoyancySurfaces,
-    CompartmentSamplePos, ConnectorAxis, ConnectorUp, ConstraintPosChild, ConstraintPosParent,
-    Couplings, DoorBasePos, DoorNormal, DoorSide, DoorSize, DoorUp, DynamicBodyPosition,
-    DynamicRotationAxes, DynamicSideAxis, ForceDir, GetAttributeValue, JetEngineConnectionsNext,
-    JetEngineConnectionsPrev, LightColor, LightForward, LightPosition, LogicNodes, MagnetOffset,
-    Of32, ParticleBounds, ParticleDirection, ParticleOffset, RewardProperties, RopeHookOffset,
-    SeatCamera, SeatExitPosition, SeatFront, SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces,
-    TooltipProperties, VoxelLocationChild, VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin,
-    Voxels, WeaponBreechNormal, WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
+    AttributeSpecifier, AttributeType, AttributeValue, BbPhysicsMax, BbPhysicsMin,
+    BuoyancySurfaces, CompartmentSamplePos, ConnectorAxis, ConnectorUp, ConstraintPosChild,
+    ConstraintPosParent, Couplings, DoorBasePos, DoorNormal, DoorSide, DoorSize, DoorUp,
+    DynamicBodyPosition, DynamicRotationAxes, DynamicSideAxis, ForceDir, GetAttributeValue,
+    GetAttributeValueRoot, JetEngineConnectionsNext, JetEngineConnectionsPrev, LightColor,
+    LightForward, LightPosition, LogicNodes, MagnetOffset, Of32, ParticleBounds, ParticleDirection,
+    ParticleOffset, RewardProperties, RopeHookOffset, SeatCamera, SeatExitPosition, SeatFront,
+    SeatOffset, SeatRender, SeatUp, SfxDatas, Surfaces, TooltipProperties, VoxelLocationChild,
+    VoxelMax, VoxelMin, VoxelPhysicsMax, VoxelPhysicsMin, Voxels, WeaponBreechNormal,
+    WeaponBreechPosition, WeaponCartPosition, WeaponCartVelocity,
 };
 use serde::{Deserialize, Serialize};
 
@@ -178,7 +178,7 @@ pub struct Definition {
     #[serde(rename = "@m_pump_pressure")]
     pub m_pump_pressure: Option<Of32>,
     #[serde(rename = "@water_component_type")]
-    pub water_component_type: Option<Of32>,
+    pub water_component_type: Option<i32>,
     #[serde(rename = "@torque_component_type")]
     pub torque_component_type: Option<i32>,
     #[serde(rename = "@jet_engine_component_type")]
@@ -186,9 +186,9 @@ pub struct Definition {
     #[serde(rename = "@particle_speed")]
     pub particle_speed: Option<Of32>,
     #[serde(rename = "@inventory_type")]
-    pub inventory_type: Option<Of32>,
+    pub inventory_type: Option<i32>,
     #[serde(rename = "@inventory_default_outfit")]
-    pub inventory_default_outfit: Option<Of32>,
+    pub inventory_default_outfit: Option<i32>,
     #[serde(rename = "@inventory_class")]
     pub inventory_class: Option<i32>,
     #[serde(rename = "@inventory_default_item")]
@@ -609,7 +609,167 @@ impl GetAttributeValueRoot for DefinitionAttribute {
         self.get_value(d).into_iter().collect()
     }
 
-    fn property(&self) -> AttributeProperty {
+    fn get_type(&self) -> AttributeType {
+        match self {
+            Self::Name | Self::Tags | Self::ChildName | Self::ExtenderName | Self::LightIesMap => {
+                AttributeType::String
+            }
+            Self::Category
+            | Self::Type
+            | Self::PhysCollisionDampen
+            | Self::BlockType
+            | Self::ConstraintType
+            | Self::ConstraintAxis
+            | Self::SeatType
+            | Self::SeatPose
+            | Self::SeatHealthPerSec
+            | Self::TransConnType
+            | Self::TransType
+            | Self::ButtonType
+            | Self::LightType
+            | Self::CustomDoorType
+            | Self::DoorSideDist
+            | Self::DoorUpDist
+            | Self::LogicGateType
+            | Self::LogicGateSubtype
+            | Self::IndicatorType
+            | Self::ConnectorType
+            | Self::GyroType
+            | Self::RewardTier
+            | Self::Revision
+            | Self::WaterComponentType
+            | Self::TorqueComponentType
+            | Self::JetEngineComponentType
+            | Self::InventoryType
+            | Self::InventoryDefaultOutfit
+            | Self::InventoryClass
+            | Self::InventoryDefaultItem
+            | Self::ElectricType
+            | Self::ElectricChargeCapacity
+            | Self::CompositeType
+            | Self::WeaponType
+            | Self::WeaponClass
+            | Self::WeaponBeltType
+            | Self::WeaponAmmoCapacity
+            | Self::WeaponBarrelLengthVoxels
+            | Self::RocketType
+            | Self::EngineModuleType
+            | Self::SteamComponentType
+            | Self::NuclearComponentType
+            | Self::RadarType
+            | Self::DataLoggerComponentType
+            | Self::MetadataComponentType
+            | Self::OilComponentType
+            | Self::ToolType => AttributeType::Int,
+            Self::Mass
+            | Self::Value
+            | Self::AudioGain
+            | Self::ConstraintRangeOfMotion
+            | Self::MaxMotorForce
+            | Self::MaxMotorSpeed
+            | Self::CableRadius
+            | Self::CableLength
+            | Self::BuoyRadius
+            | Self::BuoyFactor
+            | Self::BuoyForce
+            | Self::ForceEmitterMaxForce
+            | Self::ForceEmitterMaxVector
+            | Self::ForceEmitterDefaultPitch
+            | Self::ForceEmitterBladeHeight
+            | Self::ForceEmitterRotationSpeed
+            | Self::ForceEmitterBladePhysicsLength
+            | Self::ForceEmitterBladeEfficiency
+            | Self::ForceEmitterEfficiency
+            | Self::EngineMaxForce
+            | Self::EngineFrictionlessForce
+            | Self::WheelRadius
+            | Self::WheelWidth
+            | Self::WheelWishboneLength
+            | Self::WheelSuspensionHeight
+            | Self::WheelWishboneMargin
+            | Self::WheelSuspensionOffset
+            | Self::WheelWishboneOffset
+            | Self::WheelType
+            | Self::LightIntensity
+            | Self::LightRange
+            | Self::LightFov
+            | Self::DoorLowerLimit
+            | Self::DoorUpperLimit
+            | Self::DynamicMinRotation
+            | Self::DynamicMaxRotation
+            | Self::MagnetForce
+            | Self::RudderSurfaceArea
+            | Self::PumpPressure
+            | Self::MPumpPressure
+            | Self::ParticleSpeed
+            | Self::ElectricMagnitude
+            | Self::CameraFovMin
+            | Self::CameraFovMax
+            | Self::MonitorBorder
+            | Self::MonitorInset
+            | Self::RxRange
+            | Self::RxLength
+            | Self::RadarRange
+            | Self::RadarSpeed
+            | Self::SteamComponentCapacity
+            | Self::PistonLen
+            | Self::PistonCam => AttributeType::Float,
+            Self::Flags => AttributeType::Flags,
+            Self::AudioFilenameStart
+            | Self::AudioFilenameLoop
+            | Self::AudioFilenameEnd
+            | Self::AudioFilenameStartB
+            | Self::AudioFilenameLoopB
+            | Self::AudioFilenameEndB => AttributeType::AudioFile,
+            Self::MeshDataName
+            | Self::Mesh0Name
+            | Self::Mesh1Name
+            | Self::Mesh2Name
+            | Self::MeshEditorOnlyName => AttributeType::MeshFile,
+            Self::DoorFlipped | Self::WeaponAmmoFeed => AttributeType::Bool,
+            Self::VoxelMin
+            | Self::VoxelMax
+            | Self::VoxelPhysicsMin
+            | Self::VoxelPhysicsMax
+            | Self::CompartmentSamplePos
+            | Self::VoxelLocationChild
+            | Self::SeatFront
+            | Self::SeatUp
+            | Self::SeatExitPosition
+            | Self::ForceDir
+            | Self::LightPosition
+            | Self::LightForward
+            | Self::DoorNormal
+            | Self::DoorSide
+            | Self::DoorUp
+            | Self::DoorBasePos
+            | Self::DynamicBodyPosition
+            | Self::DynamicRotationAxes
+            | Self::DynamicSideAxis
+            | Self::ConnectorAxis
+            | Self::ConnectorUp
+            | Self::ParticleDirection
+            | Self::WeaponBreechPosition
+            | Self::WeaponBreechNormal => AttributeType::VecInt,
+            Self::BbPhysicsMin
+            | Self::BbPhysicsMax
+            | Self::ConstraintPosParent
+            | Self::ConstraintPosChild
+            | Self::SeatOffset
+            | Self::SeatCamera
+            | Self::SeatRender
+            | Self::LightColor
+            | Self::DoorSize
+            | Self::MagnetOffset
+            | Self::RopeHookOffset
+            | Self::ParticleOffset
+            | Self::ParticleBounds
+            | Self::WeaponCartPosition
+            | Self::WeaponCartVelocity => AttributeType::VecFloat,
+        }
+    }
+
+    /*fn property(&self) -> AttributeProperty {
         let is_audio_file = matches!(
             self,
             Self::AudioFilenameStart
@@ -682,7 +842,7 @@ impl GetAttributeValueRoot for DefinitionAttribute {
             is_audio_file,
             is_number: !is_not_number,
         }
-    }
+    }*/
 }
 
 impl GetAttributeValue<Definition> for DefinitionAttribute {
@@ -882,6 +1042,10 @@ pub enum JetEngineConnectionAttribute {
 impl GetAttributeValueRoot for JetEngineConnectionAttribute {
     fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
         self.get_value(d).into_iter().collect()
+    }
+
+    fn get_type(&self) -> AttributeType {
+        AttributeType::VecInt
     }
 }
 
