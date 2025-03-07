@@ -71,10 +71,7 @@ impl DefinitionDetailPanel {
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
             // <definition> の属性リスト
-            let mut list = AttributeList::new(
-                "definition_attribute_list",
-                &DefinitionAttribute::NON_ELEMENT_VARIANTS,
-            );
+            let mut list = AttributeList::new(&DefinitionAttribute::NON_ELEMENT_VARIANTS);
             if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Definition Attributes")
                     .default_open(true)
@@ -85,11 +82,8 @@ impl DefinitionDetailPanel {
 
             // <sfx_datas> のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
-                for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
-                    let mut attribute_list = AttributeList::new(
-                        format!("sfx_attribute_list_{}", i),
-                        SfxDataAttribute::VARIANTS,
-                    );
+                for item in sfx_datas.sfx_data.iter() {
+                    let mut attribute_list = AttributeList::new(SfxDataAttribute::VARIANTS);
                     let mut layers_table: ElementsTable<
                         '_,
                         SfxLayerAttribute,
@@ -319,10 +313,7 @@ impl DefinitionDetailPanel {
             }
 
             // <tooltip_properties>
-            let mut list = AttributeList::new(
-                "tooltip_properties_list",
-                TooltipPropertiesAttribute::VARIANTS,
-            );
+            let mut list = AttributeList::new(TooltipPropertiesAttribute::VARIANTS);
             if list.update(&attribute_filter, data.tooltip_properties.last()) {
                 CollapsingPanel::new("Tooltip properties")
                     .default_open(true)
@@ -332,10 +323,7 @@ impl DefinitionDetailPanel {
             }
 
             // <reward_properties>
-            let mut list = AttributeList::new(
-                "reward_properties_list",
-                RewardPropertiesAttribute::VARIANTS,
-            );
+            let mut list = AttributeList::new(RewardPropertiesAttribute::VARIANTS);
             if list.update(&attribute_filter, data.reward_properties.last()) {
                 CollapsingPanel::new("Reward properties")
                     .default_open(true)
@@ -484,16 +472,14 @@ impl<'a> CollapsingPanel<'a> {
 }
 
 struct AttributeList<'a, T> {
-    id: Id,
     attributes: &'a [T],
-    filtered_data: Option<Vec<(&'a T, Option<AttributeValue>)>>,
+    list_data: Option<Vec<(&'a T, Option<AttributeValue>)>>,
 }
 impl<'a, T> AttributeList<'a, T> {
-    fn new(id: impl std::hash::Hash, attributes: &'a [T]) -> Self {
+    fn new(attributes: &'a [T]) -> Self {
         Self {
-            id: Id::new(id),
             attributes,
-            filtered_data: None,
+            list_data: None,
         }
     }
 
@@ -514,10 +500,10 @@ impl<'a, T> AttributeList<'a, T> {
             })
             .collect();
         if filtered_data.is_empty() {
-            self.filtered_data = None;
+            self.list_data = None;
             false
         } else {
-            self.filtered_data = Some(filtered_data);
+            self.list_data = Some(filtered_data);
             true
         }
     }
@@ -530,27 +516,35 @@ impl<'a, T> AttributeList<'a, T> {
     ) where
         T: GetAttributeValue<S> + Into<AttributeSpecifier>,
     {
-        if let Some(data) = &self.filtered_data {
+        if let Some(data) = &self.list_data {
             let mut clicked = None;
 
-            Grid::new(self.id)
-                .min_col_width(0.0)
-                .spacing([10.0, 4.0])
+            TableBuilder::new(ui)
+                .column(Column::auto_with_initial_suggestion(0.0))
+                .columns(Column::remainder(), 2)
+                .cell_layout(Layout::left_to_right(Align::Center))
                 .striped(true)
-                .show(ui, |ui| {
-                    for (attr, value) in data {
-                        attribute_detail_button(ui, attr, &mut clicked, None);
-                        ui.label(attr.to_string());
-                        ui_attribute_value(
-                            ui,
-                            state,
-                            &attr.get_type(),
-                            value.as_ref(),
-                            false,
-                            None,
-                        );
-                        ui.end_row();
-                    }
+                .vscroll(false)
+                .body(|body| {
+                    body.rows(18.0, data.len(), |mut row| {
+                        let (attr, value) = &data[row.index()];
+                        row.col(|ui| {
+                            attribute_detail_button(ui, attr, &mut clicked, None);
+                        });
+                        row.col(|ui| {
+                            ui.label(attr.to_string());
+                        });
+                        row.col(|ui| {
+                            ui_attribute_value(
+                                ui,
+                                state,
+                                &attr.get_type(),
+                                value.as_ref(),
+                                false,
+                                None,
+                            );
+                        });
+                    });
                 });
 
             if let Some(clicked) = clicked {
