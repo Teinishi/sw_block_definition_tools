@@ -82,7 +82,7 @@ impl DefinitionDetailPanel {
 
             // <sfx_datas> のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
-                for item in sfx_datas.sfx_data.iter() {
+                for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
                     let mut attribute_list = AttributeList::new(SfxDataAttribute::VARIANTS);
                     let mut layers_table: ElementsTable<
                         '_,
@@ -106,8 +106,12 @@ impl DefinitionDetailPanel {
                             None => "Sfx data".to_string(),
                         };
                         CollapsingPanel::new(&title).ui(ui, |ui| {
-                            attribute_list.ui(ui, state, &mut clicked_attribute);
-                            layers_table.ui(ui, state, &mut clicked_attribute);
+                            ui.push_id(2 * i, |ui| {
+                                attribute_list.ui(ui, state, &mut clicked_attribute);
+                            });
+                            ui.push_id(2 * i + 1, |ui| {
+                                layers_table.ui(ui, state, &mut clicked_attribute);
+                            });
                         });
                     }
                 }
