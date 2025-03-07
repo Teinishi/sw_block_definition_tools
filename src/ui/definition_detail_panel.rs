@@ -1,9 +1,9 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeType, AttributeValue, Coupling, CouplingAttribute,
-    DefinitionAttribute, GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNode,
-    LogicNodeAttribute, RewardPropertiesAttribute, SfxDataAttribute, SfxLayer, SfxLayerAttribute,
-    Surface, SurfaceAttribute, TooltipPropertiesAttribute, Voxel, VoxelAttribute,
+    AttributeSpecifier, AttributeValue, Coupling, CouplingAttribute, DefinitionAttribute,
+    GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute,
+    RewardPropertiesAttribute, SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface,
+    SurfaceAttribute, TooltipPropertiesAttribute, Voxel, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Layout, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
@@ -656,7 +656,7 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
     }
 }
 
-type MultipleVecTableRow<'a, const V_COUNT: usize> = (bool, [[Option<AttributeValue>; 3]; V_COUNT]);
+type MultipleVecTableRow<'a, const V_COUNT: usize> = (bool, [Option<AttributeValue>; V_COUNT]);
 struct MultipleVecTable<'a, T, const V_COUNT: usize, const E_COUNT: usize> {
     variants: Option<[&'a str; V_COUNT]>,
     elements: [(&'a str, [T; V_COUNT]); E_COUNT],
@@ -687,17 +687,12 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
     where
         T: GetAttributeValue<S>,
     {
-        let table_data: [(bool, [[Option<AttributeValue>; 3]; V_COUNT]); E_COUNT] =
+        let table_data: [(bool, [Option<AttributeValue>; V_COUNT]); E_COUNT] =
             self.elements.map(|(_, elements)| {
-                let values: [[Option<AttributeValue>; 3]; V_COUNT] = elements.map(|element| {
-                    data.and_then(|data| element.get_value(data))
-                        .and_then(|v| v.vec_as_attribute_values())
-                        .unwrap_or([None, None, None])
-                });
+                let values: [Option<AttributeValue>; V_COUNT] =
+                    elements.map(|element| data.and_then(|data| element.get_value(data)));
 
-                let show_row = values
-                    .iter()
-                    .any(|vec| vec.iter().any(|v| attribute_filter.check(v)));
+                let show_row = values.iter().any(|vec| attribute_filter.check(vec));
 
                 (show_row, values)
             });
@@ -721,41 +716,24 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
     ) where
         T: GetAttributeValue<S> + Copy,
     {
-        if let Some(rows) = &self.table_data {
+        if self.table_data.is_some() {
             let mut clicked = None;
 
-            TableBuilder::new(ui)
-                .columns(Column::auto_with_initial_suggestion(0.0), 1 + 4 * V_COUNT)
-                .cell_layout(Layout::left_to_right(Align::Center))
-                .striped(true)
-                .vscroll(false)
-                .header(20.0, |mut row| {
+            let header_content = |mut row: egui_extras::TableRow<'_, '_>| {
+                if let Some(variants) = self.variants {
                     for _ in 0..(V_COUNT + 1) {
                         row.col(|_| {});
                     }
-                    if let Some(variants) = self.variants {
-                        for variant in variants {
-                            for axis in ["x", "y", "z"] {
-                                row.col(|ui| {
-                                    tabel_cell_aligned(ui, Align::RIGHT, |ui| {
-                                        ui.strong(format!("{} {}", variant, axis));
-                                    });
-                                });
-                            }
-                        }
-                    } else {
-                        for _ in 0..V_COUNT {
-                            for axis in ["x", "y", "z"] {
-                                row.col(|ui| {
-                                    tabel_cell_aligned(ui, Align::RIGHT, |ui| {
-                                        ui.strong(axis);
-                                    });
-                                });
-                            }
-                        }
+                    for variant in variants {
+                        row.col(|ui| {
+                            ui.strong(variant);
+                        });
                     }
-                })
-                .body(|body| {
+                }
+            };
+
+            let body_content = |body: egui_extras::TableBody<'_>| {
+                if let Some(rows) = &self.table_data {
                     let index_map: Vec<usize> = rows
                         .iter()
                         .enumerate()
@@ -793,26 +771,34 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
                         }
 
                         for (vec, element) in values.iter().zip(elements.iter()) {
-                            let attr_type = match element.get_type() {
-                                AttributeType::VecInt => AttributeType::Int,
-                                AttributeType::VecFloat => AttributeType::Float,
-                                _ => AttributeType::String,
-                            };
-                            for v in vec {
-                                row.col(|ui| {
-                                    ui_attribute_value(
-                                        ui,
-                                        state,
-                                        &attr_type,
-                                        v.as_ref(),
-                                        true,
-                                        None,
-                                    );
-                                });
-                            }
+                            row.col(|ui| {
+                                ui_attribute_value(
+                                    ui,
+                                    state,
+                                    &element.get_type(),
+                                    vec.as_ref(),
+                                    true,
+                                    None,
+                                );
+                            });
                         }
                     });
-                });
+                }
+            };
+
+            let table_builder = TableBuilder::new(ui)
+                .columns(Column::auto_with_initial_suggestion(0.0), 1 + 2 * V_COUNT)
+                .cell_layout(Layout::left_to_right(Align::Center))
+                .striped(true)
+                .vscroll(false);
+
+            if self.variants.is_some() {
+                table_builder
+                    .header(20.0, header_content)
+                    .body(body_content);
+            } else {
+                table_builder.body(body_content);
+            }
 
             if let Some(clicked) = clicked {
                 *clicked_attribute = Some((*clicked).into());
