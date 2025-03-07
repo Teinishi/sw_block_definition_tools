@@ -33,67 +33,133 @@ const PIPE_COLOR_POWER: Color4 = Color4 {
 };
 */
 
-pub fn create_surface_object(
-    surface: &Surface,
-    show_surface: bool,
-    show_edge: bool,
-) -> (Option<SceneObject>, Option<SceneObject>) {
-    if !show_surface && !show_edge {
-        return (None, None);
+pub struct SurfaceObjectBuilder {
+    transform_matrix: Mat4,
+    shape: i32,
+    single_color_vertices: Option<Vec<Vec3>>,
+}
+
+impl SurfaceObjectBuilder {
+    pub fn new(surface: &Surface) -> Self {
+        let rotation = Quat::from_rotation_x(-PI / 2.0 * surface.rotation.unwrap_or(0) as f32);
+        let orientation = match surface.orientation {
+            Some(1) => Quat::from_rotation_z(PI),
+            Some(2) => Quat::from_rotation_z(PI / 2.0),
+            Some(3) => Quat::from_rotation_z(-PI / 2.0),
+            Some(4) => Quat::from_rotation_x(-PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
+            Some(5) => Quat::from_rotation_x(PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
+            _ => Quat::IDENTITY,
+        };
+
+        let translation = match surface.position.last() {
+            Some(position) => {
+                0.25 * Vec3::new(
+                    position.x.unwrap_or_default() as f32,
+                    position.y.unwrap_or_default() as f32,
+                    -position.z.unwrap_or_default() as f32,
+                )
+            }
+            None => Vec3::ZERO,
+        };
+        let transform_matrix =
+            Mat4::from_rotation_translation(orientation.mul_quat(rotation), translation);
+
+        let shape = surface.shape.unwrap_or(0);
+        let single_color_vertices = surface_single_color(shape);
+
+        Self {
+            transform_matrix,
+            shape,
+            single_color_vertices,
+        }
     }
 
-    let rotation = Quat::from_rotation_x(-PI / 2.0 * surface.rotation.unwrap_or(0) as f32);
-    let orientation = match surface.orientation {
-        Some(1) => Quat::from_rotation_z(PI),
-        Some(2) => Quat::from_rotation_z(PI / 2.0),
-        Some(3) => Quat::from_rotation_z(-PI / 2.0),
-        Some(4) => Quat::from_rotation_x(-PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
-        Some(5) => Quat::from_rotation_x(PI / 2.0).mul_quat(Quat::from_rotation_z(PI / 2.0)),
-        _ => Quat::IDENTITY,
-    };
-    let translation = match surface.position.last() {
-        Some(position) => {
-            0.25 * Vec3::new(
-                position.x.unwrap_or_default() as f32,
-                position.y.unwrap_or_default() as f32,
-                -position.z.unwrap_or_default() as f32,
-            )
+    pub fn basic_objects(
+        &self,
+        show_surface: bool,
+        show_edge: bool,
+    ) -> (Option<SceneObject>, Option<SceneObject>) {
+        if !show_surface && !show_edge {
+            return (None, None);
         }
-        None => Vec3::ZERO,
-    };
-    let transform_matrix = Some(Mat4::from_rotation_translation(
-        orientation.mul_quat(rotation),
-        translation,
-    ));
 
-    let shape = surface.shape.unwrap_or(0);
-    let (mesh, line) = if let Some(vertices) = surface_shape(shape) {
-        (
-            show_surface.then(|| {
-                Mesh::signle_color_lh(
+        let mut mesh: Option<Mesh> = None;
+        let mut line: Option<Vec<Vec3>> = None;
+
+        if let Some(vertices) = &self.single_color_vertices {
+            if show_surface {
+                mesh = Some(Mesh::signle_color_lh(
                     vertices.clone(),
                     (1..(vertices.len() - 1)).map(|i| [0, i, i + 1]).collect(),
                     Color4::WHITE,
+                ));
+            }
+            if show_edge {
+                line = Some(vertices.to_vec());
+            }
+        } else {
+            match self.shape {
+                3 => {
+                    if show_surface {
+                        mesh = pipe_surface(self.shape, Color4::WHITE);
+                    }
+                }
+                4 | 5 => {
+                    if show_surface {
+                        mesh = dot_surface(self.shape, Color4::WHITE)
+                    }
+                    if show_edge {
+                        line = surface_single_color(1);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        (
+            mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
+            line.map(|positions| {
+                SceneObject::from_line(
+                    Line::single_color_lh(positions, Color4::BLACK, 1.0, true),
+                    Some(self.transform_matrix),
                 )
             }),
-            show_edge.then_some(vertices),
         )
-    } else {
-        surface_multiple_color(shape, Color4::WHITE, show_surface, show_edge)
-    };
+    }
 
-    (
-        mesh.map(|mesh| SceneObject::from_mesh(mesh, transform_matrix)),
-        line.map(|positions| {
-            SceneObject::from_line(
-                Line::single_color_lh(positions, Color4::BLACK, 1.0, true),
-                transform_matrix,
-            )
-        }),
-    )
+    pub fn translucent_object(&self) -> Option<SceneObject> {
+        let color = Color4 {
+            r: 0.2,
+            g: 0.7,
+            b: 0.8,
+            a: 0.5,
+        };
+
+        let vertices = self
+            .single_color_vertices
+            .clone()
+            .or_else(|| match self.shape {
+                4 | 5 => surface_single_color(1),
+                _ => None,
+            });
+
+        let mesh = vertices.map(|v| {
+            let mut triangles: Vec<[usize; 3]> =
+                (1..(v.len() - 1)).map(|i| [0, i, i + 1]).collect();
+            let mut reversed: Vec<[usize; 3]> = triangles
+                .iter()
+                .map(|indices| [indices[2], indices[1], indices[0]])
+                .collect();
+            triangles.append(&mut reversed);
+            //m.glass();
+            Mesh::signle_color_lh(v.clone(), triangles, color)
+        });
+
+        mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix)))
+    }
 }
 
-fn surface_shape(shape: i32) -> Option<Vec<Vec3>> {
+fn surface_single_color(shape: i32) -> Option<Vec<Vec3>> {
     Some(match shape {
         1 => vec![
             Vec3::new(0.125, 0.125, 0.125),
@@ -460,98 +526,80 @@ fn surface_shape(shape: i32) -> Option<Vec<Vec3>> {
     })
 }
 
-fn surface_multiple_color(
-    shape: i32,
-    color: Color4,
-    show_surface: bool,
-    show_edge: bool,
-) -> (Option<Mesh>, Option<Vec<Vec3>>) {
-    match shape {
-        3 => {
-            let center = Vec3::new(0.125, 0.0, 0.0);
-            let angle_offset = Some(22.5f32.to_radians());
-            let outer_radius = 0.0625 / 22.5f32.to_radians().cos();
-            let inner_radius = outer_radius - 0.01;
-            (
-                show_surface.then(|| {
-                    Mesh::combined([
-                        regular_polygon_yz(
-                            center,
-                            8,
-                            inner_radius,
-                            None,
-                            angle_offset,
-                            SURFACE_COLOR_BLACK,
-                        ),
-                        regular_polygon_yz(
-                            center,
-                            8,
-                            outer_radius,
-                            Some(inner_radius),
-                            angle_offset,
-                            Color4::WHITE,
-                        ),
-                    ])
-                }),
+fn pipe_surface(shape: i32, color: Color4) -> Option<Mesh> {
+    if shape == 3 {
+        let center = Vec3::new(0.125, 0.0, 0.0);
+        let angle_offset = Some(22.5f32.to_radians());
+        let outer_radius = 0.0625 / 22.5f32.to_radians().cos();
+        let inner_radius = outer_radius - 0.01;
+        Some(Mesh::combined([
+            regular_polygon_yz(
+                center,
+                8,
+                inner_radius,
                 None,
-            )
-        }
-        4 | 5 => {
-            let mut vertices = Vec::with_capacity(8);
-            vertices.append(&mut vec![
-                Vec3::new(0.125, 0.125, 0.125),
-                Vec3::new(0.125, 0.125, -0.125),
-                Vec3::new(0.125, -0.125, -0.125),
-                Vec3::new(0.125, -0.125, 0.125),
-            ]);
-            if shape == 4 {
-                vertices.append(&mut vec![
-                    Vec3::new(0.125, 0.03125, 0.03125),
-                    Vec3::new(0.125, 0.03125, -0.03125),
-                    Vec3::new(0.125, -0.03125, -0.03125),
-                    Vec3::new(0.125, -0.03125, 0.03125),
-                ]);
-            } else {
-                vertices.append(&mut vec![
-                    Vec3::new(0.125, 0.041667, 0.0),
-                    Vec3::new(0.125, 0.0, -0.041667),
-                    Vec3::new(0.125, -0.041667, 0.0),
-                    Vec3::new(0.125, 0.0, 0.041667),
-                ]);
-            }
-            let triangles_color = vec![
-                [0, 1, 4],
-                [1, 5, 4],
-                [1, 2, 5],
-                [2, 6, 5],
-                [2, 3, 6],
-                [3, 7, 6],
-                [3, 0, 7],
-                [0, 4, 7],
-            ];
-            let triangles_grey = vec![[4, 5, 6], [4, 6, 7]];
-            (
-                show_surface.then(|| {
-                    Mesh::multiple_color_lh(
-                        vertices,
-                        vec![
-                            (triangles_color, color),
-                            (triangles_grey, SURFACE_COLOR_GREY),
-                        ],
-                    )
-                }),
-                show_edge.then(|| {
-                    vec![
-                        Vec3::new(0.125, 0.125, 0.125),
-                        Vec3::new(0.125, 0.125, -0.125),
-                        Vec3::new(0.125, -0.125, -0.125),
-                        Vec3::new(0.125, -0.125, 0.125),
-                    ]
-                }),
-            )
-        }
-        _ => (None, None),
+                angle_offset,
+                SURFACE_COLOR_BLACK,
+            ),
+            regular_polygon_yz(
+                center,
+                8,
+                outer_radius,
+                Some(inner_radius),
+                angle_offset,
+                color,
+            ),
+        ]))
+    } else {
+        None
     }
+}
+
+fn dot_surface(shape: i32, color: Color4) -> Option<Mesh> {
+    let mut vertices = Vec::with_capacity(8);
+    vertices.append(&mut vec![
+        Vec3::new(0.125, 0.125, 0.125),
+        Vec3::new(0.125, 0.125, -0.125),
+        Vec3::new(0.125, -0.125, -0.125),
+        Vec3::new(0.125, -0.125, 0.125),
+    ]);
+    match shape {
+        4 => vertices.append(&mut vec![
+            Vec3::new(0.125, 0.03125, 0.03125),
+            Vec3::new(0.125, 0.03125, -0.03125),
+            Vec3::new(0.125, -0.03125, -0.03125),
+            Vec3::new(0.125, -0.03125, 0.03125),
+        ]),
+        5 => vertices.append(&mut vec![
+            Vec3::new(0.125, 0.041667, 0.0),
+            Vec3::new(0.125, 0.0, -0.041667),
+            Vec3::new(0.125, -0.041667, 0.0),
+            Vec3::new(0.125, 0.0, 0.041667),
+        ]),
+        _ => {
+            return None;
+        }
+    }
+
+    let triangles_color = vec![
+        [0, 1, 4],
+        [1, 5, 4],
+        [1, 2, 5],
+        [2, 6, 5],
+        [2, 3, 6],
+        [3, 7, 6],
+        [3, 0, 7],
+        [0, 4, 7],
+    ];
+    let triangles_grey = vec![[4, 5, 6], [4, 6, 7]];
+
+    Some(Mesh::multiple_color_lh(
+        vertices,
+        vec![
+            (triangles_color, color),
+            (triangles_grey, SURFACE_COLOR_GREY),
+        ],
+    ))
 }
 
 fn regular_polygon_yz(

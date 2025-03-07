@@ -3,6 +3,7 @@ use crate::sw_block_definition::{
     SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
 };
 use enum_map::{self, EnumMap};
+use paste::paste;
 use std::{
     fs, io,
     path::PathBuf,
@@ -10,30 +11,34 @@ use std::{
 };
 
 macro_rules! getter_setter {
-    ($target:ident, $name:ident, $setter_name:ident, $type:ty, $change_fn:ident) => {
+    ($target:ident, $name:ident, $type:ty, $change_fn:ident) => {
         impl $target {
             pub fn $name(&self) -> $type {
                 self.$name
             }
 
-            pub fn $setter_name(&mut self, value: $type) {
-                if (self.$name != value) {
-                    self.$name = value;
-                    self.$change_fn();
+            paste! {
+                pub fn [<set_ $name>](&mut self, value: $type) {
+                    if (self.$name != value) {
+                        self.$name = value;
+                        self.$change_fn();
+                    }
                 }
             }
         }
     };
 
-    ($target:ident, $name:ident, $setter_name:ident, $type:ty) => {
+    ($target:ident, $name:ident, $type:ty) => {
         impl $target {
             pub fn $name(&self) -> $type {
                 self.$name
             }
 
-            pub fn $setter_name(&mut self, value: $type) {
-                if (self.$name != value) {
-                    self.$name = value;
+            paste! {
+                pub fn [<set_ $name>](&mut self, value: $type) {
+                    if (self.$name != value) {
+                        self.$name = value;
+                    }
                 }
             }
         }
@@ -52,6 +57,7 @@ pub struct State {
     show_xyz_axis: bool,
     show_surfaces: bool,
     show_surface_edge: bool,
+    show_buoyancy_surfaces: bool,
     show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     audio_volume: f32,
     #[serde(skip)]
@@ -75,6 +81,7 @@ impl Default for State {
             show_xyz_axis: true,
             show_surfaces: true,
             show_surface_edge: true,
+            show_buoyancy_surfaces: true,
             show_mesh,
             audio_volume: 0.5,
             playing_audio: None,
@@ -190,18 +197,13 @@ impl State {
     }
 }
 
-getter_setter!(State, show_all, set_show_all, bool, changed_3d);
-getter_setter!(State, hide_default, set_hide_default, bool, changed_3d);
-getter_setter!(State, show_xyz_axis, set_show_xyz_axis, bool, changed_3d);
-getter_setter!(State, show_surfaces, set_show_surfaces, bool, changed_3d);
-getter_setter!(
-    State,
-    show_surface_edge,
-    set_show_surface_edge,
-    bool,
-    changed_3d
-);
-getter_setter!(State, audio_volume, set_audio_volume, f32);
+getter_setter!(State, show_all, bool, changed_3d);
+getter_setter!(State, hide_default, bool, changed_3d);
+getter_setter!(State, show_xyz_axis, bool, changed_3d);
+getter_setter!(State, show_surfaces, bool, changed_3d);
+getter_setter!(State, show_surface_edge, bool, changed_3d);
+getter_setter!(State, show_buoyancy_surfaces, bool, changed_3d);
+getter_setter!(State, audio_volume, f32);
 
 impl State {
     pub fn load_all_definitions(&mut self) -> i32 {

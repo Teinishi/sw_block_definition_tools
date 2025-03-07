@@ -1,6 +1,6 @@
 use super::State;
 use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
-use crate::sw_block_definition::create_surface_object;
+use crate::sw_block_definition::SurfaceObjectBuilder;
 use eframe::egui_glow;
 use egui::vec2;
 use glam::Vec3;
@@ -62,7 +62,7 @@ impl Definition3dPanel {
             });
 
         let mut c = state.show_xyz_axis();
-        ui.checkbox(&mut c, "XYZ Axis");
+        ui.checkbox(&mut c, "XYZ axes");
         state.set_show_xyz_axis(c);
 
         let mut c = state.show_surfaces();
@@ -70,8 +70,12 @@ impl Definition3dPanel {
         state.set_show_surfaces(c);
 
         let mut c = state.show_surface_edge();
-        ui.checkbox(&mut c, "Surface Edge Lines");
+        ui.checkbox(&mut c, "Surface edge lines");
         state.set_show_surface_edge(c);
+
+        let mut c = state.show_buoyancy_surfaces();
+        ui.checkbox(&mut c, "Buoyancy surfaces");
+        state.set_show_buoyancy_surfaces(c);
 
         let mesh_loaded_now;
 
@@ -158,16 +162,24 @@ impl Definition3dPanel {
         {
             if let Some(surfaces) = data.surfaces.last() {
                 for surface in &surfaces.surface {
-                    let (mesh_obj, line_obj) = create_surface_object(
-                        surface,
-                        state.show_surfaces(),
-                        state.show_surface_edge(),
-                    );
+                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(surface)
+                        .basic_objects(state.show_surfaces(), state.show_surface_edge());
                     if let Some(obj) = mesh_obj {
                         self.scene.lock().unwrap().add_object(obj);
                     }
                     if let Some(obj) = line_obj {
                         self.scene.lock().unwrap().add_object(obj);
+                    }
+                }
+            }
+
+            if state.show_buoyancy_surfaces() {
+                if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
+                    for surface in &buoyancy_surfaces.surface {
+                        let mesh_obj = SurfaceObjectBuilder::new(surface).translucent_object();
+                        if let Some(obj) = mesh_obj {
+                            self.scene.lock().unwrap().add_object(obj);
+                        }
                     }
                 }
             }
