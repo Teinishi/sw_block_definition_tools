@@ -71,7 +71,77 @@ impl DefinitionDetailPanel {
             let mut clicked_attribute: Option<AttributeSpecifier> = None;
 
             // <definition> の属性リスト
-            let mut list = AttributeList::new(&DefinitionAttribute::NON_ELEMENT_VARIANTS);
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::Name,
+                DefinitionAttribute::Category,
+                DefinitionAttribute::Type,
+                DefinitionAttribute::Mass,
+                DefinitionAttribute::Value,
+                DefinitionAttribute::Flags,
+                DefinitionAttribute::Tags,
+                DefinitionAttribute::PhysCollisionDampen,
+                DefinitionAttribute::AudioFilenameStart,
+                DefinitionAttribute::AudioFilenameLoop,
+                DefinitionAttribute::AudioFilenameEnd,
+                DefinitionAttribute::AudioFilenameStartB,
+                DefinitionAttribute::AudioFilenameLoopB,
+                DefinitionAttribute::AudioFilenameEndB,
+                DefinitionAttribute::AudioGain,
+                DefinitionAttribute::MeshDataName,
+                DefinitionAttribute::Mesh0Name,
+                DefinitionAttribute::Mesh1Name,
+                DefinitionAttribute::Mesh2Name,
+                DefinitionAttribute::MeshEditorOnlyName,
+                DefinitionAttribute::BlockType,
+                DefinitionAttribute::ChildName,
+                DefinitionAttribute::ExtenderName,
+                DefinitionAttribute::MaxMotorForce,
+                DefinitionAttribute::MaxMotorSpeed,
+                DefinitionAttribute::CableRadius,
+                DefinitionAttribute::CableLength,
+                DefinitionAttribute::BuoyRadius,
+                DefinitionAttribute::BuoyFactor,
+                DefinitionAttribute::BuoyForce,
+                DefinitionAttribute::EngineMaxForce,
+                DefinitionAttribute::EngineFrictionlessForce,
+                DefinitionAttribute::TransConnType,
+                DefinitionAttribute::TransType,
+                DefinitionAttribute::ButtonType,
+                DefinitionAttribute::LogicGateType,
+                DefinitionAttribute::LogicGateSubtype,
+                DefinitionAttribute::IndicatorType,
+                DefinitionAttribute::MagnetForce,
+                DefinitionAttribute::GyroType,
+                DefinitionAttribute::Revision,
+                DefinitionAttribute::RudderSurfaceArea,
+                DefinitionAttribute::PumpPressure,
+                DefinitionAttribute::MPumpPressure,
+                DefinitionAttribute::WaterComponentType,
+                DefinitionAttribute::TorqueComponentType,
+                DefinitionAttribute::CompositeType,
+                DefinitionAttribute::CameraFovMin,
+                DefinitionAttribute::CameraFovMax,
+                DefinitionAttribute::MonitorBorder,
+                DefinitionAttribute::MonitorInset,
+                DefinitionAttribute::RxRange,
+                DefinitionAttribute::RxLength,
+                DefinitionAttribute::RocketType,
+                DefinitionAttribute::EngineModuleType,
+                DefinitionAttribute::SteamComponentType,
+                DefinitionAttribute::SteamComponentCapacity,
+                DefinitionAttribute::NuclearComponentType,
+                DefinitionAttribute::PistonLen,
+                DefinitionAttribute::PistonCam,
+                DefinitionAttribute::DataLoggerComponentType,
+                DefinitionAttribute::MetadataComponentType,
+                DefinitionAttribute::OilComponentType,
+                DefinitionAttribute::ToolType,
+                DefinitionAttribute::VoxelLocationChild,
+                DefinitionAttribute::CompartmentSamplePos,
+                DefinitionAttribute::ForceDir,
+                DefinitionAttribute::MagnetOffset,
+                DefinitionAttribute::RopeHookOffset,
+            ]);
             if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Definition Attributes")
                     .default_open(true)
@@ -80,7 +150,7 @@ impl DefinitionDetailPanel {
                     });
             }
 
-            // <sfx_datas> のリスト
+            // sfx_datas のリスト
             if let Some(sfx_datas) = data.sfx_datas.last() {
                 for (i, item) in sfx_datas.sfx_data.iter().enumerate() {
                     let mut attribute_list = AttributeList::new(SfxDataAttribute::VARIANTS);
@@ -117,7 +187,7 @@ impl DefinitionDetailPanel {
                 }
             }
 
-            // <surfaces> のリスト
+            // surfaces のリスト
             let mut table: ElementsTable<
                 '_,
                 SurfaceAttribute,
@@ -136,7 +206,7 @@ impl DefinitionDetailPanel {
                 );
             }
 
-            // <buoyancy_surfaces> のリスト
+            // buoyancy_surfaces のリスト
             let mut table: ElementsTable<
                 '_,
                 SurfaceAttribute,
@@ -153,7 +223,7 @@ impl DefinitionDetailPanel {
                     });
             }
 
-            // <logic_nodes> のリスト
+            // logic_nodes のリスト
             let mut table: ElementsTable<
                 '_,
                 LogicNodeAttribute,
@@ -172,7 +242,7 @@ impl DefinitionDetailPanel {
                 );
             }
 
-            // <couplings> のリスト
+            // couplings のリスト
             let mut table: ElementsTable<
                 '_,
                 CouplingAttribute,
@@ -191,7 +261,7 @@ impl DefinitionDetailPanel {
                 );
             }
 
-            // <voxels> のリスト
+            // voxels のリスト
             let mut table: ElementsTable<'_, VoxelAttribute, Voxel, { VoxelAttribute::COUNT }> =
                 ElementsTable::new(VoxelAttribute::VARIANTS.try_into().unwrap());
             if table.update(
@@ -206,7 +276,7 @@ impl DefinitionDetailPanel {
                 );
             }
 
-            // <voxel_min> <voxel_max> <voxel_physics_min> <voxel_physics_max> <bb_physics_min> <bb_physics_max>
+            // min, max ベクトル系
             let mut table = MultipleVecTable::new(
                 Some(["min", "max"]),
                 [
@@ -236,91 +306,141 @@ impl DefinitionDetailPanel {
                 });
             }
 
-            // <seat_offset> <seat_front> <seat_up> <seat_camera> <seat_render> <seat_exit_position>
-            let mut table = MultipleVecTable::single([
-                ("Offset", DefinitionAttribute::SeatOffset),
-                ("Front", DefinitionAttribute::SeatFront),
-                ("Up", DefinitionAttribute::SeatUp),
-                ("Camera", DefinitionAttribute::SeatCamera),
-                ("Render", DefinitionAttribute::SeatRender),
-                ("Exit position", DefinitionAttribute::SeatExitPosition),
+            // constraint 系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::ConstraintType,
+                DefinitionAttribute::ConstraintAxis,
+                DefinitionAttribute::ConstraintRangeOfMotion,
+                DefinitionAttribute::ConstraintPosParent,
+                DefinitionAttribute::ConstraintPosChild,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Constraint").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // seat系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::SeatType,
+                DefinitionAttribute::SeatPose,
+                DefinitionAttribute::SeatHealthPerSec,
+                DefinitionAttribute::SeatOffset,
+                DefinitionAttribute::SeatFront,
+                DefinitionAttribute::SeatUp,
+                DefinitionAttribute::SeatCamera,
+                DefinitionAttribute::SeatRender,
+                DefinitionAttribute::SeatExitPosition,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Seat").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <light_position> <light_forward> <light_color>
-            let mut table = MultipleVecTable::single([
-                ("Position", DefinitionAttribute::LightPosition),
-                ("Forward", DefinitionAttribute::LightForward),
-                ("Color", DefinitionAttribute::LightColor),
+            // force_emitter 系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::ForceEmitterMaxForce,
+                DefinitionAttribute::ForceEmitterMaxVector,
+                DefinitionAttribute::ForceEmitterDefaultPitch,
+                DefinitionAttribute::ForceEmitterBladeHeight,
+                DefinitionAttribute::ForceEmitterRotationSpeed,
+                DefinitionAttribute::ForceEmitterBladePhysicsLength,
+                DefinitionAttribute::ForceEmitterBladeEfficiency,
+                DefinitionAttribute::ForceEmitterEfficiency,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Force emitter").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // wheel系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::WheelRadius,
+                DefinitionAttribute::WheelWidth,
+                DefinitionAttribute::WheelWishboneLength,
+                DefinitionAttribute::WheelSuspensionHeight,
+                DefinitionAttribute::WheelWishboneMargin,
+                DefinitionAttribute::WheelSuspensionOffset,
+                DefinitionAttribute::WheelWishboneOffset,
+                DefinitionAttribute::WheelType,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Wheel").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // light系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::LightIntensity,
+                DefinitionAttribute::LightRange,
+                DefinitionAttribute::LightIesMap,
+                DefinitionAttribute::LightFov,
+                DefinitionAttribute::LightType,
+                DefinitionAttribute::LightPosition,
+                DefinitionAttribute::LightForward,
+                DefinitionAttribute::LightColor,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Light").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <door_size> <door_normal> <door_side> <door_up> <door_base_pos>
-            let mut table = MultipleVecTable::single([
-                ("Size", DefinitionAttribute::DoorSize),
-                ("Normal", DefinitionAttribute::DoorNormal),
-                ("Side", DefinitionAttribute::DoorSide),
-                ("Up", DefinitionAttribute::DoorUp),
-                ("BasePos", DefinitionAttribute::DoorBasePos),
+            // door系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::DoorLowerLimit,
+                DefinitionAttribute::DoorUpperLimit,
+                DefinitionAttribute::DoorFlipped,
+                DefinitionAttribute::CustomDoorType,
+                DefinitionAttribute::DoorSideDist,
+                DefinitionAttribute::DoorUpDist,
+                DefinitionAttribute::DoorSize,
+                DefinitionAttribute::DoorNormal,
+                DefinitionAttribute::DoorSide,
+                DefinitionAttribute::DoorUp,
+                DefinitionAttribute::DoorBasePos,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Door").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <dynamic_body_position> <dynamic_rotation_axes> <dynamic_side_axis>
-            let mut table = MultipleVecTable::single([
-                ("Body position", DefinitionAttribute::DynamicBodyPosition),
-                ("Rotation axes", DefinitionAttribute::DynamicRotationAxes),
-                ("Side axis", DefinitionAttribute::DynamicSideAxis),
+            // dynamic 系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::DynamicMinRotation,
+                DefinitionAttribute::DynamicMaxRotation,
+                DefinitionAttribute::DynamicBodyPosition,
+                DefinitionAttribute::DynamicRotationAxes,
+                DefinitionAttribute::DynamicSideAxis,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Dynamic").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <connector_axis> <connector_up>
-            let mut table = MultipleVecTable::single([
-                ("Axis", DefinitionAttribute::ConnectorAxis),
-                ("Up", DefinitionAttribute::ConnectorUp),
-            ]);
-            if table.update(&attribute_filter, Some(&data)) {
-                CollapsingPanel::new("Connector").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+            // reward 系
+            let mut list1 = AttributeList::new(&[DefinitionAttribute::RewardTier]);
+            let mut list2 = AttributeList::new(RewardPropertiesAttribute::VARIANTS);
+            let show1 = list1.update(&attribute_filter, Some(&data));
+            let show2 = list2.update(&attribute_filter, data.reward_properties.last());
+            if show1 || show2 {
+                CollapsingPanel::new("Reward").ui(ui, |ui| {
+                    ui.push_id("reward_1", |ui| {
+                        list1.ui(ui, state, &mut clicked_attribute);
+                    });
+                    ui.push_id("reward_2", |ui| {
+                        list2.ui(ui, state, &mut clicked_attribute);
+                    });
                 });
             }
 
-            // <tooltip_properties>
-            let mut list = AttributeList::new(TooltipPropertiesAttribute::VARIANTS);
-            if list.update(&attribute_filter, data.tooltip_properties.last()) {
-                CollapsingPanel::new("Tooltip properties")
-                    .default_open(true)
-                    .ui(ui, |ui| {
-                        list.ui(ui, state, &mut clicked_attribute);
-                    });
-            }
-
-            // <reward_properties>
-            let mut list = AttributeList::new(RewardPropertiesAttribute::VARIANTS);
-            if list.update(&attribute_filter, data.reward_properties.last()) {
-                CollapsingPanel::new("Reward properties")
-                    .default_open(true)
-                    .ui(ui, |ui| {
-                        list.ui(ui, state, &mut clicked_attribute);
-                    });
-            }
-
-            // <jet_engine_connections_prev> <jet_engine_connections_next>
+            // jet_engine系
+            let mut list = AttributeList::new(&[DefinitionAttribute::JetEngineComponentType]);
             let mut table = MultipleVecTable::new(
                 Some(["pos", "normal"]),
                 [
@@ -340,62 +460,107 @@ impl DefinitionDetailPanel {
                     ),
                 ],
             );
-            if table.update(&attribute_filter, Some(&data)) {
+            let show1 = list.update(&attribute_filter, Some(&data));
+            let show2 = table.update(&attribute_filter, Some(&data));
+            if show1 || show2 {
                 CollapsingPanel::new("Jet engine connection").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    ui.push_id("jet_engine_1", |ui| {
+                        list.ui(ui, state, &mut clicked_attribute);
+                    });
+                    ui.push_id("jet_engine_2", |ui| {
+                        table.ui(ui, state, &mut clicked_attribute);
+                    });
                 });
             }
 
-            // <particle_direction> <particle_offset> <particle_bounds>
-            let mut table = MultipleVecTable::single([
-                ("Direction", DefinitionAttribute::ParticleDirection),
-                ("Offset", DefinitionAttribute::ParticleOffset),
-                ("Bounds", DefinitionAttribute::ParticleBounds),
+            // inventory系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::InventoryType,
+                DefinitionAttribute::InventoryDefaultOutfit,
+                DefinitionAttribute::InventoryClass,
+                DefinitionAttribute::InventoryDefaultItem,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Inventory").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // electric系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::ElectricType,
+                DefinitionAttribute::ElectricChargeCapacity,
+                DefinitionAttribute::ElectricMagnitude,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Electric").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // radar系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::RadarType,
+                DefinitionAttribute::RadarRange,
+                DefinitionAttribute::RadarSpeed,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Radar").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // connector系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::ConnectorType,
+                DefinitionAttribute::ConnectorAxis,
+                DefinitionAttribute::ConnectorUp,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
+                CollapsingPanel::new("Connector").ui(ui, |ui| {
+                    list.ui(ui, state, &mut clicked_attribute);
+                });
+            }
+
+            // tooltip_properties
+            let mut list = AttributeList::new(TooltipPropertiesAttribute::VARIANTS);
+            if list.update(&attribute_filter, data.tooltip_properties.last()) {
+                CollapsingPanel::new("Tooltip properties")
+                    .default_open(true)
+                    .ui(ui, |ui| {
+                        list.ui(ui, state, &mut clicked_attribute);
+                    });
+            }
+
+            // particle系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::ParticleSpeed,
+                DefinitionAttribute::ParticleDirection,
+                DefinitionAttribute::ParticleOffset,
+                DefinitionAttribute::ParticleBounds,
+            ]);
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Particle").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
-            // <weapon_breech_position> <weapon_breech_normal> <weapon_cart_position> <weapon_cart_velocity>
-            let mut table = MultipleVecTable::single([
-                ("Breech position", DefinitionAttribute::WeaponBreechPosition),
-                ("Breech normal", DefinitionAttribute::WeaponBreechNormal),
-                ("Cart position", DefinitionAttribute::WeaponCartPosition),
-                ("Cart velocity", DefinitionAttribute::WeaponCartVelocity),
+            // weapon系
+            let mut list = AttributeList::new(&[
+                DefinitionAttribute::WeaponType,
+                DefinitionAttribute::WeaponClass,
+                DefinitionAttribute::WeaponBeltType,
+                DefinitionAttribute::WeaponAmmoCapacity,
+                DefinitionAttribute::WeaponAmmoFeed,
+                DefinitionAttribute::WeaponBarrelLengthVoxels,
+                DefinitionAttribute::WeaponBreechPosition,
+                DefinitionAttribute::WeaponBreechNormal,
+                DefinitionAttribute::WeaponCartPosition,
+                DefinitionAttribute::WeaponCartVelocity,
             ]);
-            if table.update(&attribute_filter, Some(&data)) {
+            if list.update(&attribute_filter, Some(&data)) {
                 CollapsingPanel::new("Weapon").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
-                });
-            }
-
-            // <compartment_sample_pos> <constraint_pos_parent> <constraint_pos_child> <voxel_location_child> <force_dir> <magnet_offset> <rope_hook_offset>
-            let mut table = MultipleVecTable::single([
-                (
-                    "Compartment sample pos",
-                    DefinitionAttribute::CompartmentSamplePos,
-                ),
-                (
-                    "Constraint pos parent",
-                    DefinitionAttribute::ConstraintPosParent,
-                ),
-                (
-                    "Constraint pos child",
-                    DefinitionAttribute::ConstraintPosChild,
-                ),
-                (
-                    "Voxel location child",
-                    DefinitionAttribute::VoxelLocationChild,
-                ),
-                ("Force dir", DefinitionAttribute::ForceDir),
-                ("Magnet offset", DefinitionAttribute::MagnetOffset),
-                ("Rope hook offset", DefinitionAttribute::RopeHookOffset),
-            ]);
-            if table.update(&attribute_filter, Some(&data)) {
-                CollapsingPanel::new("Others").ui(ui, |ui| {
-                    table.ui(ui, state, &mut clicked_attribute);
+                    list.ui(ui, state, &mut clicked_attribute);
                 });
             }
 
@@ -661,15 +826,6 @@ struct MultipleVecTable<'a, T, const V_COUNT: usize, const E_COUNT: usize> {
     variants: Option<[&'a str; V_COUNT]>,
     elements: [(&'a str, [T; V_COUNT]); E_COUNT],
     table_data: Option<[MultipleVecTableRow<'a, V_COUNT>; E_COUNT]>,
-}
-impl<'a, T, const E_COUNT: usize> MultipleVecTable<'a, T, 1, E_COUNT> {
-    fn single(elements: [(&'a str, T); E_COUNT]) -> Self {
-        Self {
-            variants: None,
-            elements: elements.map(|(label, element)| (label, [element])),
-            table_data: None,
-        }
-    }
 }
 impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, V_COUNT, E_COUNT> {
     fn new(
