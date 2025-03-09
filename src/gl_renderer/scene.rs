@@ -36,6 +36,8 @@ impl Scene {
 pub struct SceneObject {
     content: Box<dyn SceneObjectContent>,
     transform_matrix: Mat4,
+    depth_disabled: bool,
+    z_offset: f32,
 }
 
 impl SceneObject {
@@ -43,6 +45,8 @@ impl SceneObject {
         Self {
             content: Box::new(mesh),
             transform_matrix: transform_matrix.unwrap_or_default(),
+            depth_disabled: false,
+            z_offset: 0.0,
         }
     }
 
@@ -50,7 +54,19 @@ impl SceneObject {
         Self {
             content: Box::new(line),
             transform_matrix: transform_matrix.unwrap_or_default(),
+            depth_disabled: false,
+            z_offset: 0.0,
         }
+    }
+
+    pub fn disable_depth(mut self) -> Self {
+        self.depth_disabled = true;
+        self
+    }
+
+    pub fn set_z_offset(mut self, value: f32) -> Self {
+        self.z_offset = value;
+        self
     }
 
     pub fn transform_matrix(&self) -> &Mat4 {
@@ -63,6 +79,14 @@ impl SceneObject {
 
     pub fn center(&self) -> Vec3 {
         self.content.center()
+    }
+
+    pub fn depth_disabled(&self) -> bool {
+        self.depth_disabled
+    }
+
+    pub fn z_offset(&self) -> f32 {
+        self.z_offset
     }
 
     pub fn create_vertex_buffer(

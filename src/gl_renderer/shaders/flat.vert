@@ -12,5 +12,6 @@ void main()
 {
     gl_Position =  mat_view_proj * mat_world * vec4(vertex_position_in, 1);
     gl_Position.z += z_offset;
+
     vertex_color_out = vertex_color_in;
 }

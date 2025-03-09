@@ -103,13 +103,12 @@ impl SwMesh {
                     triangles.push([vertex_index, vertex_index + 1, vertex_index + 2]);
                 }
 
-                let mut mesh = gl_renderer::Mesh::new(vertices, triangles);
+                let mesh = gl_renderer::Mesh::new(vertices, triangles);
                 match submesh.shader_id {
                     1 => mesh.glass(),
                     2 => mesh.additive(),
-                    _ => {}
+                    _ => mesh,
                 }
-                mesh
             })
             .collect()
     }

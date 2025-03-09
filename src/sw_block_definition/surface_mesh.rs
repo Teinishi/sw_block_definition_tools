@@ -132,12 +132,18 @@ impl SurfaceObjectBuilder {
         )
     }
 
-    pub fn translucent_object(&self) -> Option<SceneObject> {
-        let color = Color4 {
-            r: 0.2,
-            g: 0.7,
-            b: 0.8,
-            a: 0.5,
+    pub fn translucent_objects(&self) -> (Option<SceneObject>, Option<SceneObject>) {
+        let color1 = Color4 {
+            r: 0.1,
+            g: 0.3,
+            b: 0.5,
+            a: 0.2,
+        };
+        let color2 = Color4 {
+            r: 0.1,
+            g: 0.3,
+            b: 0.5,
+            a: 0.4,
         };
 
         let vertices = self
@@ -148,7 +154,7 @@ impl SurfaceObjectBuilder {
                 _ => None,
             });
 
-        let mesh = vertices.map(|v| {
+        let mesh = vertices.as_ref().map(|v| {
             let mut triangles: Vec<[usize; 3]> =
                 (1..(v.len() - 1)).map(|i| [0, i, i + 1]).collect();
             let mut reversed: Vec<[usize; 3]> = triangles
@@ -156,12 +162,19 @@ impl SurfaceObjectBuilder {
                 .map(|indices| [indices[2], indices[1], indices[0]])
                 .collect();
             triangles.append(&mut reversed);
-            let mut m = Mesh::signle_color_lh(v.clone(), triangles, color);
-            m.simple();
-            m
+            Mesh::signle_color_lh(v.clone(), triangles, color1).flat()
         });
 
-        mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix)))
+        (
+            mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
+            vertices.map(|positions| {
+                SceneObject::from_line(
+                    Line::single_color_lh(positions, color2, 2.0, true),
+                    Some(self.transform_matrix),
+                )
+                .disable_depth()
+            }),
+        )
     }
 }
 

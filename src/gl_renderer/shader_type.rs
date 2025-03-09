@@ -3,6 +3,11 @@ use enum_map::{enum_map, Enum, EnumMap};
 
 use super::GlConfig;
 
+const FLAT_SHADER_SOURCES: [&str; 2] = [
+    include_str!("./shaders/flat.vert"),
+    include_str!("./shaders/flat.frag"),
+];
+
 const SIMPLE_SHADER_SOURCES: [&str; 2] = [
     include_str!("./shaders/simple.vert"),
     include_str!("./shaders/simple.frag"),
@@ -30,6 +35,7 @@ const LINE_SHADER_SOURCES: [&str; 2] = [
 
 #[derive(Debug, Enum, Clone, Copy, PartialEq)]
 pub enum ShaderType {
+    Flat,
     Simple,
     Opaque,
     Glass,
@@ -40,16 +46,17 @@ pub enum ShaderType {
 impl ShaderType {
     pub fn render_order(self) -> i32 {
         match self {
-            ShaderType::Simple => 1,
+            ShaderType::Flat => 4,
+            ShaderType::Simple => 0,
             ShaderType::Opaque => 0,
             ShaderType::Glass => 2,
             ShaderType::Additive => 1,
-            ShaderType::Line => -1,
+            ShaderType::Line => 3,
         }
     }
 
     pub fn is_translucent(self) -> bool {
-        matches!(self, Self::Simple | Self::Glass | Self::Additive)
+        self != Self::Opaque
     }
 
     pub fn is_additive(self) -> bool {
@@ -60,6 +67,7 @@ impl ShaderType {
         use glow::HasContext as _;
 
         let shader_sources = match self {
+            Self::Flat => FLAT_SHADER_SOURCES,
             Self::Simple => SIMPLE_SHADER_SOURCES,
             Self::Opaque => OPAQUE_SHADER_SOURCES,
             Self::Glass => GLASS_SHADER_SOURCES,
@@ -124,6 +132,7 @@ impl ShaderType {
 
     pub fn create_programs(gl: &glow::Context) -> EnumMap<Self, glow::Program> {
         enum_map! {
+            Self::Flat => Self::Flat.create_program(gl).expect("Failed to create shader program"),
             Self::Simple => Self::Simple.create_program(gl).expect("Failed to create shader program"),
             Self::Opaque => Self::Opaque.create_program(gl).expect("Failed to create shader program"),
             Self::Glass => Self::Glass.create_program(gl).expect("Failed to create shader program"),

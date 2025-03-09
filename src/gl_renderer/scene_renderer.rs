@@ -126,7 +126,6 @@ impl SceneRenderer {
             gl.clear(glow::DEPTH_BUFFER_BIT);
 
             gl.enable(glow::DEPTH_TEST);
-            gl.depth_func(glow::LESS);
 
             gl.enable(glow::CULL_FACE);
             gl.cull_face(glow::BACK);
@@ -151,6 +150,14 @@ impl SceneRenderer {
                 } else {
                     gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
                 }
+
+                if vao_container.depth_disabled {
+                    gl.depth_func(glow::ALWAYS);
+                } else {
+                    gl.depth_func(glow::LESS);
+                }
+
+                set_uniform_f32(gl, program, "z_offset", vao_container.z_offset);
 
                 set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);
                 set_uniform_mat4(gl, program, "mat_view_proj_inverse", mat_view_proj);
@@ -198,6 +205,8 @@ fn update_vaos(
                 vertex_count: vertex_count as i32,
                 config,
                 center: transform.mul_vec4(object.center().extend(1.0)).xyz(),
+                depth_disabled: object.depth_disabled(),
+                z_offset: object.z_offset(),
             })
         })
         .collect()
@@ -232,6 +241,8 @@ struct VaoContainer {
     vertex_count: i32,
     config: GlConfig,
     center: Vec3,
+    depth_disabled: bool,
+    z_offset: f32,
 }
 
 unsafe fn set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {
@@ -263,4 +274,8 @@ unsafe fn set_uniform_mat4(gl: &glow::Context, program: glow::Program, name: &st
 
 unsafe fn set_uniform_i32(gl: &glow::Context, program: glow::Program, name: &str, value: i32) {
     gl.uniform_1_i32(gl.get_uniform_location(program, name).as_ref(), value);
+}
+
+unsafe fn set_uniform_f32(gl: &glow::Context, program: glow::Program, name: &str, value: f32) {
+    gl.uniform_1_f32(gl.get_uniform_location(program, name).as_ref(), value);
 }

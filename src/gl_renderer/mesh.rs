@@ -3,6 +3,8 @@ use glam::Vec3;
 
 #[derive(Debug)]
 pub enum MeshMaterial {
+    Flat,
+    #[allow(dead_code)]
     Simple,
     Basic,
     Glass,
@@ -12,6 +14,7 @@ pub enum MeshMaterial {
 impl MeshMaterial {
     fn shader_type(&self) -> ShaderType {
         match self {
+            Self::Flat => ShaderType::Flat,
             Self::Simple => ShaderType::Simple,
             Self::Basic => ShaderType::Opaque,
             Self::Glass => ShaderType::Glass,
@@ -135,16 +138,19 @@ impl Mesh {
         Self::new(vertices, triangles)
     }
 
-    pub fn simple(&mut self) {
-        self.material = MeshMaterial::Simple;
+    pub fn flat(mut self) -> Self {
+        self.material = MeshMaterial::Flat;
+        self
     }
 
-    pub fn glass(&mut self) {
+    pub fn glass(mut self) -> Self {
         self.material = MeshMaterial::Glass;
+        self
     }
 
-    pub fn additive(&mut self) {
+    pub fn additive(mut self) -> Self {
         self.material = MeshMaterial::Additive;
+        self
     }
 }
 
