@@ -113,9 +113,14 @@ impl SceneRenderer {
         vaos.sort_by(|a, b| {
             a.0.cmp(&b.0).then_with(|| {
                 if a.1 || b.1 {
-                    let da = (a.2.center - camera_position).length();
-                    let db = (b.2.center - camera_position).length();
-                    db.partial_cmp(&da).unwrap()
+                    b.2.z_offset
+                        .partial_cmp(&a.2.z_offset)
+                        .unwrap()
+                        .then_with(|| {
+                            let da = (a.2.center - camera_position).length();
+                            let db = (b.2.center - camera_position).length();
+                            db.partial_cmp(&da).unwrap()
+                        })
                 } else {
                     std::cmp::Ordering::Equal
                 }
@@ -147,11 +152,13 @@ impl SceneRenderer {
 
                 if vao_container.config.shader_type.is_additive() {
                     gl.blend_func(glow::SRC_ALPHA, glow::ONE);
-                } else {
+                } else if vao_container.config.shader_type == ShaderType::Glass {
                     gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
+                } else {
+                    gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
                 }
 
-                if vao_container.depth_disabled {
+                if vao_container.always_top {
                     gl.depth_func(glow::ALWAYS);
                 } else {
                     gl.depth_func(glow::LESS);
@@ -205,7 +212,7 @@ fn update_vaos(
                 vertex_count: vertex_count as i32,
                 config,
                 center: transform.mul_vec4(object.center().extend(1.0)).xyz(),
-                depth_disabled: object.depth_disabled(),
+                always_top: object.get_always_top(),
                 z_offset: object.z_offset(),
             })
         })
@@ -241,7 +248,7 @@ struct VaoContainer {
     vertex_count: i32,
     config: GlConfig,
     center: Vec3,
-    depth_disabled: bool,
+    always_top: bool,
     z_offset: f32,
 }
 

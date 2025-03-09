@@ -135,15 +135,15 @@ impl SurfaceObjectBuilder {
     pub fn translucent_objects(&self) -> (Option<SceneObject>, Option<SceneObject>) {
         let color1 = Color4 {
             r: 0.1,
-            g: 0.3,
-            b: 0.5,
-            a: 0.2,
+            g: 0.5,
+            b: 0.8,
+            a: 0.3,
         };
         let color2 = Color4 {
-            r: 0.1,
-            g: 0.3,
-            b: 0.5,
-            a: 0.4,
+            r: 0.05,
+            g: 0.25,
+            b: 0.4,
+            a: 0.2,
         };
 
         let vertices = self
@@ -169,10 +169,10 @@ impl SurfaceObjectBuilder {
             mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
             vertices.map(|positions| {
                 SceneObject::from_line(
-                    Line::single_color_lh(positions, color2, 2.0, true),
+                    Line::single_color_lh(positions, color2, 1.0, true),
                     Some(self.transform_matrix),
                 )
-                .disable_depth()
+                .always_top()
             }),
         )
     }

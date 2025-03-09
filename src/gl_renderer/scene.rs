@@ -36,7 +36,7 @@ impl Scene {
 pub struct SceneObject {
     content: Box<dyn SceneObjectContent>,
     transform_matrix: Mat4,
-    depth_disabled: bool,
+    always_top: bool,
     z_offset: f32,
 }
 
@@ -45,7 +45,7 @@ impl SceneObject {
         Self {
             content: Box::new(mesh),
             transform_matrix: transform_matrix.unwrap_or_default(),
-            depth_disabled: false,
+            always_top: false,
             z_offset: 0.0,
         }
     }
@@ -54,13 +54,13 @@ impl SceneObject {
         Self {
             content: Box::new(line),
             transform_matrix: transform_matrix.unwrap_or_default(),
-            depth_disabled: false,
+            always_top: false,
             z_offset: 0.0,
         }
     }
 
-    pub fn disable_depth(mut self) -> Self {
-        self.depth_disabled = true;
+    pub fn always_top(mut self) -> Self {
+        self.always_top = true;
         self
     }
 
@@ -81,8 +81,8 @@ impl SceneObject {
         self.content.center()
     }
 
-    pub fn depth_disabled(&self) -> bool {
-        self.depth_disabled
+    pub fn get_always_top(&self) -> bool {
+        self.always_top
     }
 
     pub fn z_offset(&self) -> f32 {

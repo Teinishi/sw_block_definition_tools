@@ -46,7 +46,7 @@ pub enum ShaderType {
 impl ShaderType {
     pub fn render_order(self) -> i32 {
         match self {
-            ShaderType::Flat => 4,
+            ShaderType::Flat => 3,
             ShaderType::Simple => 0,
             ShaderType::Opaque => 0,
             ShaderType::Glass => 2,
