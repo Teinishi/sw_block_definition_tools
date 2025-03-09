@@ -1,9 +1,10 @@
 use super::{ui_attribute_value, AttributeDetailWindow, State};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, Coupling, CouplingAttribute, DefinitionAttribute,
-    GetAttributeValue, IsDefault, JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute,
-    RewardPropertiesAttribute, SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface,
-    SurfaceAttribute, TooltipPropertiesAttribute, Voxel, VoxelAttribute,
+    AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
+    CouplingAttribute, DefinitionAttribute, GetAttributeValue, IsDefault,
+    JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute, RewardPropertiesAttribute,
+    SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute,
+    TooltipPropertiesAttribute, Voxel, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Layout, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
@@ -209,10 +210,10 @@ impl DefinitionDetailPanel {
             // buoyancy_surfaces のリスト
             let mut table: ElementsTable<
                 '_,
-                SurfaceAttribute,
-                Surface,
-                { SurfaceAttribute::COUNT },
-            > = ElementsTable::new(SurfaceAttribute::VARIANTS.try_into().unwrap());
+                BuoyancySurfaceAttribute,
+                BuoyancySurface,
+                { BuoyancySurfaceAttribute::COUNT },
+            > = ElementsTable::new(BuoyancySurfaceAttribute::VARIANTS.try_into().unwrap());
             if table.update(
                 &attribute_filter,
                 data.buoyancy_surfaces.last().map(|s| s.surface.as_slice()),

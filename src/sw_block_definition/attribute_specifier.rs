@@ -25,6 +25,7 @@ pub enum AttributeSpecifier {
     SfxData(crate::sw_block_definition::SfxDataAttribute),
     SfxLayer(crate::sw_block_definition::SfxLayerAttribute),
     Surface(crate::sw_block_definition::SurfaceAttribute),
+    BuoyancySurface(crate::sw_block_definition::BuoyancySurfaceAttribute),
     LogicNode(crate::sw_block_definition::LogicNodeAttribute),
     Coupling(crate::sw_block_definition::CouplingAttribute),
     Voxel(crate::sw_block_definition::VoxelAttribute),

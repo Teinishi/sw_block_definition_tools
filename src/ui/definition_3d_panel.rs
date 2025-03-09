@@ -162,8 +162,13 @@ impl Definition3dPanel {
         {
             if let Some(surfaces) = data.surfaces.last() {
                 for surface in &surfaces.surface {
-                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(surface)
-                        .basic_objects(state.show_surfaces(), state.show_surface_edge());
+                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
+                        surface.shape,
+                        surface.position.last(),
+                        surface.orientation,
+                        surface.rotation,
+                    )
+                    .basic_objects(state.show_surfaces(), state.show_surface_edge());
                     if let Some(obj) = mesh_obj {
                         self.scene.lock().unwrap().add_object(obj);
                     }
@@ -176,7 +181,13 @@ impl Definition3dPanel {
             if state.show_buoyancy_surfaces() {
                 if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
                     for surface in &buoyancy_surfaces.surface {
-                        let mesh_obj = SurfaceObjectBuilder::new(surface).translucent_object();
+                        let mesh_obj = SurfaceObjectBuilder::new(
+                            surface.shape,
+                            surface.position.last(),
+                            surface.orientation,
+                            surface.rotation,
+                        )
+                        .translucent_object();
                         if let Some(obj) = mesh_obj {
                             self.scene.lock().unwrap().add_object(obj);
                         }

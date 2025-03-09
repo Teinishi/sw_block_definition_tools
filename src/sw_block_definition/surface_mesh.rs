@@ -1,4 +1,4 @@
-use super::Surface;
+use super::DefinitionVec3;
 use crate::gl_renderer::{Color4, Line, Mesh, SceneObject};
 use glam::{Mat4, Quat, Vec3};
 use std::f32::consts::PI;
@@ -40,9 +40,14 @@ pub struct SurfaceObjectBuilder {
 }
 
 impl SurfaceObjectBuilder {
-    pub fn new(surface: &Surface) -> Self {
-        let rotation = Quat::from_rotation_x(-PI / 2.0 * surface.rotation.unwrap_or(0) as f32);
-        let orientation = match surface.orientation {
+    pub fn new(
+        shape: Option<i32>,
+        position: Option<&DefinitionVec3<i32>>,
+        orientation: Option<i32>,
+        rotation: Option<i32>,
+    ) -> Self {
+        let rotation = Quat::from_rotation_x(-PI / 2.0 * rotation.unwrap_or(0) as f32);
+        let orientation = match orientation {
             Some(1) => Quat::from_rotation_z(PI),
             Some(2) => Quat::from_rotation_z(PI / 2.0),
             Some(3) => Quat::from_rotation_z(-PI / 2.0),
@@ -51,7 +56,7 @@ impl SurfaceObjectBuilder {
             _ => Quat::IDENTITY,
         };
 
-        let translation = match surface.position.last() {
+        let translation = match position {
             Some(position) => {
                 0.25 * Vec3::new(
                     position.x.unwrap_or_default() as f32,
@@ -64,7 +69,7 @@ impl SurfaceObjectBuilder {
         let transform_matrix =
             Mat4::from_rotation_translation(orientation.mul_quat(rotation), translation);
 
-        let shape = surface.shape.unwrap_or(0);
+        let shape = shape.unwrap_or(0);
         let single_color_vertices = surface_single_color(shape);
 
         Self {
