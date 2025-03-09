@@ -115,9 +115,9 @@ impl SceneRenderer {
                 if a.1 || b.1 {
                     let da = (a.2.center - camera_position).length();
                     let db = (b.2.center - camera_position).length();
-                    db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Greater)
+                    db.partial_cmp(&da).unwrap()
                 } else {
-                    std::cmp::Ordering::Greater
+                    std::cmp::Ordering::Equal
                 }
             })
         });
