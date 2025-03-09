@@ -49,7 +49,7 @@ impl ShaderType {
     }
 
     pub fn is_translucent(self) -> bool {
-        self == Self::Glass || self == Self::Additive
+        matches!(self, Self::Simple | Self::Glass | Self::Additive)
     }
 
     pub fn is_additive(self) -> bool {

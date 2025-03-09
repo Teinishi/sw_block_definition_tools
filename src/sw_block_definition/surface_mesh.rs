@@ -151,8 +151,9 @@ impl SurfaceObjectBuilder {
                 .map(|indices| [indices[2], indices[1], indices[0]])
                 .collect();
             triangles.append(&mut reversed);
-            //m.glass();
-            Mesh::signle_color_lh(v.clone(), triangles, color)
+            let mut m = Mesh::signle_color_lh(v.clone(), triangles, color);
+            m.simple();
+            m
         });
 
         mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix)))

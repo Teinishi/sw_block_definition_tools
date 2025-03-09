@@ -1,7 +1,7 @@
 use super::{Camera, Scene, ShaderType};
 use eframe::glow::{self, HasContext};
 use enum_map::EnumMap;
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 use std::sync::{Arc, Mutex};
 
 /*
@@ -187,12 +187,13 @@ fn update_vaos(
             let config = object.gl_config();
             let (vao, vertex_count) =
                 object.create_vertex_buffer(gl, &programs[config.shader_type])?;
+            let transform = object.transform_matrix();
             Ok(VaoContainer {
                 vao,
-                transform: *object.transform_matrix(),
+                transform: *transform,
                 vertex_count: vertex_count as i32,
                 config,
-                center: object.center(),
+                center: transform.mul_vec4(object.center().extend(1.0)).xyz(),
             })
         })
         .collect()
