@@ -1,5 +1,4 @@
 use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
-use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
@@ -60,7 +59,7 @@ impl SceneObjectContent for Line {
     fn gl_config(&self) -> GlConfig {
         GlConfig {
             shader_type: ShaderType::Line,
-            mode: glow::LINES,
+            mode: super::DrawArrayMode::Lines,
             line_width: Some(self.line_width),
         }
     }

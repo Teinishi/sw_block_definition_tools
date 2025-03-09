@@ -1,5 +1,4 @@
 use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
-use eframe::glow;
 use glam::Vec3;
 
 #[derive(Debug)]
@@ -68,7 +67,7 @@ impl SceneObjectContent for Mesh {
     fn gl_config(&self) -> super::GlConfig {
         GlConfig {
             shader_type: self.material.shader_type(),
-            mode: glow::TRIANGLES,
+            mode: super::DrawArrayMode::Triangles,
             line_width: None,
         }
     }

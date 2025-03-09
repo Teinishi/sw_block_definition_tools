@@ -169,7 +169,11 @@ impl SceneRenderer {
                 set_uniform_vec4(gl, program, "additive_color", additive_color);
 
                 gl.bind_vertex_array(Some(vao_container.vao));
-                gl.draw_arrays(vao_container.config.mode, 0, vao_container.vertex_count);
+                gl.draw_arrays(
+                    vao_container.config.mode.glow(),
+                    0,
+                    vao_container.vertex_count,
+                );
             }
         }
     }
@@ -200,9 +204,24 @@ fn update_vaos(
 }
 
 #[derive(Debug)]
+pub enum DrawArrayMode {
+    Lines,
+    Triangles,
+}
+
+impl DrawArrayMode {
+    fn glow(&self) -> u32 {
+        match self {
+            Self::Lines => glow::LINES,
+            Self::Triangles => glow::TRIANGLES,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct GlConfig {
     pub shader_type: ShaderType,
-    pub mode: u32,
+    pub mode: DrawArrayMode,
     pub line_width: Option<f32>,
 }
 

@@ -1,5 +1,5 @@
 mod scene_renderer;
-pub use scene_renderer::{GlConfig, SceneRenderer};
+pub use scene_renderer::{GlConfig, SceneRenderer, DrawArrayMode};
 mod scene;
 pub use scene::{Scene, SceneObject};
 mod color4;
