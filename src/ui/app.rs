@@ -143,7 +143,7 @@ impl eframe::App for MainApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
                     if let Some(definition_3d_panel) = &mut self.definition_3d_panel {
-                        definition_3d_panel.ui(ui, &mut self.state);
+                        definition_3d_panel.ui(ui, &mut self.state, frame);
                     }
                     ui.add_space(4.0);
                 });

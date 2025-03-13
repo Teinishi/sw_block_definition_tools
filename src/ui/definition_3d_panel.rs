@@ -1,5 +1,7 @@
 use super::State;
-use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
+use crate::gl_renderer::{
+    Color4, Line, MultisampleFramebuffer, OrbitCamera, Scene, SceneObject, SceneRenderer,
+};
 use crate::sw_block_definition::SurfaceObjectBuilder;
 use eframe::egui_glow;
 use egui::vec2;
@@ -14,7 +16,9 @@ pub struct Definition3dPanel {
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
-    mesh_loaded: bool, //framebuffer: Option<MultisampleFramebuffer>,
+    mesh_loaded: bool,
+    #[serde(skip)]
+    framebuffer: Option<MultisampleFramebuffer>,
 }
 
 impl Definition3dPanel {
@@ -22,7 +26,6 @@ impl Definition3dPanel {
         cc: &'a eframe::CreationContext<'a>,
         camera: Option<OrbitCamera>,
     ) -> Option<Self> {
-        let gl = cc.gl.as_ref()?;
         let scene = Arc::new(Mutex::new(Scene::default()));
         let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
@@ -30,21 +33,23 @@ impl Definition3dPanel {
         });
         camera.orthogonalize_up();
         let camera = Arc::new(Mutex::new(camera));
-        let renderer = SceneRenderer::new(gl, scene.clone());
 
-        Some(Self {
+        let mut instance = Self {
             scene: scene.clone(),
             camera,
-            renderer: Some(Arc::new(egui::mutex::Mutex::new(renderer))),
+            renderer: None,
             mesh_loaded: false,
-            //framebuffer: MultisampleFramebuffer::new(gl.clone(), 512, 512, 16),
-        })
+            framebuffer: None,
+        };
+        Self::creation_context(&mut instance, cc);
+        Some(instance)
     }
 
     pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.clone());
-            self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)))
+            self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
+            self.framebuffer = Some(MultisampleFramebuffer::new(gl.clone(), 512, 512, 16));
         }
     }
 
@@ -54,7 +59,8 @@ impl Definition3dPanel {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
+    #[allow(unused_variables)]
+    pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State, frame: &eframe::Frame) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
             .show(ui, |ui| {
@@ -104,6 +110,26 @@ impl Definition3dPanel {
             }
         } else {
             mesh_loaded_now = false;
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(framebuffer) = &self.framebuffer {
+            if let Some(renderer) = &self.renderer {
+                ui.separator();
+
+                if ui.button("Save image").clicked() {
+                    framebuffer.bind();
+                    renderer
+                        .lock()
+                        .paint(&framebuffer.gl(), self.camera.clone());
+                    framebuffer.resolve();
+                    let image = framebuffer.get_image();
+
+                    if let Some(path) = save_image_dialog(Some(frame)) {
+                        image.save(path).expect("Failed to save image");
+                    }
+                }
+            }
         }
 
         if state.is_changed_3d() || (mesh_loaded_now != self.mesh_loaded) {
@@ -224,4 +250,19 @@ impl Definition3dPanel {
             }
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_image_dialog<
+    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
+>(
+    parent: Option<&W>,
+) -> Option<std::path::PathBuf> {
+    use rfd::FileDialog;
+
+    let mut dialog = FileDialog::new().add_filter("PNG image", &["png"]);
+    if let Some(p) = parent {
+        dialog = dialog.set_parent(p)
+    }
+    dialog.save_file()
 }
