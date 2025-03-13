@@ -1,5 +1,5 @@
 use super::State;
-use egui::{Layout, TextEdit};
+use egui::{vec2, Align, Button, Layout, TextEdit};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionSelectPanel {
@@ -10,14 +10,27 @@ impl DefinitionSelectPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
         ui.add_space(6.0);
 
-        let label = ui.add_sized(
+        ui.allocate_ui_with_layout(
             egui::vec2(ui.available_width(), 20.0),
-            TextEdit::singleline(&mut self.search_text).hint_text("Search"),
+            Layout::right_to_left(Align::Center),
+            |ui| {
+                if ui
+                    .add_sized(vec2(20.0, 20.0), Button::new("\u{274C}"))
+                    .clicked()
+                {
+                    self.search_text.clear();
+                }
+
+                let label = ui.add_sized(
+                    egui::vec2(ui.available_width(), 20.0),
+                    TextEdit::singleline(&mut self.search_text).hint_text("Search"),
+                );
+                if label.changed() {
+                    state.reset_search();
+                }
+                state.search(&self.search_text);
+            },
         );
-        if label.changed() {
-            state.reset_search();
-        }
-        state.search(&self.search_text);
 
         ui.add_space(6.0);
 
