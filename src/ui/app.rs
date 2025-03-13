@@ -132,12 +132,7 @@ impl eframe::App for MainApp {
             .default_width(200.0)
             .width_range(80.0..=500.0)
             .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(4.0);
-                    ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                    self.definition_select_panel.ui(ui, &mut self.state);
-                    ui.add_space(4.0);
-                });
+                self.definition_select_panel.ui(ui, &mut self.state);
             });
 
         egui::SidePanel::right("right_panel")

@@ -195,6 +195,10 @@ impl State {
             }
         }
     }
+
+    pub fn start_search(&self, search_text: String) {
+        println!("start_search: {}", search_text);
+    }
 }
 
 getter_setter!(State, show_all, bool, changed_3d);
