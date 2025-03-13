@@ -9,14 +9,18 @@ pub struct DefinitionSelectPanel {
 impl DefinitionSelectPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State) {
         ui.add_space(6.0);
-        let search_box = ui.add_sized(
+
+        let label = ui.add_sized(
             egui::vec2(ui.available_width(), 20.0),
             TextEdit::singleline(&mut self.search_text).hint_text("Search"),
         );
-        if search_box.changed() {
-            state.start_search(self.search_text.clone());
+        if label.changed() {
+            state.reset_search();
         }
+        state.search(&self.search_text);
+
         ui.add_space(6.0);
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
             ui.with_layout(Layout::top_down_justified(egui::Align::LEFT), |ui| {
@@ -24,6 +28,9 @@ impl DefinitionSelectPanel {
                 let mut set_index = None;
 
                 for (i, entry) in state.definitions().iter().enumerate() {
+                    if !self.search_text.is_empty() && entry.search_result() != Some(true) {
+                        continue;
+                    }
                     if ui
                         .selectable_label(Some(i) == selected_index, entry.filename())
                         .clicked()

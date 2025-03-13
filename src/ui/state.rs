@@ -196,8 +196,20 @@ impl State {
         }
     }
 
-    pub fn start_search(&self, search_text: String) {
-        println!("start_search: {}", search_text);
+    pub fn reset_search(&mut self) {
+        for definition in &mut self.definitions {
+            definition.clear_search();
+        }
+    }
+
+    pub fn search(&mut self, search_text: &str) {
+        if search_text.is_empty() {
+            self.reset_search();
+        } else {
+            for definition in &mut self.definitions {
+                definition.search(search_text);
+            }
+        }
     }
 }
 
