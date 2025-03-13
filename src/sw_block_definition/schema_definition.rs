@@ -253,6 +253,8 @@ pub struct Definition {
     pub oil_component_type: Option<i32>,
     #[serde(rename = "@tool_type")]
     pub tool_type: Option<i32>,
+    #[serde(rename = "@rudder_type")]
+    pub rudder_type: Option<i32>,
 
     pub sfx_datas: Vec<SfxDatas>,
     pub surfaces: Vec<Surfaces>,
@@ -435,6 +437,7 @@ pub enum DefinitionAttribute {
     MetadataComponentType,
     OilComponentType,
     ToolType,
+    RudderType,
     VoxelMin,
     VoxelMax,
     VoxelPhysicsMin,
@@ -536,7 +539,8 @@ impl GetAttributeValueRoot for DefinitionAttribute {
             | Self::DataLoggerComponentType
             | Self::MetadataComponentType
             | Self::OilComponentType
-            | Self::ToolType => AttributeType::Int,
+            | Self::ToolType
+            | Self::RudderType => AttributeType::Int,
             Self::Mass
             | Self::Value
             | Self::AudioGain
@@ -845,6 +849,7 @@ impl GetAttributeValue<Definition> for DefinitionAttribute {
             Self::MetadataComponentType => Some(d.metadata_component_type?.into()),
             Self::OilComponentType => Some(d.oil_component_type?.into()),
             Self::ToolType => Some(d.tool_type?.into()),
+            Self::RudderType => Some(d.tool_type?.into()),
             Self::VoxelMin => Some((*d.voxel_min.last()?).into()),
             Self::VoxelMax => Some((*d.voxel_max.last()?).into()),
             Self::VoxelPhysicsMin => Some((*d.voxel_physics_min.last()?).into()),

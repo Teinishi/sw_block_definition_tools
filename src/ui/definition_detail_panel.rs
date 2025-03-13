@@ -137,6 +137,7 @@ impl DefinitionDetailPanel {
                 DefinitionAttribute::MetadataComponentType,
                 DefinitionAttribute::OilComponentType,
                 DefinitionAttribute::ToolType,
+                DefinitionAttribute::RudderType,
                 DefinitionAttribute::VoxelLocationChild,
                 DefinitionAttribute::CompartmentSamplePos,
                 DefinitionAttribute::ForceDir,
