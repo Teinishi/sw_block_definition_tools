@@ -1,4 +1,4 @@
-use eframe::glow::{self, HasContext, Framebuffer};
+use eframe::glow::{self, Framebuffer, HasContext};
 use image::ImageBuffer;
 use std::sync::Arc;
 

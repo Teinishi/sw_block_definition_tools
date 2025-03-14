@@ -12,5 +12,7 @@ mod camera;
 pub use camera::{Camera, OrbitCamera};
 mod shader_type;
 pub use shader_type::{SceneObjectContent, ShaderAttributeData, ShaderType};
+#[cfg(not(target_arch = "wasm32"))]
 mod multisample_framebuffer;
+#[cfg(not(target_arch = "wasm32"))]
 pub use multisample_framebuffer::MultisampleFramebuffer;
