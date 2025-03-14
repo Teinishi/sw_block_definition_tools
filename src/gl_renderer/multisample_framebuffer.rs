@@ -1,4 +1,4 @@
-use eframe::glow::{self, HasContext, NativeFramebuffer};
+use eframe::glow::{self, HasContext, Framebuffer};
 use image::ImageBuffer;
 use std::sync::Arc;
 
@@ -6,8 +6,8 @@ pub struct MultisampleFramebuffer {
     gl: Arc<glow::Context>,
     width: i32,
     height: i32,
-    framebuffer_multisample: NativeFramebuffer,
-    framebuffer_resolve: NativeFramebuffer,
+    framebuffer_multisample: Framebuffer,
+    framebuffer_resolve: Framebuffer,
 }
 
 impl MultisampleFramebuffer {
