@@ -1,7 +1,5 @@
 use super::State;
-use crate::gl_renderer::{
-    Color4, Line, MultisampleFramebuffer, OrbitCamera, Scene, SceneObject, SceneRenderer,
-};
+use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::SurfaceObjectBuilder;
 use eframe::egui_glow;
 use egui::vec2;
@@ -17,8 +15,9 @@ pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
     mesh_loaded: bool,
+    #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
-    framebuffer: Option<MultisampleFramebuffer>,
+    framebuffer: Option<crate::gl_renderer::MultisampleFramebuffer>,
 }
 
 impl Definition3dPanel {
@@ -49,7 +48,15 @@ impl Definition3dPanel {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.clone());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
-            self.framebuffer = Some(MultisampleFramebuffer::new(gl.clone(), 512, 512, 16));
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.framebuffer = Some(crate::gl_renderer::MultisampleFramebuffer::new(
+                    gl.clone(),
+                    512,
+                    512,
+                    16,
+                ));
+            }
         }
     }
 
