@@ -38,6 +38,7 @@ impl Definition3dPanel {
             camera,
             renderer: None,
             mesh_loaded: false,
+            #[cfg(not(target_arch = "wasm32"))]
             framebuffer: None,
         };
         Self::creation_context(&mut instance, cc);
