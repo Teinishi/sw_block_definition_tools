@@ -2,12 +2,13 @@ use super::State;
 use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::SurfaceObjectBuilder;
 use eframe::egui_glow;
-use egui::vec2;
+use egui::{vec2, Id, Image, Modal, Rect, TextureOptions};
 use glam::Vec3;
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
+    open_save_image_modal: bool,
     #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
     camera: Arc<Mutex<OrbitCamera>>,
@@ -34,6 +35,7 @@ impl Definition3dPanel {
         let camera = Arc::new(Mutex::new(camera));
 
         let mut instance = Self {
+            open_save_image_modal: false,
             scene: scene.clone(),
             camera,
             renderer: None,
@@ -71,8 +73,11 @@ impl Definition3dPanel {
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State, frame: &eframe::Frame) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
+            .inner_margin(0.0)
             .show(ui, |ui| {
-                self.custom_painting(ui);
+                let s = ui.available_width();
+                let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
+                self.paint_canvas(ui, rect, response);
             });
 
         let mut c = state.show_xyz_axis();
@@ -121,22 +126,11 @@ impl Definition3dPanel {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if let Some(framebuffer) = &self.framebuffer {
-            if let Some(renderer) = &self.renderer {
-                ui.separator();
+        {
+            ui.separator();
 
-                if ui.button("Save image").clicked() {
-                    framebuffer.bind();
-                    renderer
-                        .lock()
-                        .paint(&framebuffer.gl(), self.camera.clone());
-                    framebuffer.resolve();
-                    let image = framebuffer.get_image();
-
-                    if let Some(path) = save_image_dialog(Some(frame)) {
-                        image.save(path).expect("Failed to save image");
-                    }
-                }
+            if ui.button("Save image").clicked() {
+                self.open_save_image_modal = true;
             }
         }
 
@@ -144,12 +138,34 @@ impl Definition3dPanel {
             self.update_scene(state);
         }
         self.mesh_loaded = mesh_loaded_now;
+
+        if self.open_save_image_modal {
+            let modal = Modal::new(Id::new("save_image_modal")).show(ui.ctx(), |ui| {
+                egui::Frame::canvas(ui.style())
+                    .fill(egui::Color32::TRANSPARENT)
+                    .inner_margin(0.0)
+                    .show(ui, |ui| {
+                        let s = ui.available_width();
+                        let (rect, response) =
+                            ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
+                        paint_checker_pattern(ui, rect);
+                        self.paint_canvas(ui, rect, response);
+                    });
+
+                ui.separator();
+
+                if ui.button("Save image").clicked() {
+                    self.save_image(Some(frame));
+                }
+            });
+
+            if modal.should_close() {
+                self.open_save_image_modal = false;
+            }
+        }
     }
 
-    fn custom_painting(&mut self, ui: &mut egui::Ui) {
-        let size = ui.available_width();
-        let (rect, response) = ui.allocate_exact_size(vec2(size, size), egui::Sense::drag());
-
+    fn paint_canvas(&mut self, ui: &mut egui::Ui, rect: Rect, response: egui::Response) {
         self.camera.lock().unwrap().control(ui, response);
         let camera = self.camera.clone();
 
@@ -258,6 +274,45 @@ impl Definition3dPanel {
             }
         }
     }
+
+    fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
+        &self,
+        parent: Option<&W>,
+    ) {
+        if let Some((renderer, framebuffer)) = self.renderer.as_ref().zip(self.framebuffer.as_ref())
+        {
+            framebuffer.bind();
+            renderer
+                .lock()
+                .paint(&framebuffer.gl(), self.camera.clone());
+            framebuffer.resolve();
+            let image = framebuffer.get_image();
+
+            if let Some(path) = save_image_dialog(parent) {
+                image.save(path).expect("Failed to save image");
+            }
+        }
+    }
+}
+
+fn paint_checker_pattern(ui: &mut egui::Ui, rect: Rect) {
+    egui_extras::install_image_loaders(ui.ctx());
+    let background_image_source = match ui.ctx().theme() {
+        egui::Theme::Light => egui::include_image!("../../images/checker_light.png"),
+        egui::Theme::Dark => egui::include_image!("../../images/checker_dark.png"),
+    };
+    let background_image = Image::new(background_image_source)
+        .texture_options(TextureOptions {
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Nearest,
+            wrap_mode: egui::TextureWrapMode::Repeat,
+            ..Default::default()
+        })
+        .uv(Rect::from_x_y_ranges(
+            0.0..=(rect.width() / 16.0),
+            0.0..=(rect.height() / 16.0),
+        ));
+    background_image.paint_at(ui, rect);
 }
 
 #[cfg(not(target_arch = "wasm32"))]

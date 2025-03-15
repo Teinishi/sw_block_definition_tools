@@ -31,7 +31,7 @@ image = "0.25.5"
 byteorder = "1.5.0"
 enum-map = { version = "2.7.3", features = ["serde"] }
 strum = { version = "0.27.1", features = ["derive"] }
-egui_extras = "0.31.0"
+egui_extras = { version = "0.31.0", features = ["all_loaders"] }
 ordered-float = { version = "5.0.0", features = ["serde"] }
 rodio = "0.20.1"
 ambassador = "0.4.1"
