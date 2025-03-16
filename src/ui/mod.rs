@@ -14,6 +14,8 @@ mod save_image_modal;
 pub use save_image_modal::SaveImageModal;
 mod canvas_3d;
 pub use canvas_3d::{paint_canvas_3d, paint_checker_pattern};
+mod definition_scene;
+pub use definition_scene::DefinitionScene;
 mod bottom_panel;
 pub use bottom_panel::BottomPanel;
 mod attirbute_detail_window;

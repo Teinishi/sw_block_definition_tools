@@ -118,7 +118,7 @@ impl Definition3dPanel {
         ui.separator();
 
         if ui.button("Save image").clicked() {
-            self.save_image_modal.open();
+            self.save_image_modal.open(state.selected_definition());
         }
 
         if state.is_changed_3d() || (mesh_loaded_now != self.mesh_loaded) {
@@ -126,7 +126,8 @@ impl Definition3dPanel {
         }
         self.mesh_loaded = mesh_loaded_now;
 
-        self.save_image_modal.ui(ui, frame);
+        self.save_image_modal
+            .ui(ui, frame, state.selected_definition());
     }
 
     fn update_scene(&mut self, state: &mut State) {

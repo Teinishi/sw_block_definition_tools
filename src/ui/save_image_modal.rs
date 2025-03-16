@@ -1,5 +1,8 @@
-use super::paint_canvas_3d;
-use crate::gl_renderer::{OrbitCamera, Scene, SceneRenderer};
+use super::{paint_canvas_3d, DefinitionScene};
+use crate::{
+    gl_renderer::{OrbitCamera, SceneRenderer},
+    sw_block_definition::SwBlockDefinition,
+};
 use eframe::glow::Context;
 use egui::{vec2, DragValue, Grid, Id, Modal, Slider};
 use glam::Vec3;
@@ -15,7 +18,7 @@ pub struct SaveImageModal {
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
-    scene: Arc<Mutex<Scene>>,
+    scene: DefinitionScene,
     camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
@@ -23,7 +26,6 @@ pub struct SaveImageModal {
 
 impl Default for SaveImageModal {
     fn default() -> Self {
-        let scene = Arc::new(Mutex::new(Scene::default()));
         let mut camera = OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
@@ -37,7 +39,7 @@ impl Default for SaveImageModal {
             height: 512,
             fov: 60.0,
             gl: None,
-            scene: scene.clone(),
+            scene: Default::default(),
             camera,
             renderer: None,
         }
@@ -51,8 +53,13 @@ impl SaveImageModal {
         instance
     }
 
-    pub fn open(&mut self) {
+    pub fn open(&mut self, definition: Option<&mut SwBlockDefinition>) {
         self.open = true;
+        if let Some(definition) = definition {
+            let data = definition.load_data();
+            let meshes = definition.load_meshes();
+            self.scene.update(data.and_then(|d| d.ok()), meshes);
+        }
     }
 
     pub fn close(&mut self) {
@@ -61,7 +68,7 @@ impl SaveImageModal {
 
     pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
-            let renderer = SceneRenderer::new(gl, self.scene.clone());
+            let renderer = SceneRenderer::new(gl, self.scene.scene());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
             self.gl = Some(gl.clone());
         }
@@ -74,7 +81,12 @@ impl SaveImageModal {
     }
 
     #[allow(unused_variables)]
-    pub fn ui(&mut self, ui: &mut egui::Ui, frame: &eframe::Frame) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        frame: &eframe::Frame,
+        definition: Option<&mut SwBlockDefinition>,
+    ) {
         if !self.open {
             return;
         }
@@ -131,6 +143,41 @@ impl SaveImageModal {
                 ui.add(Slider::new(&mut self.fov, 0.0..=180.0).suffix("°"));
                 ui.end_row();
             });
+
+            let (data, meshes) = if let Some(definition) = definition {
+                (
+                    definition.load_data().and_then(|d| d.ok()),
+                    definition.load_meshes(),
+                )
+            } else {
+                (None, None)
+            };
+            let meshes_c = meshes.clone();
+
+            let is_changed = self.scene.state_mut(|state| {
+                ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
+                ui.checkbox(&mut state.show_surfaces, "Surfaces");
+                ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
+                ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
+
+                if let Some(meshes) = meshes_c {
+                    for (key, show) in state.show_mesh.iter_mut() {
+                        if let Some(mesh) = meshes.get_mesh(&key) {
+                            let name = key.xml_name();
+                            if let Err(err) = mesh {
+                                ui.collapsing(format!("{}: Error", name), |ui| {
+                                    ui.label(format!("{}", err));
+                                });
+                            } else {
+                                ui.checkbox(show, name);
+                            }
+                        }
+                    }
+                }
+            });
+            if is_changed {
+                self.scene.update(data, meshes);
+            }
 
             ui.add_space(4.0);
 
