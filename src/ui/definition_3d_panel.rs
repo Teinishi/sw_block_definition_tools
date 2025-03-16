@@ -1,15 +1,13 @@
-use super::State;
+use super::{paint_canvas_3d, SaveImageModal, State};
 use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::SurfaceObjectBuilder;
-use eframe::egui_glow;
-use egui::{vec2, DragValue, Grid, Id, Image, Modal, Rect, TextureOptions};
+use egui::vec2;
 use glam::Vec3;
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
-    #[serde(skip)]
-    open_save_image_modal: bool,
+    save_image_modal: SaveImageModal,
     #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
     camera: Arc<Mutex<OrbitCamera>>,
@@ -17,12 +15,6 @@ pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
     mesh_loaded: bool,
-    #[cfg(not(target_arch = "wasm32"))]
-    #[serde(skip)]
-    framebuffer: Option<crate::gl_renderer::MultisampleFramebuffer>,
-    save_image_width: u32,
-    save_image_height: u32,
-    save_image_fov: f32,
 }
 
 impl Definition3dPanel {
@@ -39,16 +31,11 @@ impl Definition3dPanel {
         let camera = Arc::new(Mutex::new(camera));
 
         let mut instance = Self {
-            open_save_image_modal: false,
+            save_image_modal: SaveImageModal::default(),
             scene: scene.clone(),
             camera,
             renderer: None,
             mesh_loaded: false,
-            #[cfg(not(target_arch = "wasm32"))]
-            framebuffer: None,
-            save_image_width: 512,
-            save_image_height: 512,
-            save_image_fov: 60.0,
         };
         Self::creation_context(&mut instance, cc);
         Some(instance)
@@ -58,22 +45,15 @@ impl Definition3dPanel {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.clone());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                self.framebuffer = Some(crate::gl_renderer::MultisampleFramebuffer::new(
-                    gl.clone(),
-                    512,
-                    512,
-                    16,
-                ));
-            }
         }
+        self.save_image_modal.creation_context(cc);
     }
 
     pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
         if let Some(renderer) = &self.renderer {
             renderer.lock().destroy(gl);
         }
+        self.save_image_modal.destroy(gl);
     }
 
     #[allow(unused_variables)]
@@ -84,7 +64,10 @@ impl Definition3dPanel {
             .show(ui, |ui| {
                 let s = ui.available_width();
                 let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
-                self.paint_canvas(ui, rect, response);
+                self.camera.lock().unwrap().control(ui, response);
+                if let Some(renderer) = &self.renderer {
+                    paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone());
+                }
             });
 
         let mut c = state.show_xyz_axis();
@@ -132,13 +115,10 @@ impl Definition3dPanel {
             mesh_loaded_now = false;
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            ui.separator();
+        ui.separator();
 
-            if ui.button("Save image").clicked() {
-                self.open_save_image_modal = true;
-            }
+        if ui.button("Save image").clicked() {
+            self.save_image_modal.open();
         }
 
         if state.is_changed_3d() || (mesh_loaded_now != self.mesh_loaded) {
@@ -146,70 +126,7 @@ impl Definition3dPanel {
         }
         self.mesh_loaded = mesh_loaded_now;
 
-        if self.open_save_image_modal {
-            let id = Id::new("save_image_modal");
-            let modal = Modal::new(id).show(ui.ctx(), |ui| {
-                let viewport_size: Option<egui::Vec2> =
-                    ui.ctx().input(|i| Some(i.viewport().inner_rect?.size()));
-
-                let aspect_ratio = self.save_image_width as f32 / self.save_image_height as f32;
-                let canvas_size = viewport_size.map(|viewport_size| {
-                    let max_width = 0.7 * viewport_size.x;
-                    let max_height = 0.5 * viewport_size.y;
-                    let width = max_width.min(max_height * aspect_ratio);
-                    vec2(width, width / aspect_ratio)
-                });
-
-                egui::Frame::canvas(ui.style())
-                    .fill(egui::Color32::TRANSPARENT)
-                    .inner_margin(0.0)
-                    .show(ui, |ui| {
-                        let (rect, response) = ui.allocate_exact_size(
-                            canvas_size.unwrap_or(vec2(
-                                self.save_image_width as f32,
-                                self.save_image_height as f32,
-                            )),
-                            egui::Sense::drag(),
-                        );
-                        paint_checker_pattern(ui, rect);
-                        self.paint_canvas(ui, rect, response);
-                    });
-
-                Grid::new(id.with("params")).show(ui, |ui| {
-                    ui.label("Size");
-                    ui.horizontal(|ui| {
-                        ui.add(DragValue::new(&mut self.save_image_width).suffix("px"));
-                        ui.label("x");
-                        ui.add(DragValue::new(&mut self.save_image_height).suffix("px"));
-                    })
-                });
-
-                if ui.button("Save image").clicked() {
-                    self.save_image(Some(frame));
-                }
-            });
-
-            if modal.should_close() {
-                self.open_save_image_modal = false;
-            }
-        }
-    }
-
-    fn paint_canvas(&mut self, ui: &mut egui::Ui, rect: Rect, response: egui::Response) {
-        self.camera.lock().unwrap().control(ui, response);
-        let camera = self.camera.clone();
-
-        if let Some(renderer) = self.renderer.clone() {
-            let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-                renderer.lock().paint(painter.gl(), camera.clone());
-            });
-
-            let callback = egui::PaintCallback {
-                rect,
-                callback: Arc::new(cb),
-            };
-            ui.painter().add(callback);
-        }
+        self.save_image_modal.ui(ui, frame);
     }
 
     fn update_scene(&mut self, state: &mut State) {
@@ -304,58 +221,4 @@ impl Definition3dPanel {
             }
         }
     }
-
-    fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
-        &self,
-        parent: Option<&W>,
-    ) {
-        if let Some((renderer, framebuffer)) = self.renderer.as_ref().zip(self.framebuffer.as_ref())
-        {
-            framebuffer.bind();
-            renderer
-                .lock()
-                .paint(&framebuffer.gl(), self.camera.clone());
-            framebuffer.resolve();
-            let image = framebuffer.get_image();
-
-            if let Some(path) = save_image_dialog(parent) {
-                image.save(path).expect("Failed to save image");
-            }
-        }
-    }
-}
-
-fn paint_checker_pattern(ui: &mut egui::Ui, rect: Rect) {
-    egui_extras::install_image_loaders(ui.ctx());
-    let background_image_source = match ui.ctx().theme() {
-        egui::Theme::Light => egui::include_image!("../../images/checker_light.png"),
-        egui::Theme::Dark => egui::include_image!("../../images/checker_dark.png"),
-    };
-    let background_image = Image::new(background_image_source)
-        .texture_options(TextureOptions {
-            magnification: egui::TextureFilter::Nearest,
-            minification: egui::TextureFilter::Nearest,
-            wrap_mode: egui::TextureWrapMode::Repeat,
-            ..Default::default()
-        })
-        .uv(Rect::from_x_y_ranges(
-            0.0..=(rect.width() / 16.0),
-            0.0..=(rect.height() / 16.0),
-        ));
-    background_image.paint_at(ui, rect);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn save_image_dialog<
-    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
->(
-    parent: Option<&W>,
-) -> Option<std::path::PathBuf> {
-    use rfd::FileDialog;
-
-    let mut dialog = FileDialog::new().add_filter("PNG image", &["png"]);
-    if let Some(p) = parent {
-        dialog = dialog.set_parent(p)
-    }
-    dialog.save_file()
 }
