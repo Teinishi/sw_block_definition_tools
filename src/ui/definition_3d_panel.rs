@@ -2,12 +2,13 @@ use super::State;
 use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
 use crate::sw_block_definition::SurfaceObjectBuilder;
 use eframe::egui_glow;
-use egui::{vec2, Id, Image, Modal, Rect, TextureOptions};
+use egui::{vec2, DragValue, Grid, Id, Image, Modal, Rect, TextureOptions};
 use glam::Vec3;
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
+    #[serde(skip)]
     open_save_image_modal: bool,
     #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
@@ -19,6 +20,9 @@ pub struct Definition3dPanel {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
     framebuffer: Option<crate::gl_renderer::MultisampleFramebuffer>,
+    save_image_width: u32,
+    save_image_height: u32,
+    save_image_fov: f32,
 }
 
 impl Definition3dPanel {
@@ -42,6 +46,9 @@ impl Definition3dPanel {
             mesh_loaded: false,
             #[cfg(not(target_arch = "wasm32"))]
             framebuffer: None,
+            save_image_width: 512,
+            save_image_height: 512,
+            save_image_fov: 60.0,
         };
         Self::creation_context(&mut instance, cc);
         Some(instance)
@@ -140,19 +147,42 @@ impl Definition3dPanel {
         self.mesh_loaded = mesh_loaded_now;
 
         if self.open_save_image_modal {
-            let modal = Modal::new(Id::new("save_image_modal")).show(ui.ctx(), |ui| {
+            let id = Id::new("save_image_modal");
+            let modal = Modal::new(id).show(ui.ctx(), |ui| {
+                let viewport_size: Option<egui::Vec2> =
+                    ui.ctx().input(|i| Some(i.viewport().inner_rect?.size()));
+
+                let aspect_ratio = self.save_image_width as f32 / self.save_image_height as f32;
+                let canvas_size = viewport_size.map(|viewport_size| {
+                    let max_width = 0.7 * viewport_size.x;
+                    let max_height = 0.5 * viewport_size.y;
+                    let width = max_width.min(max_height * aspect_ratio);
+                    vec2(width, width / aspect_ratio)
+                });
+
                 egui::Frame::canvas(ui.style())
                     .fill(egui::Color32::TRANSPARENT)
                     .inner_margin(0.0)
                     .show(ui, |ui| {
-                        let s = ui.available_width();
-                        let (rect, response) =
-                            ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
+                        let (rect, response) = ui.allocate_exact_size(
+                            canvas_size.unwrap_or(vec2(
+                                self.save_image_width as f32,
+                                self.save_image_height as f32,
+                            )),
+                            egui::Sense::drag(),
+                        );
                         paint_checker_pattern(ui, rect);
                         self.paint_canvas(ui, rect, response);
                     });
 
-                ui.separator();
+                Grid::new(id.with("params")).show(ui, |ui| {
+                    ui.label("Size");
+                    ui.horizontal(|ui| {
+                        ui.add(DragValue::new(&mut self.save_image_width).suffix("px"));
+                        ui.label("x");
+                        ui.add(DragValue::new(&mut self.save_image_height).suffix("px"));
+                    })
+                });
 
                 if ui.button("Save image").clicked() {
                     self.save_image(Some(frame));
