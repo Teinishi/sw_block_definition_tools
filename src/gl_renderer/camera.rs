@@ -55,7 +55,7 @@ impl Camera for OrbitCamera {
     }
 
     fn mat_proj(&self) -> Mat4 {
-        Mat4::perspective_rh(self.fov_y, self.aspect_ratio, self.near_clip, self.far_clip)
+        Mat4::perspective_rh_gl(self.fov_y, self.aspect_ratio, self.near_clip, self.far_clip)
     }
 
     fn position(&self) -> Vec3 {

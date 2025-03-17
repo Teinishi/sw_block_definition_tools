@@ -30,7 +30,7 @@ impl Default for BlockViewState {
             show_xyz_axes: true,
             show_surfaces: true,
             show_surface_edges: true,
-            show_buoyancy_surfaces: true,
+            show_buoyancy_surfaces: false,
             show_mesh,
         }
     }
