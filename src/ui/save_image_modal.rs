@@ -4,7 +4,7 @@ use crate::{
     sw_block_definition::SwBlockDefinition,
 };
 use eframe::glow::Context;
-use egui::{vec2, DragValue, Grid, Id, Modal, Slider};
+use egui::{vec2, Align, DragValue, Grid, Id, Layout, Modal, Slider};
 use glam::Vec3;
 use std::sync::{Arc, Mutex};
 
@@ -102,17 +102,22 @@ impl SaveImageModal {
             let aspect_ratio = self.width as f32 / self.height as f32;
             let canvas_size = viewport_size.map(|viewport_size| {
                 let max_width = 0.7 * viewport_size.x;
-                let max_height = 0.5 * viewport_size.y;
+                let max_height = 0.4 * viewport_size.y;
                 let width = max_width.min(max_height * aspect_ratio);
                 vec2(width, width / aspect_ratio)
             });
+            if let Ok(mut camera) = self.camera.lock() {
+                camera.set_aspect_ratio(aspect_ratio);
+                camera.set_fov_y(self.fov.to_radians());
+            }
+            let container_size = viewport_size
+                .map(|viewport_size| vec2(0.7 * viewport_size.x, 0.4 * viewport_size.y))
+                .unwrap();
 
-            egui::Frame::canvas(ui.style())
-                .fill(egui::Color32::TRANSPARENT)
-                .inner_margin(0.0)
-                .show(ui, |ui| {
+            ui.allocate_ui_with_layout(container_size, Layout::top_down(Align::Center), |ui| {
+                egui::Frame::new().show(ui, |ui| {
                     let (rect, response) = ui.allocate_exact_size(
-                        canvas_size.unwrap_or(vec2(self.width as f32, self.height as f32)),
+                        fit_size_aspect(container_size, aspect_ratio),
                         egui::Sense::drag(),
                     );
                     self.camera.lock().unwrap().control(ui, response);
@@ -122,56 +127,62 @@ impl SaveImageModal {
                         paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone());
                     }
                 });
-
-            ui.add_space(4.0);
-
-            Grid::new(id.with("params")).show(ui, |ui| {
-                ui.label("Size");
-                ui.horizontal(|ui| {
-                    ui.add(
-                        DragValue::new(&mut self.width)
-                            .range(1..=10000)
-                            .suffix("px"),
-                    );
-                    ui.label("x");
-                    ui.add(
-                        DragValue::new(&mut self.height)
-                            .range(1..=10000)
-                            .suffix("px"),
-                    );
-                });
-                ui.end_row();
-
-                ui.label("Field of view");
-                ui.add(Slider::new(&mut self.fov, 0.0..=180.0).suffix("°"));
-                ui.end_row();
             });
 
-            let (data, meshes) = if let Some(definition) = definition {
-                (
-                    definition.load_data().and_then(|d| d.ok()),
-                    definition.load_meshes(),
-                )
-            } else {
-                (None, None)
-            };
+            ui.add_space(8.0);
 
-            let mesh_loaded = meshes.is_some();
-            self.scene
-                .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
-            self.mesh_loaded = mesh_loaded;
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                Grid::new(id.with("params"))
+                    .spacing([10.0, 6.0])
+                    .show(ui, |ui| {
+                        ui.label("Size");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                DragValue::new(&mut self.width)
+                                    .range(1..=10000)
+                                    .suffix("px"),
+                            );
+                            ui.label("x");
+                            ui.add(
+                                DragValue::new(&mut self.height)
+                                    .range(1..=10000)
+                                    .suffix("px"),
+                            );
+                        });
+                        ui.end_row();
 
-            ui.add_space(4.0);
+                        ui.label("Field of view");
+                        ui.add(Slider::new(&mut self.fov, 5.0..=150.0).suffix("°"));
+                        ui.end_row();
+                    });
 
-            ui.horizontal(|ui| {
-                if ui.button("Cancel").clicked() {
-                    self.close();
-                }
+                ui.add_space(8.0);
 
-                if ui.button("Save image").clicked() {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    self.save_image(Some(frame));
-                }
+                let (data, meshes) = if let Some(definition) = definition {
+                    (
+                        definition.load_data().and_then(|d| d.ok()),
+                        definition.load_meshes(),
+                    )
+                } else {
+                    (None, None)
+                };
+
+                let mesh_loaded = meshes.is_some();
+                self.scene
+                    .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
+                self.mesh_loaded = mesh_loaded;
+
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        self.close();
+                    }
+                    if ui.button("Save image").clicked() {
+                        #[cfg(not(target_arch = "wasm32"))]
+                        self.save_image(Some(frame));
+                    }
+                });
             });
         });
 
@@ -217,4 +228,14 @@ fn save_image_dialog<
         dialog = dialog.set_parent(p)
     }
     dialog.save_file()
+}
+
+fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
+    let width = size.x;
+    let height = size.y;
+    if width / height > aspect_ratio {
+        vec2(height * aspect_ratio, height)
+    } else {
+        vec2(width, width / aspect_ratio)
+    }
 }

@@ -1,7 +1,6 @@
-use std::sync::{Arc, Mutex};
-
 use eframe::egui_glow;
 use egui::{Image, Rect, TextureOptions};
+use std::sync::{Arc, Mutex};
 
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 

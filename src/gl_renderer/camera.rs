@@ -64,6 +64,14 @@ impl Camera for OrbitCamera {
 }
 
 impl OrbitCamera {
+    pub fn set_fov_y(&mut self, value: f32) {
+        self.fov_y = value;
+    }
+
+    pub fn set_aspect_ratio(&mut self, value: f32) {
+        self.aspect_ratio = value;
+    }
+
     pub fn orthogonalize_up(&mut self) {
         self.up = (self.up - self.up.project_onto(self.direction)).normalize();
     }
