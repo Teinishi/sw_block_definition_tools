@@ -14,7 +14,9 @@ pub struct SaveImageModal {
     open: bool,
     width: i32,
     height: i32,
+    is_orthographic: bool,
     fov: f32,
+    zoom: f32,
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
@@ -39,7 +41,9 @@ impl Default for SaveImageModal {
             open: false,
             width: 512,
             height: 512,
+            is_orthographic: false,
             fov: 60.0,
+            zoom: 1.0,
             gl: None,
             scene: Default::default(),
             camera,
@@ -108,7 +112,12 @@ impl SaveImageModal {
             });
             if let Ok(mut camera) = self.camera.lock() {
                 camera.set_aspect_ratio(aspect_ratio);
-                camera.set_fov_y(self.fov.to_radians());
+                if self.is_orthographic {
+                    camera.set_orthographic();
+                } else {
+                    camera.set_perspective();
+                    camera.set_fov_y(self.fov.to_radians());
+                }
             }
             let container_size = viewport_size
                 .map(|viewport_size| vec2(0.7 * viewport_size.x, 0.4 * viewport_size.y))
@@ -151,9 +160,28 @@ impl SaveImageModal {
                         });
                         ui.end_row();
 
-                        ui.label("Field of view");
-                        ui.add(Slider::new(&mut self.fov, 5.0..=150.0).suffix("°"));
+                        ui.label("Camera type");
+                        ui.horizontal(|ui| {
+                            if ui
+                                .selectable_label(!self.is_orthographic, "Perspective")
+                                .clicked()
+                            {
+                                self.is_orthographic = false;
+                            }
+                            if ui
+                                .selectable_label(self.is_orthographic, "Orthographic")
+                                .clicked()
+                            {
+                                self.is_orthographic = true;
+                            }
+                        });
                         ui.end_row();
+
+                        if !self.is_orthographic {
+                            ui.label("Field of view");
+                            ui.add(Slider::new(&mut self.fov, 5.0..=150.0).suffix("°"));
+                            ui.end_row();
+                        }
                     });
 
                 ui.add_space(8.0);

@@ -11,10 +11,17 @@ pub trait Camera: Default {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub enum CameraMode {
+    Perspective,
+    Orthographic,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct OrbitCamera {
     pub center: Vec3,
     pub direction: Vec3,
     pub up: Vec3,
+    pub mode: CameraMode,
     pub fov_y: f32,
     pub aspect_ratio: f32,
     pub near_clip: f32,
@@ -32,6 +39,7 @@ impl Default for OrbitCamera {
             center: Vec3::ZERO,
             direction: Vec3::NEG_Z,
             up: Vec3::Y,
+            mode: CameraMode::Perspective,
             fov_y: 60f32.to_radians(),
             aspect_ratio: 1.0,
             near_clip: 0.025,
@@ -55,7 +63,25 @@ impl Camera for OrbitCamera {
     }
 
     fn mat_proj(&self) -> Mat4 {
-        Mat4::perspective_rh_gl(self.fov_y, self.aspect_ratio, self.near_clip, self.far_clip)
+        match self.mode {
+            CameraMode::Perspective => Mat4::perspective_rh_gl(
+                self.fov_y,
+                self.aspect_ratio,
+                self.near_clip,
+                self.far_clip,
+            ),
+            CameraMode::Orthographic => {
+                let zoom = self.direction.length() * self.fov_y / 2.0;
+                Mat4::orthographic_rh_gl(
+                    -zoom * self.aspect_ratio,
+                    zoom * self.aspect_ratio,
+                    -zoom,
+                    zoom,
+                    self.near_clip,
+                    self.far_clip,
+                )
+            }
+        }
     }
 
     fn position(&self) -> Vec3 {
@@ -64,6 +90,14 @@ impl Camera for OrbitCamera {
 }
 
 impl OrbitCamera {
+    pub fn set_perspective(&mut self) {
+        self.mode = CameraMode::Perspective;
+    }
+
+    pub fn set_orthographic(&mut self) {
+        self.mode = CameraMode::Orthographic;
+    }
+
     pub fn set_fov_y(&mut self, value: f32) {
         self.fov_y = value;
     }

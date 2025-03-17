@@ -11,6 +11,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const Z_OFFSET_UNIT: f32 = 0.0000001;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
@@ -135,7 +137,7 @@ impl BlockViewScene {
                         self.scene
                             .lock()
                             .unwrap()
-                            .add_object(obj.set_z_offset(-0.00001));
+                            .add_object(obj.set_z_offset(-Z_OFFSET_UNIT));
                     }
                 }
             }
@@ -154,13 +156,13 @@ impl BlockViewScene {
                             self.scene
                                 .lock()
                                 .unwrap()
-                                .add_object(obj.set_z_offset(-0.00001));
+                                .add_object(obj.set_z_offset(-Z_OFFSET_UNIT));
                         }
                         if let Some(obj) = line_obj {
                             self.scene
                                 .lock()
                                 .unwrap()
-                                .add_object(obj.set_z_offset(-0.00002));
+                                .add_object(obj.set_z_offset(-2.0 * Z_OFFSET_UNIT));
                         }
                     }
                 }
