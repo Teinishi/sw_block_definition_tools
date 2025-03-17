@@ -89,6 +89,6 @@ impl Definition3dPanel {
         }
 
         self.save_image_modal
-            .ui(ui, frame, state.selected_definition());
+            .ui(ui, frame, &mut state.selected_definition());
     }
 }

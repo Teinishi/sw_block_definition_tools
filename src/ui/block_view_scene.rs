@@ -11,8 +11,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-const Z_OFFSET_UNIT: f32 = 0.0000001;
-
 #[derive(Clone, PartialEq, Eq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
@@ -42,6 +40,7 @@ impl Default for BlockViewState {
 pub struct BlockViewScene {
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
+    is_orthographic: bool,
 }
 
 impl BlockViewScene {
@@ -137,7 +136,7 @@ impl BlockViewScene {
                         self.scene
                             .lock()
                             .unwrap()
-                            .add_object(obj.set_z_offset(-Z_OFFSET_UNIT));
+                            .add_object(obj.set_z_offset(self.z_offset(-1)));
                     }
                 }
             }
@@ -156,13 +155,13 @@ impl BlockViewScene {
                             self.scene
                                 .lock()
                                 .unwrap()
-                                .add_object(obj.set_z_offset(-Z_OFFSET_UNIT));
+                                .add_object(obj.set_z_offset(self.z_offset(-1)));
                         }
                         if let Some(obj) = line_obj {
                             self.scene
                                 .lock()
                                 .unwrap()
-                                .add_object(obj.set_z_offset(-2.0 * Z_OFFSET_UNIT));
+                                .add_object(obj.set_z_offset(self.z_offset(-2)));
                         }
                     }
                 }
@@ -184,5 +183,26 @@ impl BlockViewScene {
                 }
             }
         }
+    }
+
+    pub fn set_orthographic(
+        &mut self,
+        is_orthographic: bool,
+        data: Option<Arc<Definition>>,
+        meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+    ) {
+        if self.is_orthographic != is_orthographic {
+            self.is_orthographic = is_orthographic;
+            self.update(data, meshes);
+        }
+    }
+
+    fn z_offset(&self, count: i32) -> f32 {
+        let unit: f32 = if self.is_orthographic {
+            0.0000005
+        } else {
+            0.00001
+        };
+        unit * count as f32
     }
 }
