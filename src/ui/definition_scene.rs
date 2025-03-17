@@ -12,7 +12,7 @@ use std::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct DefinitionSceneState {
+pub struct BlockViewState {
     pub show_xyz_axes: bool,
     pub show_surfaces: bool,
     pub show_surface_edges: bool,
@@ -20,7 +20,7 @@ pub struct DefinitionSceneState {
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
 }
 
-impl Default for DefinitionSceneState {
+impl Default for BlockViewState {
     fn default() -> Self {
         let mut show_mesh = EnumMap::default();
         for (key, _) in show_mesh {
@@ -37,19 +37,53 @@ impl Default for DefinitionSceneState {
 }
 
 #[derive(Default)]
-pub struct DefinitionScene {
+pub struct BlockViewScene {
     scene: Arc<Mutex<Scene>>,
-    state: DefinitionSceneState,
+    state: BlockViewState,
 }
 
-impl DefinitionScene {
-    pub fn state_mut<F: FnOnce(&'_ mut DefinitionSceneState)>(&mut self, writer: F) -> bool {
+impl BlockViewScene {
+    pub fn state_mut<F: FnOnce(&'_ mut BlockViewState)>(&mut self, writer: F) -> bool {
         let mut changed = self.state.clone();
         writer(&mut changed);
 
         let is_changed = changed != self.state;
         let _ = std::mem::replace(&mut self.state, changed);
         is_changed
+    }
+
+    pub fn state_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        data: Option<Arc<Definition>>,
+        meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+        force_update: bool,
+    ) {
+        let meshes_c = meshes.clone();
+        let is_changed = self.state_mut(|state| {
+            ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
+            ui.checkbox(&mut state.show_surfaces, "Surfaces");
+            ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
+            ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
+
+            if let Some(meshes) = meshes_c {
+                for (key, show) in state.show_mesh.iter_mut() {
+                    if let Some(mesh) = meshes.get_mesh(&key) {
+                        let name = key.ui_name();
+                        if let Err(err) = mesh {
+                            ui.collapsing(format!("{}: Error", name), |ui| {
+                                ui.label(format!("{}", err));
+                            });
+                        } else {
+                            ui.checkbox(show, name);
+                        }
+                    }
+                }
+            }
+        });
+        if force_update || is_changed {
+            self.update(data, meshes);
+        }
     }
 
     pub fn scene(&self) -> Arc<Mutex<Scene>> {

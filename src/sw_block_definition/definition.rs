@@ -270,6 +270,16 @@ impl SwBlockDefinitionMeshKey {
             Self::MeshEditorOnly => "mesh_editor_only_name",
         }
     }
+
+    pub fn ui_name(&self) -> &str {
+        match self {
+            Self::MeshData => "Mesh data",
+            Self::Mesh0 => "Mesh 0",
+            Self::Mesh1 => "Mesh 1",
+            Self::Mesh2 => "Mesh 2",
+            Self::MeshEditorOnly => "Mesh editor only",
+        }
+    }
 }
 
 #[derive(Default)]

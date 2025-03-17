@@ -1,4 +1,4 @@
-use super::{paint_canvas_3d, DefinitionScene};
+use super::{paint_canvas_3d, BlockViewScene};
 use crate::{
     gl_renderer::{OrbitCamera, SceneRenderer},
     sw_block_definition::SwBlockDefinition,
@@ -18,10 +18,12 @@ pub struct SaveImageModal {
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
-    scene: DefinitionScene,
+    scene: BlockViewScene,
     camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
+    #[serde(skip)]
+    mesh_loaded: bool,
 }
 
 impl Default for SaveImageModal {
@@ -42,6 +44,7 @@ impl Default for SaveImageModal {
             scene: Default::default(),
             camera,
             renderer: None,
+            mesh_loaded: false,
         }
     }
 }
@@ -152,32 +155,11 @@ impl SaveImageModal {
             } else {
                 (None, None)
             };
-            let meshes_c = meshes.clone();
 
-            let is_changed = self.scene.state_mut(|state| {
-                ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
-                ui.checkbox(&mut state.show_surfaces, "Surfaces");
-                ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
-                ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
-
-                if let Some(meshes) = meshes_c {
-                    for (key, show) in state.show_mesh.iter_mut() {
-                        if let Some(mesh) = meshes.get_mesh(&key) {
-                            let name = key.xml_name();
-                            if let Err(err) = mesh {
-                                ui.collapsing(format!("{}: Error", name), |ui| {
-                                    ui.label(format!("{}", err));
-                                });
-                            } else {
-                                ui.checkbox(show, name);
-                            }
-                        }
-                    }
-                }
-            });
-            if is_changed {
-                self.scene.update(data, meshes);
-            }
+            let mesh_loaded = meshes.is_some();
+            self.scene
+                .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
+            self.mesh_loaded = mesh_loaded;
 
             ui.add_space(4.0);
 

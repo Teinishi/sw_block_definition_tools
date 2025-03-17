@@ -1,6 +1,5 @@
-use super::{paint_canvas_3d, SaveImageModal, State};
-use crate::gl_renderer::{Color4, Line, OrbitCamera, Scene, SceneObject, SceneRenderer};
-use crate::sw_block_definition::SurfaceObjectBuilder;
+use super::{paint_canvas_3d, BlockViewScene, SaveImageModal, State};
+use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
 use std::sync::{Arc, Mutex};
@@ -9,7 +8,7 @@ use std::sync::{Arc, Mutex};
 pub struct Definition3dPanel {
     save_image_modal: SaveImageModal,
     #[serde(skip)]
-    scene: Arc<Mutex<Scene>>,
+    scene: BlockViewScene,
     camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
@@ -22,7 +21,6 @@ impl Definition3dPanel {
         cc: &'a eframe::CreationContext<'a>,
         camera: Option<OrbitCamera>,
     ) -> Option<Self> {
-        let scene = Arc::new(Mutex::new(Scene::default()));
         let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
@@ -32,7 +30,7 @@ impl Definition3dPanel {
 
         let mut instance = Self {
             save_image_modal: SaveImageModal::default(),
-            scene: scene.clone(),
+            scene: Default::default(),
             camera,
             renderer: None,
             mesh_loaded: false,
@@ -43,7 +41,7 @@ impl Definition3dPanel {
 
     pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
-            let renderer = SceneRenderer::new(gl, self.scene.clone());
+            let renderer = SceneRenderer::new(gl, self.scene.scene());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
         }
         self.save_image_modal.creation_context(cc);
@@ -70,50 +68,19 @@ impl Definition3dPanel {
                 }
             });
 
-        let mut c = state.show_xyz_axis();
-        ui.checkbox(&mut c, "XYZ axes");
-        state.set_show_xyz_axis(c);
-
-        let mut c = state.show_surfaces();
-        ui.checkbox(&mut c, "Surfaces");
-        state.set_show_surfaces(c);
-
-        let mut c = state.show_surface_edge();
-        ui.checkbox(&mut c, "Surface edge lines");
-        state.set_show_surface_edge(c);
-
-        let mut c = state.show_buoyancy_surfaces();
-        ui.checkbox(&mut c, "Buoyancy surfaces");
-        state.set_show_buoyancy_surfaces(c);
-
-        let mesh_loaded_now;
-
-        if let Some(meshes) = state.selected_meshes() {
-            mesh_loaded_now = true;
-
-            let mut change = None;
-            for (key, show) in state.show_mesh() {
-                if let Some(mesh) = meshes.get_mesh(&key) {
-                    let name = key.xml_name();
-                    if let Err(err) = mesh {
-                        ui.collapsing(format!("{}: Error", name), |ui| {
-                            ui.label(format!("{}", err));
-                        });
-                    } else {
-                        let mut c = *show;
-                        ui.checkbox(&mut c, name);
-                        if c != *show {
-                            change = Some((key, c));
-                        }
-                    }
-                }
-            }
-            if let Some((key, value)) = change {
-                state.set_show_mesh(key, value);
-            }
+        let (data, meshes) = if let Some(definition) = state.selected_definition() {
+            (
+                definition.load_data().and_then(|d| d.ok()),
+                definition.load_meshes(),
+            )
         } else {
-            mesh_loaded_now = false;
-        }
+            (None, None)
+        };
+
+        let mesh_loaded = meshes.is_some();
+        self.scene
+            .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
+        self.mesh_loaded = mesh_loaded;
 
         ui.separator();
 
@@ -121,105 +88,7 @@ impl Definition3dPanel {
             self.save_image_modal.open(state.selected_definition());
         }
 
-        if state.is_changed_3d() || (mesh_loaded_now != self.mesh_loaded) {
-            self.update_scene(state);
-        }
-        self.mesh_loaded = mesh_loaded_now;
-
         self.save_image_modal
             .ui(ui, frame, state.selected_definition());
-    }
-
-    fn update_scene(&mut self, state: &mut State) {
-        self.scene.lock().unwrap().clear();
-
-        if state.show_xyz_axis() {
-            for (direction, color) in [
-                (Vec3::X, Color4::RED),
-                (Vec3::Y, Color4::GREEN),
-                (Vec3::Z, Color4::BLUE),
-            ] {
-                self.scene
-                    .lock()
-                    .unwrap()
-                    .add_object(SceneObject::from_line(
-                        Line::single_color_lh(
-                            vec![Vec3::ZERO, 100.0 * direction],
-                            color,
-                            2.0,
-                            false,
-                        ),
-                        None,
-                    ));
-            }
-        }
-
-        if let Some(data) = state
-            .selected_definition()
-            .and_then(|def| def.load_data().and_then(|d| d.ok()))
-        {
-            if let Some(surfaces) = data.surfaces.last() {
-                for surface in &surfaces.surface {
-                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
-                        surface.shape,
-                        surface.position.last(),
-                        surface.orientation,
-                        surface.rotation,
-                    )
-                    .basic_objects(state.show_surfaces(), state.show_surface_edge());
-                    if let Some(obj) = mesh_obj {
-                        self.scene.lock().unwrap().add_object(obj);
-                    }
-                    if let Some(obj) = line_obj {
-                        self.scene
-                            .lock()
-                            .unwrap()
-                            .add_object(obj.set_z_offset(-0.00001));
-                    }
-                }
-            }
-
-            if state.show_buoyancy_surfaces() {
-                if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
-                    for surface in &buoyancy_surfaces.surface {
-                        let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
-                            surface.shape,
-                            surface.position.last(),
-                            surface.orientation,
-                            surface.rotation,
-                        )
-                        .translucent_objects();
-                        if let Some(obj) = mesh_obj {
-                            self.scene
-                                .lock()
-                                .unwrap()
-                                .add_object(obj.set_z_offset(-0.00001));
-                        }
-                        if let Some(obj) = line_obj {
-                            self.scene
-                                .lock()
-                                .unwrap()
-                                .add_object(obj.set_z_offset(-0.00002));
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(meshes) = state.selected_meshes() {
-            for (key, show) in state.show_mesh() {
-                if !*show {
-                    continue;
-                }
-                if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
-                    for m in mesh.as_meshes() {
-                        self.scene
-                            .lock()
-                            .unwrap()
-                            .add_object(SceneObject::from_mesh(m, None));
-                    }
-                }
-            }
-        }
     }
 }

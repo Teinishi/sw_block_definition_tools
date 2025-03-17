@@ -1,8 +1,7 @@
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, GetAttributeValueRoot, SwBlockDefinition,
-    SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
+    SwBlockDefinitionMeshes,
 };
-use enum_map::{self, EnumMap};
 use paste::paste;
 use std::{
     fs, io,
@@ -54,11 +53,6 @@ pub struct State {
     selected_definition_index: Option<usize>,
     show_all: bool,
     hide_default: bool,
-    show_xyz_axis: bool,
-    show_surfaces: bool,
-    show_surface_edge: bool,
-    show_buoyancy_surfaces: bool,
-    show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     audio_volume: f32,
     #[serde(skip)]
     playing_audio: Option<PlayingAudio>,
@@ -68,21 +62,12 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        let mut show_mesh = EnumMap::default();
-        for (key, _) in show_mesh {
-            show_mesh[key] = true;
-        }
         Self {
             rom_path: None,
             definitions: Vec::new(),
             selected_definition_index: None,
             show_all: false,
             hide_default: false,
-            show_xyz_axis: true,
-            show_surfaces: true,
-            show_surface_edge: true,
-            show_buoyancy_surfaces: true,
-            show_mesh,
             audio_volume: 0.5,
             playing_audio: None,
             changed_3d: None,
@@ -132,17 +117,6 @@ impl State {
 
     pub fn definition_index(&self, definition: &SwBlockDefinition) -> Option<usize> {
         self.definitions.iter().position(|d| d == definition)
-    }
-
-    pub fn show_mesh(&self) -> &EnumMap<SwBlockDefinitionMeshKey, bool> {
-        &self.show_mesh
-    }
-
-    pub fn set_show_mesh(&mut self, key: SwBlockDefinitionMeshKey, value: bool) {
-        if self.show_mesh[key.clone()] != value {
-            self.show_mesh[key] = value;
-            self.changed_3d();
-        }
     }
 
     pub fn selected_definition(&mut self) -> Option<&mut SwBlockDefinition> {
@@ -215,10 +189,6 @@ impl State {
 
 getter_setter!(State, show_all, bool, changed_3d);
 getter_setter!(State, hide_default, bool, changed_3d);
-getter_setter!(State, show_xyz_axis, bool, changed_3d);
-getter_setter!(State, show_surfaces, bool, changed_3d);
-getter_setter!(State, show_surface_edge, bool, changed_3d);
-getter_setter!(State, show_buoyancy_surfaces, bool, changed_3d);
 getter_setter!(State, audio_volume, f32);
 
 impl State {
