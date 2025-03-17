@@ -121,7 +121,7 @@ impl SaveImageModal {
             }
             let container_size = viewport_size
                 .map(|viewport_size| vec2(0.7 * viewport_size.x, 0.4 * viewport_size.y))
-                .unwrap();
+                .unwrap_or_else(|| vec2(self.width as f32, self.height as f32));
 
             ui.allocate_ui_with_layout(container_size, Layout::top_down(Align::Center), |ui| {
                 egui::Frame::new().show(ui, |ui| {
@@ -144,7 +144,7 @@ impl SaveImageModal {
                 Grid::new(id.with("params"))
                     .spacing([10.0, 6.0])
                     .show(ui, |ui| {
-                        ui.label("Size");
+                        ui.label("Image size");
                         ui.horizontal(|ui| {
                             ui.add(
                                 DragValue::new(&mut self.width)
@@ -181,6 +181,52 @@ impl SaveImageModal {
                             ui.label("Field of view");
                             ui.add(Slider::new(&mut self.fov, 5.0..=150.0).suffix("°"));
                             ui.end_row();
+                        }
+
+                        if let Ok(mut camera) = self.camera.lock() {
+                            ui.label("Look at");
+                            ui.horizontal(|ui| {
+                                ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
+                                ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
+                                ui.add(DragValue::new(&mut camera.center.z).speed(0.01));
+                            });
+                            ui.end_row();
+
+                            let mut direction_changed = false;
+
+                            let mut azimuth_angle = camera.azimuth_angle().to_degrees();
+                            ui.label("Azimuth angle");
+                            direction_changed |= ui
+                                .add(
+                                    Slider::new(&mut azimuth_angle, -180.0..=180.0)
+                                        .drag_value_speed(0.1),
+                                )
+                                .changed();
+                            ui.end_row();
+
+                            let mut elevation_angle = camera.elevation_angle().to_degrees();
+                            ui.label("Elevation angle");
+                            direction_changed |= ui
+                                .add(
+                                    Slider::new(&mut elevation_angle, -90.0..=90.0)
+                                        .drag_value_speed(0.1),
+                                )
+                                .changed();
+                            ui.end_row();
+
+                            let mut distance = camera.direction.length();
+                            ui.label("Distance");
+                            direction_changed |=
+                                ui.add(Slider::new(&mut distance, 0.1..=10.0)).changed();
+                            ui.end_row();
+
+                            if direction_changed {
+                                camera.set_direction_angle(
+                                    azimuth_angle.to_radians(),
+                                    elevation_angle.to_radians(),
+                                    distance,
+                                );
+                            }
                         }
                     });
 

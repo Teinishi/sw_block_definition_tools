@@ -1,5 +1,5 @@
 use egui::PointerButton;
-use glam::{Mat4, Quat, Vec3};
+use glam::{Mat4, Quat, Vec3, Vec3Swizzles};
 
 pub trait Camera: Default {
     fn mat_view(&self) -> Mat4;
@@ -90,6 +90,27 @@ impl Camera for OrbitCamera {
 }
 
 impl OrbitCamera {
+    pub fn azimuth_angle(&self) -> f32 {
+        let v = if self.direction.xz().length() > 0.00001 {
+            self.direction
+        } else {
+            -self.direction.y.signum() * self.up
+        };
+        -v.z.atan2(v.x)
+    }
+
+    pub fn elevation_angle(&self) -> f32 {
+        -(self.direction.y / self.direction.length()).asin()
+    }
+
+    pub fn set_direction_angle(&mut self, azimuth_angle: f32, elevation_angle: f32, distance: f32) {
+        self.direction = distance * Vec3::X;
+        self.up = Vec3::Y;
+        self.rotate(
+            Quat::from_rotation_y(azimuth_angle).mul_quat(Quat::from_rotation_z(-elevation_angle)),
+        );
+    }
+
     pub fn set_perspective(&mut self) {
         self.mode = CameraMode::Perspective;
     }
@@ -110,13 +131,18 @@ impl OrbitCamera {
         self.up = (self.up - self.up.project_onto(self.direction)).normalize();
     }
 
+    pub fn rotate(&mut self, quat: Quat) {
+        self.direction = quat.mul_vec3(self.direction);
+        self.up = quat.mul_vec3(self.up);
+    }
+
     pub fn control(&mut self, ui: &mut egui::Ui, response: egui::Response) {
         if response.dragged_by(self.rotate_pointer_button) {
             let motion = -self.rotate_speed * response.drag_motion();
-            let q = Quat::from_rotation_y(motion.x)
-                .mul_quat(Quat::from_axis_angle(self.right_vec(), motion.y));
-            self.direction = q.mul_vec3(self.direction);
-            self.up = q.mul_vec3(self.up);
+            self.rotate(
+                Quat::from_rotation_y(motion.x)
+                    .mul_quat(Quat::from_axis_angle(self.right_vec(), motion.y)),
+            );
         }
 
         if response.dragged_by(self.pan_pointer_button) {
