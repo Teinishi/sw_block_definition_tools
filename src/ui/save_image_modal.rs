@@ -17,7 +17,7 @@ pub struct SaveImageModal {
     height: i32,
     is_orthographic: bool,
     fov: f32,
-    zoom: f32,
+    camera_auto: bool,
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
@@ -44,7 +44,7 @@ impl Default for SaveImageModal {
             height: 512,
             is_orthographic: false,
             fov: 60.0,
-            zoom: 1.0,
+            camera_auto: false,
             gl: None,
             scene: Default::default(),
             camera,
@@ -238,8 +238,33 @@ impl SaveImageModal {
                 ui.end_row();
             }
 
+            ui.label("Camera position");
+            ui.checkbox(&mut self.camera_auto, "Auto");
+            ui.end_row();
+
             if let Ok(mut camera) = self.camera.lock() {
                 let mut direction_changed = false;
+
+                let mut distance = camera.direction.length();
+                if !self.camera_auto {
+                    ui.label("Look at");
+                    ui.horizontal(|ui| {
+                        ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
+                        ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
+                        ui.add(DragValue::new(&mut camera.center.z).speed(0.01));
+                    });
+                    ui.end_row();
+
+                    ui.label("Distance");
+                    direction_changed |= ui
+                        .add(
+                            Slider::new(&mut distance, 0.1..=100.0)
+                                .logarithmic(true)
+                                .clamping(egui::SliderClamping::Never),
+                        )
+                        .changed();
+                    ui.end_row();
+                }
 
                 let mut azimuth_angle = camera.azimuth_angle().to_degrees();
                 ui.label("Azimuth angle");
@@ -263,17 +288,6 @@ impl SaveImageModal {
                     .changed();
                 ui.end_row();
 
-                let mut distance = camera.direction.length();
-                ui.label("Distance");
-                direction_changed |= ui
-                    .add(
-                        Slider::new(&mut distance, 0.1..=100.0)
-                            .logarithmic(true)
-                            .clamping(egui::SliderClamping::Never),
-                    )
-                    .changed();
-                ui.end_row();
-
                 if direction_changed {
                     camera.set_direction_angle(
                         azimuth_angle.to_radians(),
@@ -281,14 +295,6 @@ impl SaveImageModal {
                         distance,
                     );
                 }
-
-                ui.label("Look at");
-                ui.horizontal(|ui| {
-                    ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
-                    ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
-                    ui.add(DragValue::new(&mut camera.center.z).speed(0.01));
-                });
-                ui.end_row();
             }
         });
     }
