@@ -36,6 +36,30 @@ const BOUNDING_BOX_VOXEL_LINE_COLOR: Color4 = Color4 {
     b: 0.1,
     a: 0.2,
 };
+const BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR: Color4 = Color4 {
+    r: 0.8,
+    g: 0.8,
+    b: 0.2,
+    a: 0.3,
+};
+const BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR: Color4 = Color4 {
+    r: 0.4,
+    g: 0.4,
+    b: 0.1,
+    a: 0.2,
+};
+const BOUNDING_BOX_PHYSICS_MESH_COLOR: Color4 = Color4 {
+    r: 0.1,
+    g: 0.8,
+    b: 0.2,
+    a: 0.3,
+};
+const BOUNDING_BOX_PHYSICS_LINE_COLOR: Color4 = Color4 {
+    r: 0.05,
+    g: 0.4,
+    b: 0.1,
+    a: 0.2,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BlockViewState {
@@ -44,6 +68,8 @@ pub struct BlockViewState {
     pub show_surface_edges: bool,
     pub show_buoyancy_surfaces: bool,
     pub show_bounding_box_voxel: bool,
+    pub show_bounding_box_voxel_physics: bool,
+    pub show_bounding_box_physics: bool,
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
 }
 
@@ -59,6 +85,8 @@ impl Default for BlockViewState {
             show_surface_edges: true,
             show_buoyancy_surfaces: false,
             show_bounding_box_voxel: false,
+            show_bounding_box_voxel_physics: false,
+            show_bounding_box_physics: false,
             show_mesh,
         }
     }
@@ -95,6 +123,14 @@ impl BlockViewScene {
             ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
             ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
             ui.checkbox(&mut state.show_bounding_box_voxel, "Bounding box (voxel)");
+            ui.checkbox(
+                &mut state.show_bounding_box_voxel_physics,
+                "Bounding box (voxel physics)",
+            );
+            ui.checkbox(
+                &mut state.show_bounding_box_physics,
+                "Bounding box (physics)",
+            );
 
             if let Some(meshes) = meshes_c {
                 for (key, show) in state.show_mesh.iter_mut() {
@@ -201,8 +237,41 @@ impl BlockViewScene {
                     data.voxel_min.last().zip(data.voxel_max.last())
                 {
                     let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::new(*voxel_min, *voxel_max)
+                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
                             .objects(BOUNDING_BOX_VOXEL_MESH_COLOR, BOUNDING_BOX_VOXEL_LINE_COLOR);
+                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-4)));
+                    self.add_object(line_obj.set_z_offset(self.z_offset(-5)));
+                }
+            }
+
+            if self.state.show_bounding_box_voxel_physics {
+                if let Some((voxel_physics_min, voxel_physics_max)) = data
+                    .voxel_physics_min
+                    .last()
+                    .zip(data.voxel_physics_max.last())
+                {
+                    let (mesh_obj, line_obj) = BoundingBoxObjectBuilder::from_voxel(
+                        *voxel_physics_min,
+                        *voxel_physics_max,
+                    )
+                    .objects(
+                        BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR,
+                        BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR,
+                    );
+                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-3)));
+                    self.add_object(line_obj.set_z_offset(self.z_offset(-4)));
+                }
+            }
+
+            if self.state.show_bounding_box_physics {
+                if let Some((bb_physics_min, bb_physics_max)) =
+                    data.bb_physics_min.last().zip(data.bb_physics_max.last())
+                {
+                    let (mesh_obj, line_obj) =
+                        BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max).objects(
+                            BOUNDING_BOX_PHYSICS_MESH_COLOR,
+                            BOUNDING_BOX_PHYSICS_LINE_COLOR,
+                        );
                     self.add_object(mesh_obj.set_z_offset(self.z_offset(-2)));
                     self.add_object(line_obj.set_z_offset(self.z_offset(-3)));
                 }

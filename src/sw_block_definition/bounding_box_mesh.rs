@@ -7,7 +7,14 @@ pub struct BoundingBoxObjectBuilder {
 }
 
 impl BoundingBoxObjectBuilder {
-    pub fn new(voxel_min: impl Into<Vec3>, voxel_max: impl Into<Vec3>) -> Self {
+    pub fn new(corner_min: impl Into<Vec3>, corner_max: impl Into<Vec3>) -> Self {
+        Self {
+            corner_min: corner_min.into(),
+            corner_max: corner_max.into(),
+        }
+    }
+
+    pub fn from_voxel(voxel_min: impl Into<Vec3>, voxel_max: impl Into<Vec3>) -> Self {
         let corner_min = (voxel_min.into() - 0.5 * Vec3::ONE) * 0.25;
         let corner_max = (voxel_max.into() + 0.5 * Vec3::ONE) * 0.25;
         Self {
