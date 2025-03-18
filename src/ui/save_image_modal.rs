@@ -1,12 +1,12 @@
 use super::{paint_canvas_3d, BlockViewScene};
 use crate::{
-    gl_renderer::{OrbitCamera, SceneRenderer},
+    gl_renderer::{Camera, OrbitCamera, SceneRenderer},
     sw_block_definition::SwBlockDefinition,
 };
 use eframe::glow::Context;
 use egui::{vec2, Align, DragValue, Grid, Id, Layout, Modal, Sides, Slider};
 use egui_extras::{Size, StripBuilder};
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -184,12 +184,73 @@ impl SaveImageModal {
                 camera.set_perspective();
                 camera.set_fov_y(self.fov.to_radians());
             }
+
+            if self.camera_auto {
+                if let Some(data) = definition
+                    .as_mut()
+                    .and_then(|d| d.load_data().and_then(|d| d.ok()))
+                {
+                    let voxel_min: Option<Vec3> = data.voxel_min.last().map(|v| (*v).into());
+                    let voxel_max: Option<Vec3> = data.voxel_max.last().map(|v| (*v).into());
+                    let corner_min: Vec3 = (voxel_min.unwrap_or_default() - 0.5 * Vec3::ONE) * 0.25;
+                    let corner_max: Vec3 = (voxel_max.unwrap_or_default() + 0.5 * Vec3::ONE) * 0.25;
+                    let center = (corner_min + corner_max) * 0.5;
+
+                    let min_x = corner_min.x;
+                    let min_y = corner_min.y;
+                    let min_z = corner_min.z;
+                    let max_x = corner_max.x;
+                    let max_y = corner_max.y;
+                    let max_z = corner_max.z;
+                    let corners = [
+                        Vec3::new(min_x, min_y, min_z),
+                        Vec3::new(min_x, max_y, min_z),
+                        Vec3::new(min_x, max_y, max_z),
+                        Vec3::new(min_x, min_y, max_z),
+                        Vec3::new(max_x, min_y, min_z),
+                        Vec3::new(max_x, max_y, min_z),
+                        Vec3::new(max_x, max_y, max_z),
+                        Vec3::new(max_x, min_y, max_z),
+                    ];
+
+                    if self.is_orthographic {
+                        camera.center = Vec3::new(center.x, center.y, -center.z);
+
+                        let mat_vp = camera.mat_view_proj();
+                        let (screen_min_x, screen_min_y, screen_max_x, screen_max_y) =
+                            corners.iter().fold(
+                                (
+                                    f32::INFINITY,
+                                    f32::INFINITY,
+                                    f32::NEG_INFINITY,
+                                    f32::NEG_INFINITY,
+                                ),
+                                |(min_x, min_y, max_x, max_y), c| {
+                                    let s = mat_vp.mul_vec4(Vec4::new(c.x, c.y, -c.z, 1.0));
+                                    (
+                                        min_x.min(s.x),
+                                        min_y.min(s.y),
+                                        max_x.max(s.x),
+                                        max_y.max(s.y),
+                                    )
+                                },
+                            );
+
+                        let s = (-screen_min_x)
+                            .max(-screen_min_y)
+                            .max(screen_max_x)
+                            .max(screen_max_y);
+
+                        camera.direction *= s;
+                    }
+                }
+            }
         }
         if let Some(definition) = definition {
-            let data = definition.load_data();
+            let data = definition.load_data().and_then(|d| d.ok());
             let meshes = definition.load_meshes();
             self.scene
-                .set_orthographic(self.is_orthographic, data.and_then(|d| d.ok()), meshes);
+                .set_orthographic(self.is_orthographic, data, meshes);
         }
 
         if modal.should_close() {
@@ -248,11 +309,13 @@ impl SaveImageModal {
                 let mut distance = camera.direction.length();
                 if !self.camera_auto {
                     ui.label("Look at");
+                    let mut z = -camera.center.z;
                     ui.horizontal(|ui| {
                         ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
                         ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
-                        ui.add(DragValue::new(&mut camera.center.z).speed(0.01));
+                        ui.add(DragValue::new(&mut z).speed(0.01));
                     });
+                    camera.center.z = -z;
                     ui.end_row();
 
                     ui.label("Distance");
