@@ -215,9 +215,10 @@ impl SaveImageModal {
                         Vec3::new(max_x, min_y, max_z),
                     ];
 
-                    if self.is_orthographic {
-                        camera.center = Vec3::new(center.x, center.y, -center.z);
+                    camera.center = Vec3::new(center.x, center.y, -center.z);
 
+                    let s = if self.is_orthographic {
+                        // 平行投影
                         let mat_vp = camera.mat_view_proj();
                         let (screen_min_x, screen_min_y, screen_max_x, screen_max_y) =
                             corners.iter().fold(
@@ -242,8 +243,29 @@ impl SaveImageModal {
                             / ((self.width - 2 * self.margin) as f32 / self.width as f32);
                         let sy = (-screen_min_y).max(screen_max_y)
                             / ((self.height - 2 * self.margin) as f32 / self.height as f32);
-                        camera.direction *= sx.max(sy);
-                    }
+                        sx.max(sy)
+                    } else {
+                        // 透視投影
+                        // 中心をバウンディングボックスの中心にしているが、角度により片側に偏って見えてしまうので、できれば直す
+                        let view = camera.mat_view();
+                        let tan = (self.fov.to_radians() / 2.0).tan();
+                        let tan_x = (self.width - 2 * self.margin) as f32 / self.width as f32
+                            * tan
+                            * aspect_ratio;
+                        let tan_y =
+                            (self.height - 2 * self.margin) as f32 / self.height as f32 * tan;
+                        let len = camera.direction.length();
+                        corners.iter().fold(0.0, |s: f32, corner| {
+                            let view_point =
+                                view.transform_point3(Vec3::new(corner.x, corner.y, -corner.z));
+                            let dx = (view_point.x.abs() / tan_x) - (-view_point.z);
+                            let dy = (view_point.y.abs() / tan_y) - (-view_point.z);
+                            let sx = (len + dx) / len;
+                            let sy = (len + dy) / len;
+                            s.max(sx.max(sy))
+                        })
+                    };
+                    camera.direction *= s;
                 }
             }
         }
@@ -300,13 +322,9 @@ impl SaveImageModal {
                 ui.end_row();
             }
 
-            if self.is_orthographic {
-                ui.label("Camera position");
-                ui.checkbox(&mut self.camera_auto, "Auto");
-                ui.end_row();
-            } else {
-                self.camera_auto = false;
-            }
+            ui.label("Camera position");
+            ui.checkbox(&mut self.camera_auto, "Auto");
+            ui.end_row();
 
             if self.camera_auto {
                 ui.label("Margin");

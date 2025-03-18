@@ -1,11 +1,11 @@
 use egui::PointerButton;
-use glam::{Mat4, Quat, Vec3, Vec3Swizzles};
+use glam::{Affine3A, Mat4, Quat, Vec3, Vec3Swizzles};
 
 pub trait Camera: Default {
-    fn mat_view(&self) -> Mat4;
+    fn mat_view(&self) -> Affine3A;
     fn mat_proj(&self) -> Mat4;
     fn mat_view_proj(&self) -> Mat4 {
-        self.mat_proj().mul_mat4(&self.mat_view())
+        self.mat_proj().mul_mat4(&self.mat_view().into())
     }
     fn position(&self) -> Vec3;
 }
@@ -54,8 +54,8 @@ impl Default for OrbitCamera {
 }
 
 impl Camera for OrbitCamera {
-    fn mat_view(&self) -> Mat4 {
-        Mat4::look_at_rh(
+    fn mat_view(&self) -> Affine3A {
+        Affine3A::look_at_rh(
             self.center - self.direction,
             self.center,
             self.up.normalize(),
