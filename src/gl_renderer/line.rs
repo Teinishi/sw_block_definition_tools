@@ -19,7 +19,7 @@ impl Line {
         }
     }
 
-    pub fn single_color_lh(
+    pub fn single_stroke_lh(
         positions: Vec<Vec3>,
         color: Color4,
         line_width: f32,
@@ -34,6 +34,24 @@ impl Line {
                 ]
             })
             .collect();
+        Self::new(vertices, line_width)
+    }
+
+    pub fn single_color_lh(
+        positions: Vec<Vec3>,
+        strokes: Vec<&[usize]>,
+        color: Color4,
+        line_width: f32,
+    ) -> Self {
+        let mut vertices = Vec::new();
+        for stroke in strokes {
+            for i in 1..stroke.len() {
+                let p0 = stroke[i - 1];
+                let p1 = stroke[i];
+                vertices.push(LineVertex::from_vec3_lh(positions[p0], color));
+                vertices.push(LineVertex::from_vec3_lh(positions[p1], color));
+            }
+        }
         Self::new(vertices, line_width)
     }
 }

@@ -1,14 +1,40 @@
 use crate::{
     gl_renderer::{Color4, Line, Scene, SceneObject},
     sw_block_definition::{
-        Definition, SurfaceObjectBuilder, SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
+        BoundingBoxObjectBuilder, Definition, SurfaceObjectBuilder, SwBlockDefinitionMeshKey,
+        SwBlockDefinitionMeshes,
     },
 };
 use enum_map::EnumMap;
 use glam::Vec3;
 use std::{
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
+};
+
+const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
+    r: 0.1,
+    g: 0.5,
+    b: 0.8,
+    a: 0.3,
+};
+const BUOYANCY_SURFACE_LINE_COLOR: Color4 = Color4 {
+    r: 0.05,
+    g: 0.25,
+    b: 0.4,
+    a: 0.2,
+};
+const BOUNDING_BOX_VOXEL_MESH_COLOR: Color4 = Color4 {
+    r: 0.8,
+    g: 0.1,
+    b: 0.2,
+    a: 0.3,
+};
+const BOUNDING_BOX_VOXEL_LINE_COLOR: Color4 = Color4 {
+    r: 0.4,
+    g: 0.05,
+    b: 0.1,
+    a: 0.2,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -17,6 +43,7 @@ pub struct BlockViewState {
     pub show_surfaces: bool,
     pub show_surface_edges: bool,
     pub show_buoyancy_surfaces: bool,
+    pub show_bounding_box_voxel: bool,
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
 }
 
@@ -31,6 +58,7 @@ impl Default for BlockViewState {
             show_surfaces: true,
             show_surface_edges: true,
             show_buoyancy_surfaces: false,
+            show_bounding_box_voxel: false,
             show_mesh,
         }
     }
@@ -66,6 +94,7 @@ impl BlockViewScene {
             ui.checkbox(&mut state.show_surfaces, "Surfaces");
             ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
             ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
+            ui.checkbox(&mut state.show_bounding_box_voxel, "Bounding box (voxel)");
 
             if let Some(meshes) = meshes_c {
                 for (key, show) in state.show_mesh.iter_mut() {
@@ -91,12 +120,26 @@ impl BlockViewScene {
         self.scene.clone()
     }
 
+    fn use_scene<F: FnOnce(MutexGuard<'_, Scene>)>(&mut self, writer: F) {
+        if let Ok(scene) = self.scene.lock() {
+            writer(scene);
+        }
+    }
+
+    fn add_object(&mut self, object: SceneObject) {
+        self.use_scene(|mut scene| {
+            scene.add_object(object);
+        });
+    }
+
     pub fn update(
         &mut self,
         data: Option<Arc<Definition>>,
         meshes: Option<Rc<SwBlockDefinitionMeshes>>,
     ) {
-        self.scene.lock().unwrap().clear();
+        self.use_scene(|mut scene| {
+            scene.clear();
+        });
 
         if self.state.show_xyz_axes {
             for (direction, color) in [
@@ -104,18 +147,10 @@ impl BlockViewScene {
                 (Vec3::Y, Color4::GREEN),
                 (Vec3::Z, Color4::BLUE),
             ] {
-                self.scene
-                    .lock()
-                    .unwrap()
-                    .add_object(SceneObject::from_line(
-                        Line::single_color_lh(
-                            vec![Vec3::ZERO, 100.0 * direction],
-                            color,
-                            2.0,
-                            false,
-                        ),
-                        None,
-                    ));
+                self.add_object(SceneObject::from_line(
+                    Line::single_stroke_lh(vec![Vec3::ZERO, 100.0 * direction], color, 2.0, false),
+                    None,
+                ));
             }
         }
 
@@ -130,13 +165,10 @@ impl BlockViewScene {
                     )
                     .basic_objects(self.state.show_surfaces, self.state.show_surface_edges);
                     if let Some(obj) = mesh_obj {
-                        self.scene.lock().unwrap().add_object(obj);
+                        self.add_object(obj);
                     }
                     if let Some(obj) = line_obj {
-                        self.scene
-                            .lock()
-                            .unwrap()
-                            .add_object(obj.set_z_offset(self.z_offset(-1)));
+                        self.add_object(obj.set_z_offset(self.z_offset(-1)));
                     }
                 }
             }
@@ -150,20 +182,29 @@ impl BlockViewScene {
                             surface.orientation,
                             surface.rotation,
                         )
-                        .translucent_objects();
+                        .translucent_objects(
+                            BUOYANCY_SURFACE_MESH_COLOR,
+                            BUOYANCY_SURFACE_LINE_COLOR,
+                        );
                         if let Some(obj) = mesh_obj {
-                            self.scene
-                                .lock()
-                                .unwrap()
-                                .add_object(obj.set_z_offset(self.z_offset(-1)));
+                            self.add_object(obj.set_z_offset(self.z_offset(-1)));
                         }
                         if let Some(obj) = line_obj {
-                            self.scene
-                                .lock()
-                                .unwrap()
-                                .add_object(obj.set_z_offset(self.z_offset(-2)));
+                            self.add_object(obj.set_z_offset(self.z_offset(-2)));
                         }
                     }
+                }
+            }
+
+            if self.state.show_bounding_box_voxel {
+                if let Some((voxel_min, voxel_max)) =
+                    data.voxel_min.last().zip(data.voxel_max.last())
+                {
+                    let (mesh_obj, line_obj) =
+                        BoundingBoxObjectBuilder::new(*voxel_min, *voxel_max)
+                            .objects(BOUNDING_BOX_VOXEL_MESH_COLOR, BOUNDING_BOX_VOXEL_LINE_COLOR);
+                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-2)));
+                    self.add_object(line_obj.set_z_offset(self.z_offset(-3)));
                 }
             }
         }
@@ -175,10 +216,7 @@ impl BlockViewScene {
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     for m in mesh.as_meshes() {
-                        self.scene
-                            .lock()
-                            .unwrap()
-                            .add_object(SceneObject::from_mesh(m, None));
+                        self.add_object(SceneObject::from_mesh(m, None));
                     }
                 }
             }

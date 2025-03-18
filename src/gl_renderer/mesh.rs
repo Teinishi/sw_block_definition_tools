@@ -81,23 +81,24 @@ impl SceneObjectContent for Mesh {
 }
 
 impl Mesh {
-    pub fn signle_color_lh(
-        positions: Vec<Vec3>,
-        triangles: Vec<[usize; 3]>,
-        color: Color4,
-    ) -> Self {
-        Self::multiple_color_lh(positions, vec![(triangles, color)])
+    pub fn single_face_lh(positions: Vec<Vec3>, color: Color4) -> Self {
+        let polygon: Vec<usize> = (0..positions.len()).collect();
+        Self::single_color_lh(positions, vec![&polygon], color)
+    }
+
+    pub fn single_color_lh(positions: Vec<Vec3>, polygons: Vec<&[usize]>, color: Color4) -> Self {
+        Self::multiple_color_lh(positions, vec![(polygons, color)])
     }
 
     pub fn multiple_color_lh(
         positions: Vec<Vec3>,
-        triangles_color: Vec<(Vec<[usize; 3]>, Color4)>,
+        faces_colors: Vec<(Vec<&[usize]>, Color4)>,
     ) -> Self {
         let mut vertices = Vec::new();
         let mut triangles = Vec::new();
 
-        for (trgs, color) in triangles_color {
-            for indices in trgs {
+        for (polygons, color) in faces_colors {
+            for indices in polygons_to_triangles(polygons) {
                 let i0 = vertices.len();
 
                 let p0 = positions[indices[0]];
@@ -159,4 +160,17 @@ pub struct MeshVertex {
     pub position: Vec3,
     pub color: Color4,
     pub normal: Vec3,
+}
+
+fn polygons_to_triangles(polygons: Vec<&[usize]>) -> Vec<[usize; 3]> {
+    let mut triangles = Vec::new();
+    for polygon in polygons {
+        let p0 = polygon[0];
+        for i in 2..polygon.len() {
+            let p1 = polygon[i - 1];
+            let p2 = polygon[i];
+            triangles.push([p0, p1, p2]);
+        }
+    }
+    triangles
 }

@@ -21,5 +21,7 @@ pub use schema_voxels::*;
 mod schema_elements;
 pub use schema_elements::*;
 mod surface_mesh;
-mod sw_mesh;
 pub use surface_mesh::SurfaceObjectBuilder;
+mod bounding_box_mesh;
+pub use bounding_box_mesh::BoundingBoxObjectBuilder;
+mod sw_mesh;

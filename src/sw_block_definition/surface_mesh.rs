@@ -93,11 +93,7 @@ impl SurfaceObjectBuilder {
 
         if let Some(vertices) = &self.single_color_vertices {
             if show_surface {
-                mesh = Some(Mesh::signle_color_lh(
-                    vertices.clone(),
-                    (1..(vertices.len() - 1)).map(|i| [0, i, i + 1]).collect(),
-                    Color4::WHITE,
-                ));
+                mesh = Some(Mesh::single_face_lh(vertices.clone(), Color4::WHITE));
             }
             if show_edge {
                 line = Some(vertices.to_vec());
@@ -125,27 +121,18 @@ impl SurfaceObjectBuilder {
             mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
             line.map(|positions| {
                 SceneObject::from_line(
-                    Line::single_color_lh(positions, Color4::BLACK, 1.0, true),
+                    Line::single_stroke_lh(positions, Color4::BLACK, 1.0, true),
                     Some(self.transform_matrix),
                 )
             }),
         )
     }
 
-    pub fn translucent_objects(&self) -> (Option<SceneObject>, Option<SceneObject>) {
-        let color1 = Color4 {
-            r: 0.1,
-            g: 0.5,
-            b: 0.8,
-            a: 0.3,
-        };
-        let color2 = Color4 {
-            r: 0.05,
-            g: 0.25,
-            b: 0.4,
-            a: 0.2,
-        };
-
+    pub fn translucent_objects(
+        &self,
+        mesh_color: Color4,
+        line_color: Color4,
+    ) -> (Option<SceneObject>, Option<SceneObject>) {
         let vertices = self
             .single_color_vertices
             .clone()
@@ -155,21 +142,17 @@ impl SurfaceObjectBuilder {
             });
 
         let mesh = vertices.as_ref().map(|v| {
-            let mut triangles: Vec<[usize; 3]> =
-                (1..(v.len() - 1)).map(|i| [0, i, i + 1]).collect();
-            let mut reversed: Vec<[usize; 3]> = triangles
-                .iter()
-                .map(|indices| [indices[2], indices[1], indices[0]])
-                .collect();
-            triangles.append(&mut reversed);
-            Mesh::signle_color_lh(v.clone(), triangles, color1).flat()
+            let polygons: Vec<usize> = (0..v.len()).collect();
+            let mut reversed: Vec<usize> = polygons.clone();
+            reversed.reverse();
+            Mesh::single_color_lh(v.clone(), vec![&polygons, &reversed], mesh_color).flat()
         });
 
         (
             mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
             vertices.map(|positions| {
                 SceneObject::from_line(
-                    Line::single_color_lh(positions, color2, 1.0, true),
+                    Line::single_stroke_lh(positions, line_color, 1.0, true),
                     Some(self.transform_matrix),
                 )
                 .always_top()
@@ -600,7 +583,7 @@ fn dot_surface(shape: i32, color: Color4) -> Option<Mesh> {
         }
     }
 
-    let triangles_color = vec![
+    let triangles = [
         [0, 1, 4],
         [1, 5, 4],
         [1, 2, 5],
@@ -610,13 +593,16 @@ fn dot_surface(shape: i32, color: Color4) -> Option<Mesh> {
         [3, 0, 7],
         [0, 4, 7],
     ];
-    let triangles_grey = vec![[4, 5, 6], [4, 6, 7]];
+    let triangles_grey = [[4, 5, 6], [4, 6, 7]];
 
     Some(Mesh::multiple_color_lh(
         vertices,
         vec![
-            (triangles_color, color),
-            (triangles_grey, SURFACE_COLOR_GREY),
+            (triangles.iter().map(|t| t.as_slice()).collect(), color),
+            (
+                triangles_grey.iter().map(|t| t.as_slice()).collect(),
+                SURFACE_COLOR_GREY,
+            ),
         ],
     ))
 }
@@ -640,19 +626,22 @@ fn regular_polygon_yz(
         }
     }
 
-    let triangles: Vec<[usize; 3]> = if inner_radius.is_none() {
-        (1..(n - 1)).map(|i| [0, i, i + 1]).collect()
+    if inner_radius.is_none() {
+        Mesh::single_face_lh(vertices, color)
     } else {
-        (0..n)
-            .flat_map(|i| {
+        let polygons: Vec<Vec<usize>> = (0..n)
+            .map(|i| {
                 let i0 = 2 * i;
                 let i1 = i0 + 1;
                 let i2 = (i0 + 2) % (2 * n);
                 let i3 = i2 + 1;
-                [[i0, i2, i3], [i0, i3, i1]]
+                vec![i0, i2, i3, i1]
             })
-            .collect()
-    };
-
-    Mesh::signle_color_lh(vertices, triangles, color)
+            .collect();
+        Mesh::single_color_lh(
+            vertices,
+            polygons.iter().map(|p| p.as_slice()).collect(),
+            color,
+        )
+    }
 }

@@ -74,6 +74,16 @@ macro_rules! define_vec3_int {
             }
         }
 
+        impl From<$name> for glam::Vec3 {
+            fn from(value: $name) -> glam::Vec3 {
+                glam::Vec3::new(
+                    value.x.unwrap_or_default() as f32,
+                    value.y.unwrap_or_default() as f32,
+                    value.z.unwrap_or_default() as f32,
+                )
+            }
+        }
+
         paste! {
             impl GetAttributeValueRoot for [<$name Attribute>] {
                 fn get_value_root(&self, d: &Definition) -> Vec<AttributeValue> {
@@ -99,6 +109,16 @@ macro_rules! define_vec3_float {
         impl From<$name> for AttributeValue {
             fn from(value: $name) -> AttributeValue {
                 Self::VecF32(value.into())
+            }
+        }
+
+        impl From<$name> for glam::Vec3 {
+            fn from(value: $name) -> glam::Vec3 {
+                glam::Vec3::new(
+                    value.x.unwrap_or_default().into(),
+                    value.y.unwrap_or_default().into(),
+                    value.z.unwrap_or_default().into(),
+                )
             }
         }
 
