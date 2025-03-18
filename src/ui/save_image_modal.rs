@@ -18,6 +18,7 @@ pub struct SaveImageModal {
     is_orthographic: bool,
     fov: f32,
     camera_auto: bool,
+    margin: i32,
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
@@ -45,6 +46,7 @@ impl Default for SaveImageModal {
             is_orthographic: false,
             fov: 60.0,
             camera_auto: false,
+            margin: 0,
             gl: None,
             scene: Default::default(),
             camera,
@@ -236,12 +238,11 @@ impl SaveImageModal {
                                 },
                             );
 
-                        let s = (-screen_min_x)
-                            .max(-screen_min_y)
-                            .max(screen_max_x)
-                            .max(screen_max_y);
-
-                        camera.direction *= s;
+                        let sx = (-screen_min_x).max(screen_max_x)
+                            / ((self.width - 2 * self.margin) as f32 / self.width as f32);
+                        let sy = (-screen_min_y).max(screen_max_y)
+                            / ((self.height - 2 * self.margin) as f32 / self.height as f32);
+                        camera.direction *= sx.max(sy);
                     }
                 }
             }
@@ -299,9 +300,25 @@ impl SaveImageModal {
                 ui.end_row();
             }
 
-            ui.label("Camera position");
-            ui.checkbox(&mut self.camera_auto, "Auto");
-            ui.end_row();
+            if self.is_orthographic {
+                ui.label("Camera position");
+                ui.checkbox(&mut self.camera_auto, "Auto");
+                ui.end_row();
+            } else {
+                self.camera_auto = false;
+            }
+
+            if self.camera_auto {
+                ui.label("Margin");
+                ui.add(
+                    Slider::new(
+                        &mut self.margin,
+                        0..=((self.width.min(self.height) - 10) / 2),
+                    )
+                    .suffix("px"),
+                );
+                ui.end_row();
+            }
 
             if let Ok(mut camera) = self.camera.lock() {
                 let mut direction_changed = false;
