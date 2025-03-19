@@ -112,12 +112,10 @@ impl BlockViewScene {
     pub fn state_ui(
         &mut self,
         ui: &mut egui::Ui,
-        data: Option<Arc<Definition>>,
-        meshes: Option<Rc<SwBlockDefinitionMeshes>>,
-        force_update: bool,
-    ) {
+        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
+    ) -> bool {
         let meshes_c = meshes.clone();
-        let is_changed = self.state_mut(|state| {
+        self.state_mut(|state| {
             ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
             ui.checkbox(&mut state.show_surfaces, "Surfaces");
             ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
@@ -146,10 +144,7 @@ impl BlockViewScene {
                     }
                 }
             }
-        });
-        if force_update || is_changed {
-            self.update(data, meshes);
-        }
+        })
     }
 
     pub fn scene(&self) -> Arc<Mutex<Scene>> {
@@ -170,8 +165,8 @@ impl BlockViewScene {
 
     pub fn update(
         &mut self,
-        data: Option<Arc<Definition>>,
-        meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+        data: &Option<Arc<Definition>>,
+        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
     ) {
         self.use_scene(|mut scene| {
             scene.clear();
@@ -295,8 +290,8 @@ impl BlockViewScene {
     pub fn set_orthographic(
         &mut self,
         is_orthographic: bool,
-        data: Option<Arc<Definition>>,
-        meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+        data: &Option<Arc<Definition>>,
+        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
     ) {
         if self.is_orthographic != is_orthographic {
             self.is_orthographic = is_orthographic;

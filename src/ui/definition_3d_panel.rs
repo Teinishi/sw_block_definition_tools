@@ -54,7 +54,6 @@ impl Definition3dPanel {
         self.save_image_modal.destroy(gl);
     }
 
-    #[allow(unused_variables)]
     pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State, frame: &eframe::Frame) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
@@ -78,9 +77,13 @@ impl Definition3dPanel {
         };
 
         let mesh_loaded = meshes.is_some();
-        self.scene
-            .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
+        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
+
+        let scene_state_changed = self.scene.state_ui(ui, &meshes);
+        if mesh_loaded_now || state.selected_definition_changed() || scene_state_changed {
+            self.scene.update(&data, &meshes);
+        }
 
         ui.separator();
 

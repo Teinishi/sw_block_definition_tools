@@ -51,13 +51,12 @@ pub struct State {
     rom_path: Option<PathBuf>,
     definitions: Vec<SwBlockDefinition>,
     selected_definition_index: Option<usize>,
+    selected_definition_changed: bool,
     show_all: bool,
     hide_default: bool,
     audio_volume: f32,
     #[serde(skip)]
     playing_audio: Option<PlayingAudio>,
-    #[serde(skip)]
-    changed_3d: Option<bool>,
 }
 
 impl Default for State {
@@ -66,11 +65,11 @@ impl Default for State {
             rom_path: None,
             definitions: Vec::new(),
             selected_definition_index: None,
+            selected_definition_changed: false,
             show_all: false,
             hide_default: false,
             audio_volume: 0.5,
             playing_audio: None,
-            changed_3d: None,
         }
     }
 }
@@ -78,22 +77,13 @@ impl Default for State {
 impl State {
     pub fn update(&mut self, ctx: &egui::Context) {
         // 描画フレームごとに1回呼ぶ
-        self.changed_3d = Some(false);
-
+        self.selected_definition_changed = false;
         if let Some((_, _, rx_done)) = &self.playing_audio {
             ctx.request_repaint();
             if rx_done.try_recv().is_ok() {
                 self.set_playing_audio(None);
             }
         }
-    }
-
-    fn changed_3d(&mut self) {
-        self.changed_3d = Some(true);
-    }
-
-    pub fn is_changed_3d(&self) -> bool {
-        self.changed_3d.is_none() || self.changed_3d.unwrap()
     }
 
     pub fn rom_path(&self) -> &Option<PathBuf> {
@@ -110,13 +100,13 @@ impl State {
 
     pub fn set_selected_definition_index(&mut self, value: Option<usize>) {
         if self.selected_definition_index != value {
+            self.selected_definition_changed = true;
             self.selected_definition_index = value;
-            self.changed_3d();
         }
     }
 
-    pub fn definition_index(&self, definition: &SwBlockDefinition) -> Option<usize> {
-        self.definitions.iter().position(|d| d == definition)
+    pub fn selected_definition_changed(&self) -> bool {
+        self.selected_definition_changed
     }
 
     pub fn selected_definition(&mut self) -> Option<&mut SwBlockDefinition> {
@@ -158,7 +148,6 @@ impl State {
                     .collect();
                 self.selected_definition_index = None;
                 self.rom_path = Some(rom_path);
-                self.changed_3d();
                 Ok(())
             }
             Err(err) => {
@@ -187,8 +176,8 @@ impl State {
     }
 }
 
-getter_setter!(State, show_all, bool, changed_3d);
-getter_setter!(State, hide_default, bool, changed_3d);
+getter_setter!(State, show_all, bool);
+getter_setter!(State, hide_default, bool);
 getter_setter!(State, audio_volume, f32);
 
 impl State {

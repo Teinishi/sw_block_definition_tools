@@ -88,9 +88,9 @@ impl SaveImageModal {
 
     pub fn update_scene(&mut self, definition: Option<&mut SwBlockDefinition>) {
         if let Some(definition) = definition {
-            let data = definition.load_data();
+            let data = definition.load_data().and_then(|d| d.ok());
             let meshes = definition.load_meshes();
-            self.scene.update(data.and_then(|d| d.ok()), meshes);
+            self.scene.update(&data, &meshes);
         }
     }
 
@@ -273,7 +273,7 @@ impl SaveImageModal {
             let data = definition.load_data().and_then(|d| d.ok());
             let meshes = definition.load_meshes();
             self.scene
-                .set_orthographic(self.is_orthographic, data, meshes);
+                .set_orthographic(self.is_orthographic, &data, &meshes);
         }
 
         if modal.should_close() {
@@ -408,9 +408,13 @@ impl SaveImageModal {
         };
 
         let mesh_loaded = meshes.is_some();
-        self.scene
-            .state_ui(ui, data, meshes, mesh_loaded != self.mesh_loaded);
+        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
+
+        let scene_state_changed = self.scene.state_ui(ui, &meshes);
+        if mesh_loaded_now || scene_state_changed {
+            self.scene.update(&data, &meshes);
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
