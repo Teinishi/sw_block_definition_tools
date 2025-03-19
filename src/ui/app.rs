@@ -1,11 +1,12 @@
 use super::{
     AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
-    DefinitionSelectPanel, State,
+    DefinitionSelectPanel, DefinitionsStore, State,
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct MainApp {
     state: State,
+    definitions_store: DefinitionsStore,
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Option<Definition3dPanel>,
@@ -51,6 +52,10 @@ impl MainApp {
         if let Some(storage) = cc.storage {
             let app: Option<Self> = eframe::get_value(storage, eframe::APP_KEY);
             if let Some(mut app) = app {
+                let _ = app.definitions_store.open_rom_directory(None);
+                if let Some(rom_path) = app.definitions_store.rom_path() {
+                    app.state.set_rom_path(rom_path.clone());
+                }
                 if let Some(definition_3d_panel) = &mut app.definition_3d_panel {
                     definition_3d_panel.creation_context(cc);
                 }
@@ -58,11 +63,16 @@ impl MainApp {
             }
         }
 
+        let mut definition_select_panel = DefinitionSelectPanel::default();
+        let definition_3d_panel =
+            Definition3dPanel::new(cc, None, definition_select_panel.selector_mut());
+
         Self {
             state: State::default(),
-            definition_select_panel: DefinitionSelectPanel::default(),
+            definitions_store: DefinitionsStore::default(),
+            definition_select_panel,
             definition_detail_panel: DefinitionDetailPanel::default(),
-            definition_3d_panel: Definition3dPanel::new(cc, None),
+            definition_3d_panel,
             bottom_panel: BottomPanel::default(),
             window_id: 0,
             attribute_detail_windows: Vec::new(),
@@ -90,7 +100,12 @@ impl eframe::App for MainApp {
     #[allow(unused_variables)]
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
         for window in &mut self.attribute_detail_windows {
-            window.ui(ctx, &mut self.state);
+            window.ui(
+                ctx,
+                &mut self.state,
+                &mut self.definitions_store,
+                self.definition_select_panel.selector_mut(),
+            );
         }
         self.attribute_detail_windows.retain(|w| w.is_open());
 
@@ -132,7 +147,8 @@ impl eframe::App for MainApp {
             .default_width(200.0)
             .width_range(80.0..=500.0)
             .show(ctx, |ui| {
-                self.definition_select_panel.ui(ui, &mut self.state);
+                self.definition_select_panel
+                    .ui(ui, &mut self.definitions_store);
             });
 
         egui::SidePanel::right("right_panel")
@@ -143,7 +159,11 @@ impl eframe::App for MainApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
                     if let Some(definition_3d_panel) = &mut self.definition_3d_panel {
-                        definition_3d_panel.ui(ui, &mut self.state, frame);
+                        definition_3d_panel.ui(
+                            ui,
+                            frame,
+                            self.definition_select_panel.selector_mut(),
+                        );
                     }
                     ui.add_space(4.0);
                 });
@@ -161,10 +181,15 @@ impl eframe::App for MainApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                if let Some(w) = self.definition_detail_panel.ui(ui, &mut self.state) {
-                    self.add_attribute_detail_window(w);
+                if let Some(definition) = self.definition_select_panel.selected_definition() {
+                    let new_window =
+                        self.definition_detail_panel
+                            .ui(ui, &mut self.state, definition);
+                    if let Some(w) = new_window {
+                        self.add_attribute_detail_window(w);
+                    }
+                    ui.add_space(10.0);
                 }
-                ui.add_space(10.0);
             });
         });
 
@@ -197,8 +222,13 @@ impl MainApp {
         if let Ok(program_files) = std::env::var("ProgramFiles(x86)") {
             dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
         }
-        if let Some(pathbuf) = dialog.pick_folder() {
-            let _ = self.state.open_rom_directory(pathbuf);
+        if let Some(rom_path) = dialog.pick_folder() {
+            // TODO: ここでエラー出たら拾って表示
+            let _ = self
+                .definitions_store
+                .open_rom_directory(Some(rom_path.clone()));
+            self.state.set_rom_path(rom_path);
+            //let _ = self.state.open_rom_directory(pathbuf);
         }
     }
 }

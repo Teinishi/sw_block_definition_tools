@@ -3,11 +3,12 @@ use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
     CouplingAttribute, DefinitionAttribute, GetAttributeValue, IsDefault,
     JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute, RewardPropertiesAttribute,
-    SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute,
+    SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute, SwBlockDefinition,
     TooltipPropertiesAttribute, Voxel, VoxelAttribute,
 };
 use egui::{Align, Button, CollapsingHeader, Layout, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
+use std::{cell::RefCell, rc::Rc};
 use strum::{EnumCount, VariantArray};
 
 struct AttributeFilter {
@@ -33,16 +34,16 @@ impl AttributeFilter {
 pub struct DefinitionDetailPanel {}
 
 impl DefinitionDetailPanel {
-    pub fn ui(&mut self, ui: &mut Ui, state: &mut State) -> Option<AttributeDetailWindow> {
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        state: &mut State,
+        definition: Rc<RefCell<SwBlockDefinition>>,
+    ) -> Option<AttributeDetailWindow> {
         let attribute_filter = AttributeFilter::from_state(state);
 
-        let definition = state.selected_definition();
-        definition.as_ref()?;
-        let definition = definition.unwrap();
-
-        let filename = definition.filename();
-
-        if let Some(data) = definition.load_data() {
+        let filename = definition.borrow().filename();
+        if let Some(data) = definition.borrow_mut().load_data() {
             if let Err(err) = data {
                 ui.collapsing("Error", |ui| {
                     ui.label(err.to_string());
@@ -62,7 +63,7 @@ impl DefinitionDetailPanel {
                 {
                     ui.add_space(10.0);
                     if ui.button("Open").clicked() {
-                        let _ = open::that(definition.path());
+                        let _ = open::that(definition.borrow().path());
                     }
                 }
             });

@@ -1,4 +1,7 @@
-use super::{paint_canvas_3d, BlockViewScene, SaveImageModal, State};
+use super::{
+    definitions_store::DefinitionSelect, paint_canvas_3d, BlockViewScene, DefinitionSingleSelect,
+    SaveImageModal,
+};
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
@@ -14,12 +17,14 @@ pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
     mesh_loaded: bool,
+    tracker_id: u32,
 }
 
 impl Definition3dPanel {
     pub fn new<'a>(
         cc: &'a eframe::CreationContext<'a>,
         camera: Option<OrbitCamera>,
+        selector: &mut DefinitionSingleSelect,
     ) -> Option<Self> {
         let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
@@ -34,6 +39,7 @@ impl Definition3dPanel {
             camera,
             renderer: None,
             mesh_loaded: false,
+            tracker_id: selector.register_tracker(),
         };
         Self::creation_context(&mut instance, cc);
         Some(instance)
@@ -54,7 +60,12 @@ impl Definition3dPanel {
         self.save_image_modal.destroy(gl);
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, state: &mut State, frame: &eframe::Frame) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        frame: &eframe::Frame,
+        selector: &mut DefinitionSingleSelect,
+    ) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
             .inner_margin(0.0)
@@ -67,11 +78,8 @@ impl Definition3dPanel {
                 }
             });
 
-        let (data, meshes) = if let Some(definition) = state.selected_definition() {
-            (
-                definition.load_data().and_then(|d| d.ok()),
-                definition.load_meshes(),
-            )
+        let (data, meshes) = if let Some(definition) = selector.selected() {
+            definition.borrow_mut().load_data_meshes()
         } else {
             (None, None)
         };
@@ -81,17 +89,19 @@ impl Definition3dPanel {
         self.mesh_loaded = mesh_loaded;
 
         let scene_state_changed = self.scene.state_ui(ui, &meshes);
-        if mesh_loaded_now || state.selected_definition_changed() || scene_state_changed {
+        if mesh_loaded_now
+            || selector.check_update(self.tracker_id).unwrap_or(false)
+            || scene_state_changed
+        {
             self.scene.update(&data, &meshes);
         }
 
         ui.separator();
 
         if ui.button("Save image").clicked() {
-            self.save_image_modal.open(state.selected_definition());
+            self.save_image_modal.open(selector.selected());
         }
 
-        self.save_image_modal
-            .ui(ui, frame, &mut state.selected_definition());
+        self.save_image_modal.ui(ui, frame, selector.selected());
     }
 }

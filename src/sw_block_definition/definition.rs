@@ -15,7 +15,6 @@ type LoadDataResult = Result<Definition, SwBlockDefinitionDataError>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SwBlockDefinition {
-    search_result: Option<bool>,
     rom_path: PathBuf,
     path: PathBuf,
     filename: String,
@@ -40,7 +39,6 @@ impl SwBlockDefinition {
         let pathbuf = path.as_ref().to_path_buf();
         let filename = pathbuf.file_name()?.to_os_string().into_string().ok()?;
         Some(Self {
-            search_result: None,
             rom_path: rom_path.as_ref().to_path_buf(),
             path: pathbuf,
             filename,
@@ -107,38 +105,24 @@ impl SwBlockDefinition {
         }
     }
 
-    pub fn clear_search(&mut self) {
-        self.search_result = None;
+    pub fn load_data_meshes(
+        &mut self,
+    ) -> (Option<Arc<Definition>>, Option<Rc<SwBlockDefinitionMeshes>>) {
+        (self.load_data().and_then(|d| d.ok()), self.load_meshes())
     }
 
-    pub fn search(&mut self, search_text: &str) {
-        if self.search_result.is_some() {
-            return;
-        }
-        self.search_result = self.get_search(search_text);
-    }
-
-    fn get_search(&mut self, search_text: &str) -> Option<bool> {
+    pub fn search(&mut self, search_text: &str) -> Option<bool> {
         if self.filename.contains(search_text) {
             return Some(true);
         }
         if let Ok(data) = self.load_data()? {
-            if let Some(name) = &data.name {
-                if name.contains(search_text) {
-                    return Some(true);
-                }
-            }
-            if let Some(tags) = &data.tags {
-                if tags.contains(search_text) {
+            for field in [&data.name, &data.tags].into_iter().flatten() {
+                if field.contains(search_text) {
                     return Some(true);
                 }
             }
         }
         Some(false)
-    }
-
-    pub fn search_result(&self) -> Option<bool> {
-        self.search_result
     }
 
     fn spawn_load_data(&mut self) {

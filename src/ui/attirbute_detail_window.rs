@@ -1,16 +1,13 @@
-use super::{ui_attribute_value, State};
-use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault, SwBlockDefinition,
+use super::{
+    ui_attribute_value, AttributeValueContainer, DefinitionSelect, DefinitionsStore, State,
+    WeakDefinitionPointer,
 };
+use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
 use std::collections::{BTreeMap, BTreeSet};
 
 const DEFAULT_ROW_HEIGHT: f32 = 18.0;
-
-type DefinitionValueItem<'a> = (usize, &'a SwBlockDefinition, AttributeValue);
-type DefinitionMap = BTreeMap<usize, (String, BTreeSet<AttributeValue>)>;
-type ValueMap = BTreeMap<AttributeValue, BTreeMap<usize, String>>;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 enum AttributeDetailTabs {
@@ -32,9 +29,7 @@ pub struct AttributeDetailWindow {
     #[serde(skip)]
     prev_loading_count: i32,
     #[serde(skip)]
-    definition_map: Option<DefinitionMap>,
-    #[serde(skip)]
-    value_map: Option<ValueMap>,
+    value_container: Option<AttributeValueContainer>,
 }
 
 impl AttributeDetailWindow {
@@ -48,8 +43,7 @@ impl AttributeDetailWindow {
             values_table_heights: Vec::new(),
             changed: false,
             prev_loading_count: 0,
-            definition_map: None,
-            value_map: None,
+            value_container: None,
         }
     }
 
@@ -61,26 +55,25 @@ impl AttributeDetailWindow {
         self.open
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, state: &mut State) {
+    pub fn ui(
+        &mut self,
+        ctx: &egui::Context,
+        state: &mut State,
+        definitions_store: &mut DefinitionsStore,
+        selector: &mut impl DefinitionSelect,
+    ) {
         if let Some(id) = self.id {
-            let loading_count = state.load_all_definitions();
+            let loading_count = definitions_store.load_all_definitions();
             if loading_count != self.prev_loading_count {
                 self.changed = true;
                 self.prev_loading_count = loading_count;
             }
-            if self.changed || (self.definition_map.is_none() || self.value_map.is_none()) {
-                let mut definition_values = state.get_attribute_all_definitions(&self.specifier);
-                if self.hide_default {
-                    definition_values.retain(|(_, _, v)| !v.is_default());
-                }
-                match self.tab {
-                    AttributeDetailTabs::Definitions => {
-                        self.definition_map = Some(definition_map(&definition_values));
-                    }
-                    AttributeDetailTabs::Values => {
-                        self.value_map = Some(value_map(&definition_values));
-                    }
-                }
+            if self.changed || self.value_container.is_none() {
+                self.value_container = Some(AttributeValueContainer::new(
+                    definitions_store.definitions(),
+                    &self.specifier,
+                    self.hide_default,
+                ));
                 self.changed = false;
             }
 
@@ -104,7 +97,7 @@ impl AttributeDetailWindow {
                         .show_inside(ui, |_| {});
 
                     CentralPanel::default().show_inside(ui, |ui| {
-                        self.ui_central_panel(ui, state);
+                        self.ui_central_panel(ui, state, selector);
                     });
                 });
             self.open = open;
@@ -130,18 +123,19 @@ impl AttributeDetailWindow {
         });
     }
 
-    fn ui_central_panel(&mut self, ui: &mut egui::Ui, state: &mut State) {
-        ScrollArea::vertical().show(ui, |ui| {
-            let mut selected_definition_index = *state.selected_definition_index();
-            match self.tab {
-                AttributeDetailTabs::Definitions => {
-                    self.ui_definitions_table(ui, state, &mut selected_definition_index);
-                }
-                AttributeDetailTabs::Values => {
-                    self.ui_values_table(ui, state, &mut selected_definition_index)
-                }
+    fn ui_central_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        state: &mut State,
+        selector: &mut impl DefinitionSelect,
+    ) {
+        ScrollArea::vertical().show(ui, |ui| match self.tab {
+            AttributeDetailTabs::Definitions => {
+                self.ui_definitions_table(ui, state, selector);
             }
-            state.set_selected_definition_index(selected_definition_index);
+            AttributeDetailTabs::Values => {
+                self.ui_values_table(ui, state, selector);
+            }
         });
     }
 
@@ -149,50 +143,54 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selected_definition_index: &mut Option<usize>,
+        selector: &mut impl DefinitionSelect,
     ) {
-        if let Some(definition_map) = &self.definition_map {
+        if let Some(definition_map) = self.value_container.as_ref().map(|c| c.definition_map()) {
             TableBuilder::new(ui)
                 .column(Column::exact(250.0))
                 .column(Column::remainder())
                 .striped(true)
                 .body(|body| {
+                    let entries: Vec<(
+                        &String,
+                        &(WeakDefinitionPointer, BTreeSet<AttributeValue>),
+                    )> = definition_map.iter().collect();
                     body.rows(DEFAULT_ROW_HEIGHT, definition_map.len(), |mut row| {
-                        if let Some((i, (filename, values))) =
-                            definition_map.iter().nth(row.index())
-                        {
-                            let i = *i;
+                        let (filename, (definition, values)) = entries[row.index()];
+                        let checked = definition
+                            .upgrade()
+                            .map(|d| selector.is_selected(&d))
+                            .unwrap_or(false);
 
-                            let checked = Some(i) == *selected_definition_index;
-
-                            row.col(|ui| {
-                                let label = ui
-                                    .selectable_label(checked, filename.clone())
+                        row.col(|ui| {
+                            let label =
+                                ui.selectable_label(checked, filename.clone())
                                     .on_hover_ui(|ui| {
                                         ui.label(filename);
                                     });
-                                if label.clicked() {
-                                    *selected_definition_index = Some(i);
+                            if label.clicked() {
+                                if let Some(d) = definition.upgrade() {
+                                    selector.select(&d);
+                                }
+                            }
+                        });
+                        row.col(|ui| {
+                            ui.horizontal(|ui| {
+                                for (i, value) in values.iter().enumerate() {
+                                    if i != 0 {
+                                        ui.add_space(8.0);
+                                    }
+                                    ui_attribute_value(
+                                        ui,
+                                        state,
+                                        &self.specifier.get_type(),
+                                        Some(value),
+                                        false,
+                                        None,
+                                    );
                                 }
                             });
-                            row.col(|ui| {
-                                ui.horizontal(|ui| {
-                                    for (i, value) in values.iter().enumerate() {
-                                        if i != 0 {
-                                            ui.add_space(8.0);
-                                        }
-                                        ui_attribute_value(
-                                            ui,
-                                            state,
-                                            &self.specifier.get_type(),
-                                            Some(value),
-                                            false,
-                                            None,
-                                        );
-                                    }
-                                });
-                            });
-                        }
+                        });
                     });
                 });
         }
@@ -202,45 +200,44 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selected_definition_index: &mut Option<usize>,
+        selector: &mut impl DefinitionSelect,
     ) {
-        if let Some(value_map) = &self.value_map {
+        if let Some(value_map) = self.value_container.as_ref().map(|c| c.value_map()) {
             TableBuilder::new(ui)
                 .column(Column::exact(250.0))
                 .column(Column::remainder())
                 .striped(true)
                 .body(|body| {
-                    let keys: Vec<AttributeValue> = value_map.keys().cloned().collect();
+                    let entries: Vec<(&AttributeValue, &BTreeMap<String, WeakDefinitionPointer>)> =
+                        value_map.iter().collect();
                     self.values_table_heights
-                        .resize(keys.len(), DEFAULT_ROW_HEIGHT);
+                        .resize(entries.len(), DEFAULT_ROW_HEIGHT);
 
                     body.heterogeneous_rows(
                         self.values_table_heights.clone().into_iter(),
                         |mut row| {
                             let row_index = row.index();
-                            let key = &keys[row_index];
-                            let definitions = value_map.get(key).unwrap();
+                            let (value, definitions) = entries[row_index];
 
                             row.col(|ui| {
                                 let mut rect;
                                 if definitions.len() == 1 {
-                                    let (i, filename) = definitions.iter().next().unwrap();
-                                    let checked = Some(*i) == *selected_definition_index;
+                                    let (filename, definition) = definitions.iter().next().unwrap();
+                                    let checked = selector.is_selected_weak(definition);
                                     let response = ui.selectable_label(checked, filename);
                                     rect = response.rect;
                                     if response.clicked() {
-                                        *selected_definition_index = Some(*i);
+                                        selector.select_weak(definition);
                                     }
                                 } else {
                                     let collapsing_response = ui.collapsing(
                                         format!("{} definitions", definitions.len()),
                                         |ui| {
-                                            for (i, filename) in definitions {
-                                                let checked =
-                                                    Some(*i) == *selected_definition_index;
+                                            for (filename, definition) in definitions {
+                                                let checked = selector.is_selected_weak(definition);
                                                 if ui.selectable_label(checked, filename).clicked()
                                                 {
-                                                    *selected_definition_index = Some(*i);
+                                                    selector.select_weak(definition);
                                                 }
                                             }
                                         },
@@ -264,7 +261,7 @@ impl AttributeDetailWindow {
                                     ui,
                                     state,
                                     &self.specifier.get_type(),
-                                    Some(key),
+                                    Some(value),
                                     false,
                                     None,
                                 );
@@ -274,30 +271,4 @@ impl AttributeDetailWindow {
                 });
         }
     }
-}
-
-fn definition_map(definition_values: &Vec<DefinitionValueItem<'_>>) -> DefinitionMap {
-    let mut map: DefinitionMap = BTreeMap::new();
-    for (i, definition, value) in definition_values {
-        if let Some(entry) = map.get_mut(i) {
-            entry.1.insert(value.clone());
-        } else {
-            map.insert(*i, (definition.filename(), BTreeSet::from([value.clone()])));
-        }
-    }
-    map
-}
-
-fn value_map(definition_values: &Vec<DefinitionValueItem<'_>>) -> ValueMap {
-    let mut map: ValueMap = BTreeMap::new();
-    for (i, definition, value) in definition_values {
-        if let Some(entries) = map.get_mut(value) {
-            entries.insert(*i, definition.filename());
-        } else {
-            let mut entries = BTreeMap::new();
-            entries.insert(*i, definition.filename());
-            map.insert(value.clone(), entries);
-        }
-    }
-    map
 }

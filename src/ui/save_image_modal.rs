@@ -7,7 +7,11 @@ use eframe::glow::Context;
 use egui::{vec2, Align, DragValue, Grid, Id, Layout, Modal, Sides, Slider};
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
-use std::sync::{Arc, Mutex};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaveImageModal {
@@ -63,7 +67,7 @@ impl SaveImageModal {
         instance
     }
 
-    pub fn open(&mut self, definition: Option<&mut SwBlockDefinition>) {
+    pub fn open(&mut self, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
         self.open = true;
         self.update_scene(definition);
     }
@@ -86,10 +90,9 @@ impl SaveImageModal {
         }
     }
 
-    pub fn update_scene(&mut self, definition: Option<&mut SwBlockDefinition>) {
+    pub fn update_scene(&mut self, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
         if let Some(definition) = definition {
-            let data = definition.load_data().and_then(|d| d.ok());
-            let meshes = definition.load_meshes();
+            let (data, meshes) = definition.borrow_mut().load_data_meshes();
             self.scene.update(&data, &meshes);
         }
     }
@@ -99,7 +102,7 @@ impl SaveImageModal {
         &mut self,
         ui: &mut egui::Ui,
         frame: &eframe::Frame,
-        definition: &mut Option<&mut SwBlockDefinition>,
+        definition: Option<Rc<RefCell<SwBlockDefinition>>>,
     ) {
         if !self.open {
             return;
@@ -112,7 +115,7 @@ impl SaveImageModal {
             .unwrap_or_else(|| vec2(self.width as f32, self.height as f32));
         let aspect_ratio = self.width as f32 / self.height as f32;
 
-        let definition_c = definition.as_deref_mut();
+        let definition_c = definition.clone();
 
         let id = Id::new("save_image_modal");
         let modal = Modal::new(id).show(ui.ctx(), |ui| {
@@ -189,8 +192,9 @@ impl SaveImageModal {
 
             if self.camera_auto {
                 if let Some(data) = definition
-                    .as_mut()
-                    .and_then(|d| d.load_data().and_then(|d| d.ok()))
+                    .as_ref()
+                    .and_then(|d| d.borrow_mut().load_data())
+                    .and_then(|d| d.ok())
                 {
                     let voxel_min: Option<Vec3> = data.voxel_min.last().map(|v| (*v).into());
                     let voxel_max: Option<Vec3> = data.voxel_max.last().map(|v| (*v).into());
@@ -270,8 +274,7 @@ impl SaveImageModal {
             }
         }
         if let Some(definition) = definition {
-            let data = definition.load_data().and_then(|d| d.ok());
-            let meshes = definition.load_meshes();
+            let (data, meshes) = definition.borrow_mut().load_data_meshes();
             self.scene
                 .set_orthographic(self.is_orthographic, &data, &meshes);
         }
@@ -397,12 +400,9 @@ impl SaveImageModal {
         });
     }
 
-    fn ui_scene(&mut self, ui: &mut egui::Ui, definition: Option<&mut SwBlockDefinition>) {
+    fn ui_scene(&mut self, ui: &mut egui::Ui, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
         let (data, meshes) = if let Some(definition) = definition {
-            (
-                definition.load_data().and_then(|d| d.ok()),
-                definition.load_meshes(),
-            )
+            definition.borrow_mut().load_data_meshes()
         } else {
             (None, None)
         };
