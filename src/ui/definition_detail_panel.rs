@@ -146,7 +146,7 @@ impl DefinitionDetailPanel {
                 DefinitionAttribute::RopeHookOffset,
             ]);
             if list.update(&attribute_filter, Some(&data)) {
-                CollapsingPanel::new("Definition Attributes")
+                CollapsingPanel::new("Definition attributes")
                     .default_open(true)
                     .ui(ui, |ui| {
                         list.ui(ui, state, &mut clicked_attribute);

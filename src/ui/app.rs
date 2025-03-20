@@ -114,7 +114,7 @@ impl eframe::App for MainApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     ui.menu_button("File", |ui| {
-                        if ui.button("Open Rom Folder").clicked() {
+                        if ui.button("Open rom folder").clicked() {
                             self.open_rom_folder(Some(frame));
                             ui.close_menu();
                         }
@@ -136,7 +136,7 @@ impl eframe::App for MainApp {
                     Slider::new(&mut volume, 0.0..=1.0)
                         .show_value(false)
                         .trailing_fill(true)
-                        .text("Sound Volume"),
+                        .text("Sound volume"),
                 );
                 self.state.set_audio_volume(volume);
             });

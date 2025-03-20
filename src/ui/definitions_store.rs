@@ -41,7 +41,7 @@ impl DefinitionsStore {
         definitions.clear();
         self.rom_path = None;
         // ディレクトリ内の .xml ファイルを列挙
-        let dir = std::fs::read_dir(rom_path.join("data\\definitions"))?;
+        let dir = std::fs::read_dir(rom_path.join("data").join("definitions"))?;
         for entry in dir {
             if let Some(entry_path) = entry
                 .ok()
