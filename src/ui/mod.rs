@@ -15,6 +15,8 @@ mod definition_detail_panel;
 pub use definition_detail_panel::DefinitionDetailPanel;
 mod definition_3d_panel;
 pub use definition_3d_panel::Definition3dPanel;
+mod main_tab;
+pub use main_tab::MainTab;
 mod save_image_modal;
 pub use save_image_modal::SaveImageModal;
 mod canvas_3d;

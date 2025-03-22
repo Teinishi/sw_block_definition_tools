@@ -1,18 +1,25 @@
-use super::{
-    AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
-    DefinitionSelectPanel, DefinitionsStore, State,
-};
+use egui::{Slider, TopBottomPanel, ViewportCommand};
+
+use super::{DefinitionsStore, MainTab, State};
+
+#[derive(serde::Serialize, serde::Deserialize)]
+enum Tab {
+    Main,
+    SaveImage,
+}
+
+impl Default for Tab {
+    fn default() -> Self {
+        Self::Main
+    }
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct MainApp {
     state: State,
     definitions_store: DefinitionsStore,
-    definition_select_panel: DefinitionSelectPanel,
-    definition_detail_panel: DefinitionDetailPanel,
-    definition_3d_panel: Option<Definition3dPanel>,
-    bottom_panel: BottomPanel,
-    window_id: i32,
-    attribute_detail_windows: Vec<AttributeDetailWindow>,
+    tab: Tab,
+    main_tab: MainTab,
 }
 
 impl MainApp {
@@ -56,33 +63,20 @@ impl MainApp {
                 if let Some(rom_path) = app.definitions_store.rom_path() {
                     app.state.set_rom_path(rom_path.clone());
                 }
-                if let Some(definition_3d_panel) = &mut app.definition_3d_panel {
-                    definition_3d_panel.creation_context(cc);
-                }
+                app.main_tab.creation_context(cc);
                 return app;
             }
         }
 
-        let mut definition_select_panel = DefinitionSelectPanel::default();
-        let definition_3d_panel =
-            Definition3dPanel::new(cc, None, definition_select_panel.selector_mut());
+        let mut main_page = MainTab::new();
+        main_page.creation_context(cc);
 
         Self {
             state: State::default(),
             definitions_store: DefinitionsStore::default(),
-            definition_select_panel,
-            definition_detail_panel: DefinitionDetailPanel::default(),
-            definition_3d_panel,
-            bottom_panel: BottomPanel::default(),
-            window_id: 0,
-            attribute_detail_windows: Vec::new(),
+            tab: Tab::default(),
+            main_tab: main_page,
         }
-    }
-
-    pub fn add_attribute_detail_window(&mut self, mut window: AttributeDetailWindow) {
-        window.set_id(egui::Id::new(format!("window_{}", self.window_id)));
-        self.attribute_detail_windows.push(window);
-        self.window_id += 1;
     }
 }
 
@@ -92,24 +86,11 @@ impl eframe::App for MainApp {
     }
 
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
-        if let Some(definition_3d_panel) = &self.definition_3d_panel {
-            definition_3d_panel.destroy(gl);
-        }
+        self.main_tab.destory(gl);
     }
 
-    #[allow(unused_variables)]
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
-        for window in &mut self.attribute_detail_windows {
-            window.ui(
-                ctx,
-                &mut self.state,
-                &mut self.definitions_store,
-                self.definition_select_panel.selector_mut(),
-            );
-        }
-        self.attribute_detail_windows.retain(|w| w.is_open());
-
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -120,7 +101,7 @@ impl eframe::App for MainApp {
                         }
 
                         if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            ctx.send_viewport_cmd(ViewportCommand::Close);
                         }
                     });
 
@@ -142,62 +123,20 @@ impl eframe::App for MainApp {
             });
         });
 
-        egui::SidePanel::left("left_panel")
-            .resizable(true)
-            .default_width(200.0)
-            .width_range(80.0..=500.0)
-            .show(ctx, |ui| {
-                self.definition_select_panel
-                    .ui(ui, &mut self.definitions_store);
-            });
-
-        egui::SidePanel::right("right_panel")
-            .resizable(true)
-            .default_width(300.0)
-            .width_range(80.0..=800.0)
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(4.0);
-                    if let Some(definition_3d_panel) = &mut self.definition_3d_panel {
-                        definition_3d_panel.ui(
-                            ui,
-                            frame,
-                            self.definition_select_panel.selector_mut(),
-                        );
-                    }
-                    ui.add_space(4.0);
-                });
-            });
-
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .resizable(false)
-            .min_height(0.0)
-            .show(ctx, |ui| {
-                ui.add_space(4.0);
-                self.bottom_panel.ui(ui, &mut self.state);
-                ui.add_space(4.0);
-            });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::both().show(ui, |ui| {
-                ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                if let Some(definition) = self.definition_select_panel.selected_definition() {
-                    let new_window =
-                        self.definition_detail_panel
-                            .ui(ui, &mut self.state, definition);
-                    if let Some(w) = new_window {
-                        self.add_attribute_detail_window(w);
-                    }
-                    ui.add_space(10.0);
-                }
-            });
-        });
+        match self.tab {
+            Tab::Main => {
+                self.main_tab
+                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
+            }
+            Tab::SaveImage => {
+                todo!()
+            }
+        }
 
         self.state.update(ctx);
     }
 }
 
-use egui::Slider;
 #[cfg(not(target_arch = "wasm32"))]
 use raw_window_handle;
 
@@ -228,7 +167,6 @@ impl MainApp {
                 .definitions_store
                 .open_rom_directory(Some(rom_path.clone()));
             self.state.set_rom_path(rom_path);
-            //let _ = self.state.open_rom_directory(pathbuf);
         }
     }
 }

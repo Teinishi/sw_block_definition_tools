@@ -21,11 +21,7 @@ pub struct Definition3dPanel {
 }
 
 impl Definition3dPanel {
-    pub fn new<'a>(
-        cc: &'a eframe::CreationContext<'a>,
-        camera: Option<OrbitCamera>,
-        selector: &mut DefinitionSingleSelect,
-    ) -> Option<Self> {
+    pub fn new(camera: Option<OrbitCamera>, selector: &mut DefinitionSingleSelect) -> Self {
         let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
@@ -33,16 +29,14 @@ impl Definition3dPanel {
         camera.orthogonalize_up();
         let camera = Arc::new(Mutex::new(camera));
 
-        let mut instance = Self {
+        Self {
             save_image_modal: SaveImageModal::default(),
             scene: Default::default(),
             camera,
             renderer: None,
             mesh_loaded: false,
             tracker_id: selector.register_tracker(),
-        };
-        Self::creation_context(&mut instance, cc);
-        Some(instance)
+        }
     }
 
     pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
