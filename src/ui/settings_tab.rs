@@ -40,7 +40,7 @@ impl SettingsTab {
                             .unwrap_or_default()
                             .to_string();
                         let text_edit =
-                            ui.add_sized([400.0, 18.0], TextEdit::singleline(&mut self.rom_path));
+                            ui.add_sized([300.0, 18.0], TextEdit::singleline(&mut self.rom_path));
                         if text_edit.changed() {
                             self.update_rom_folder(
                                 PathBuf::from(self.rom_path.clone()),
