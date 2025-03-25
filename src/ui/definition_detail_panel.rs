@@ -19,8 +19,8 @@ struct AttributeFilter {
 impl AttributeFilter {
     fn from_state(state: &State) -> Self {
         Self {
-            show_all: state.show_all(),
-            hide_default: state.hide_default(),
+            show_all: state.show_all,
+            hide_default: state.hide_default,
         }
     }
 
@@ -569,7 +569,7 @@ impl DefinitionDetailPanel {
 
             Some(AttributeDetailWindow::new(
                 clicked_attribute?,
-                state.hide_default(),
+                state.hide_default,
             ))
         } else {
             None

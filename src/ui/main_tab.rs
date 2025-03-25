@@ -1,6 +1,6 @@
 use super::{
-    AttributeDetailWindow, BottomPanel, Definition3dPanel, DefinitionDetailPanel,
-    DefinitionSelectPanel, DefinitionsStore, State,
+    AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel,
+    DefinitionsStore, State,
 };
 use egui::{CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 
@@ -9,7 +9,6 @@ pub struct MainTab {
     definition_select_panel: DefinitionSelectPanel,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
-    bottom_panel: BottomPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
     window_id: u32,
 }
@@ -30,7 +29,6 @@ impl MainTab {
             definition_select_panel,
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel,
-            bottom_panel: BottomPanel::default(),
             attribute_detail_windows: Vec::new(),
             window_id: 0,
         }
@@ -96,7 +94,10 @@ impl MainTab {
             .min_height(0.0)
             .show(ctx, |ui| {
                 ui.add_space(4.0);
-                self.bottom_panel.ui(ui, state);
+
+                ui.checkbox(&mut state.show_all, "Show all");
+                ui.checkbox(&mut state.hide_default, "Hide zero/empty");
+
                 ui.add_space(4.0);
             });
 

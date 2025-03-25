@@ -1,11 +1,12 @@
-use egui::{Slider, TopBottomPanel, ViewportCommand};
+use egui::TopBottomPanel;
 
-use super::{DefinitionsStore, MainTab, State};
+use super::{DefinitionsStore, MainTab, SettingsTab, State};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 enum Tab {
     Main,
     SaveImage,
+    Settings,
 }
 
 impl Default for Tab {
@@ -20,6 +21,7 @@ pub struct MainApp {
     definitions_store: DefinitionsStore,
     tab: Tab,
     main_tab: MainTab,
+    settings_tab: SettingsTab,
 }
 
 impl MainApp {
@@ -61,21 +63,22 @@ impl MainApp {
             if let Some(mut app) = app {
                 let _ = app.definitions_store.open_rom_directory(None);
                 if let Some(rom_path) = app.definitions_store.rom_path() {
-                    app.state.set_rom_path(rom_path.clone());
+                    app.state.rom_path = Some(rom_path.clone());
                 }
                 app.main_tab.creation_context(cc);
                 return app;
             }
         }
 
-        let mut main_page = MainTab::new();
-        main_page.creation_context(cc);
+        let mut main_tab = MainTab::new();
+        main_tab.creation_context(cc);
 
         Self {
             state: State::default(),
             definitions_store: DefinitionsStore::default(),
             tab: Tab::default(),
-            main_tab: main_page,
+            main_tab,
+            settings_tab: SettingsTab::default(),
         }
     }
 }
@@ -90,36 +93,11 @@ impl eframe::App for MainApp {
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
-        TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Open rom folder").clicked() {
-                            self.open_rom_folder(Some(frame));
-                            ui.close_menu();
-                        }
-
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(ViewportCommand::Close);
-                        }
-                    });
-
-                    ui.separator();
-                }
-
-                egui::widgets::global_theme_preference_buttons(ui);
-
-                ui.separator();
-
-                let mut volume = self.state.audio_volume();
-                ui.add(
-                    Slider::new(&mut volume, 0.0..=1.0)
-                        .show_value(false)
-                        .trailing_fill(true)
-                        .text("Sound volume"),
-                );
-                self.state.set_audio_volume(volume);
+                ui.selectable_value(&mut self.tab, Tab::Main, "Block data");
+                ui.selectable_value(&mut self.tab, Tab::SaveImage, "Save image");
+                ui.selectable_value(&mut self.tab, Tab::Settings, "Settings");
             });
         });
 
@@ -131,42 +109,12 @@ impl eframe::App for MainApp {
             Tab::SaveImage => {
                 todo!()
             }
+            Tab::Settings => {
+                self.settings_tab
+                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
+            }
         }
 
         self.state.update(ctx);
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-use raw_window_handle;
-
-#[cfg(not(target_arch = "wasm32"))]
-const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
-
-#[cfg(not(target_arch = "wasm32"))]
-impl MainApp {
-    fn open_rom_folder<
-        W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
-    >(
-        &mut self,
-        parent: Option<&W>,
-    ) {
-        use rfd::FileDialog;
-        use std::path::Path;
-
-        let mut dialog = FileDialog::new();
-        if let Some(p) = parent {
-            dialog = dialog.set_parent(p)
-        }
-        if let Ok(program_files) = std::env::var("ProgramFiles(x86)") {
-            dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
-        }
-        if let Some(rom_path) = dialog.pick_folder() {
-            // TODO: ここでエラー出たら拾って表示
-            let _ = self
-                .definitions_store
-                .open_rom_directory(Some(rom_path.clone()));
-            self.state.set_rom_path(rom_path);
-        }
     }
 }

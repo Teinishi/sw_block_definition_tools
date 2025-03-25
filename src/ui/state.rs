@@ -1,52 +1,16 @@
-use paste::paste;
 use std::{
     path::PathBuf,
     sync::{mpsc, Arc},
 };
 
-macro_rules! getter_setter {
-    ($target:ident, $name:ident, $type:ty, $change_fn:ident) => {
-        impl $target {
-            pub fn $name(&self) -> $type {
-                self.$name
-            }
-
-            paste! {
-                pub fn [<set_ $name>](&mut self, value: $type) {
-                    if (self.$name != value) {
-                        self.$name = value;
-                        self.$change_fn();
-                    }
-                }
-            }
-        }
-    };
-
-    ($target:ident, $name:ident, $type:ty) => {
-        impl $target {
-            pub fn $name(&self) -> $type {
-                self.$name
-            }
-
-            paste! {
-                pub fn [<set_ $name>](&mut self, value: $type) {
-                    if (self.$name != value) {
-                        self.$name = value;
-                    }
-                }
-            }
-        }
-    };
-}
-
 type PlayingAudio = (String, Arc<rodio::Sink>, mpsc::Receiver<bool>);
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct State {
-    rom_path: Option<PathBuf>,
-    show_all: bool,
-    hide_default: bool,
-    audio_volume: f32,
+    pub rom_path: Option<PathBuf>,
+    pub show_all: bool,
+    pub hide_default: bool,
+    pub audio_volume: f32,
     #[serde(skip)]
     playing_audio: Option<PlayingAudio>,
 }
@@ -74,14 +38,6 @@ impl State {
         }
     }
 
-    pub fn rom_path(&self) -> &Option<PathBuf> {
-        &self.rom_path
-    }
-
-    pub fn set_rom_path(&mut self, rom_path: PathBuf) {
-        self.rom_path = Some(rom_path);
-    }
-
     pub fn playing_audio(&self) -> &Option<PlayingAudio> {
         &self.playing_audio
     }
@@ -93,7 +49,3 @@ impl State {
         self.playing_audio = value;
     }
 }
-
-getter_setter!(State, show_all, bool);
-getter_setter!(State, hide_default, bool);
-getter_setter!(State, audio_volume, f32);

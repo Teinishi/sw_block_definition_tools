@@ -16,8 +16,8 @@ pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioE
         }
     }
 
-    if let Some(rom_path) = state.rom_path() {
-        match spawn_audio(rom_path.join(path.clone()), state.audio_volume()) {
+    if let Some(rom_path) = &state.rom_path {
+        match spawn_audio(rom_path.join(path.clone()), state.audio_volume) {
             Ok((sink, rx_done)) => {
                 state.set_playing_audio(Some((path, sink, rx_done)));
                 Ok(())
