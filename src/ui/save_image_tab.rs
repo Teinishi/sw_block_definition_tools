@@ -123,11 +123,14 @@ impl SaveImageTab {
 
         let definition = self.definition_select_panel.selected_definition();
         let definition_c = definition.clone();
+        let initial_filename = definition
+            .as_ref()
+            .map(|d| replace_extension(&d.borrow().filename(), "png"));
 
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
-                .size(Size::initial(200.0))
+                .size(Size::initial(240.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
                         let canvas_size = fit_size_aspect(ui.available_size(), self.aspect_ratio());
@@ -170,7 +173,7 @@ impl SaveImageTab {
                                 strip.cell(|ui| {
                                     if ui.button("Save image").clicked() {
                                         #[cfg(not(target_arch = "wasm32"))]
-                                        self.save_image(Some(frame));
+                                        self.save_image(Some(frame), initial_filename);
                                     }
                                 });
                             });
@@ -421,6 +424,7 @@ impl SaveImageTab {
     fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
         &self,
         parent: Option<&W>,
+        initial_filename: Option<String>,
     ) {
         use crate::gl_renderer::MultisampleFramebuffer;
 
@@ -434,7 +438,7 @@ impl SaveImageTab {
             framebuffer.resolve();
             let image = framebuffer.get_image();
 
-            if let Some(path) = save_image_dialog(parent) {
+            if let Some(path) = save_image_dialog(parent, initial_filename) {
                 image.save(path).expect("Failed to save image");
             }
         }
@@ -456,17 +460,27 @@ fn ui_center(ui: &mut egui::Ui, size: egui::Vec2, add_contents: impl FnOnce(&mut
     ui.allocate_new_ui(UiBuilder::new().max_rect(rect), add_contents);
 }
 
+fn replace_extension(filename: &str, new_ext: &str) -> String {
+    let mut path = std::path::Path::new(filename).to_owned();
+    path.set_extension(new_ext);
+    path.to_string_lossy().into_owned()
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn save_image_dialog<
     W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
 >(
     parent: Option<&W>,
+    initial_filename: Option<String>,
 ) -> Option<std::path::PathBuf> {
     use rfd::FileDialog;
 
     let mut dialog = FileDialog::new().add_filter("PNG image", &["png"]);
     if let Some(p) = parent {
         dialog = dialog.set_parent(p)
+    }
+    if let Some(filename) = initial_filename {
+        dialog = dialog.set_file_name(filename);
     }
     dialog.save_file()
 }
