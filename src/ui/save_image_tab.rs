@@ -1,6 +1,6 @@
 use super::{
-    paint_canvas_3d, BlockViewScene, DefinitionSelect, DefinitionSelectPanel, DefinitionsStore,
-    State,
+    paint_canvas_3d, BlockViewScene, DefinitionSelect, DefinitionSelectPanel,
+    DefinitionSingleSelect, DefinitionsStore, State,
 };
 use crate::{
     gl_renderer::{Camera, OrbitCamera, SceneRenderer},
@@ -47,7 +47,7 @@ impl Default for SaveImageTab {
         let camera = Arc::new(Mutex::new(camera));
 
         let mut definition_select_panel = DefinitionSelectPanel::default();
-        let tracker_id = definition_select_panel.selector_mut().register_tracker();
+        let tracker_id = definition_select_panel.register_tracker();
 
         Self {
             definition_select_panel,
@@ -74,6 +74,14 @@ impl SaveImageTab {
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
             self.gl = Some(gl.clone());
         }
+    }
+
+    pub fn use_selector(
+        &mut self,
+        selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
+    ) {
+        self.tracker_id = selector.borrow_mut().register_tracker();
+        self.definition_select_panel.use_selector(selector);
     }
 
     pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
@@ -109,7 +117,7 @@ impl SaveImageTab {
                 self.definition_select_panel.ui(ui, definitions_store);
             });
 
-        let definition = self.definition_select_panel.selector_mut().selected();
+        let definition = self.definition_select_panel.selected_definition();
         let definition_c = definition.clone();
 
         CentralPanel::default().show(ctx, |ui| {
@@ -178,7 +186,6 @@ impl SaveImageTab {
 
         if self
             .definition_select_panel
-            .selector_mut()
             .check_update(self.tracker_id)
             .unwrap_or(false)
         {

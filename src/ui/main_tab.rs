@@ -1,6 +1,6 @@
 use super::{
-    AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel,
-    DefinitionsStore, State,
+    AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelect,
+    DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
 };
 use egui::{CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 
@@ -10,20 +10,22 @@ pub struct MainTab {
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
+    tracker_id: u32,
     window_id: u32,
 }
 
 impl Default for MainTab {
     fn default() -> Self {
         let mut definition_select_panel = DefinitionSelectPanel::default();
-        let definition_3d_panel =
-            Definition3dPanel::new(None, definition_select_panel.selector_mut());
+        let tracker_id = definition_select_panel.register_tracker();
+        let definition_3d_panel = Definition3dPanel::new(None);
 
         Self {
             definition_select_panel,
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
+            tracker_id,
             window_id: 0,
         }
     }
@@ -32,6 +34,14 @@ impl Default for MainTab {
 impl MainTab {
     pub fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
         self.definition_3d_panel.creation_context(cc);
+    }
+
+    pub fn use_selector(
+        &mut self,
+        selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
+    ) {
+        self.tracker_id = selector.borrow_mut().register_tracker();
+        self.definition_select_panel.use_selector(selector);
     }
 
     pub fn destory(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -56,7 +66,7 @@ impl MainTab {
                 ctx,
                 state,
                 definitions_store,
-                self.definition_select_panel.selector_mut(),
+                self.definition_select_panel.selector(),
             );
         }
         self.attribute_detail_windows.retain(|w| w.is_open());
@@ -76,8 +86,13 @@ impl MainTab {
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
-                    self.definition_3d_panel
-                        .ui(ui, self.definition_select_panel.selector_mut());
+                    self.definition_3d_panel.ui(
+                        ui,
+                        self.definition_select_panel.selected_definition(),
+                        self.definition_select_panel
+                            .check_update(self.tracker_id)
+                            .unwrap_or(false),
+                    );
                     ui.add_space(4.0);
                 });
             });

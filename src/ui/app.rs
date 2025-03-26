@@ -1,6 +1,6 @@
+use super::{DefinitionSingleSelect, DefinitionsStore, MainTab, SaveImageTab, SettingsTab, State};
 use egui::TopBottomPanel;
-
-use super::{DefinitionsStore, MainTab, SaveImageTab, SettingsTab, State};
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 enum Tab {
@@ -19,6 +19,7 @@ impl Default for Tab {
 pub struct MainApp {
     state: State,
     definitions_store: DefinitionsStore,
+    selector: Rc<RefCell<DefinitionSingleSelect>>,
     tab: Tab,
     main_tab: MainTab,
     save_image_tab: SaveImageTab,
@@ -85,7 +86,9 @@ impl MainApp {
             .unwrap_or_default();
 
         app.main_tab.creation_context(cc);
+        app.main_tab.use_selector(app.selector.clone());
         app.save_image_tab.creation_context(cc);
+        app.save_image_tab.use_selector(app.selector.clone());
 
         app
     }

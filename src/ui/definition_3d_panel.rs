@@ -1,10 +1,15 @@
-use super::{
-    definitions_store::DefinitionSelect, paint_canvas_3d, BlockViewScene, DefinitionSingleSelect,
+use super::{paint_canvas_3d, BlockViewScene};
+use crate::{
+    gl_renderer::{OrbitCamera, SceneRenderer},
+    sw_block_definition::SwBlockDefinition,
 };
-use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
-use std::sync::{Arc, Mutex};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
@@ -15,11 +20,10 @@ pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
     mesh_loaded: bool,
-    tracker_id: u32,
 }
 
 impl Definition3dPanel {
-    pub fn new(camera: Option<OrbitCamera>, selector: &mut DefinitionSingleSelect) -> Self {
+    pub fn new(camera: Option<OrbitCamera>) -> Self {
         let mut camera = camera.unwrap_or_else(|| OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
             ..Default::default()
@@ -32,7 +36,6 @@ impl Definition3dPanel {
             camera,
             renderer: None,
             mesh_loaded: false,
-            tracker_id: selector.register_tracker(),
         }
     }
 
@@ -49,7 +52,12 @@ impl Definition3dPanel {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, selector: &mut DefinitionSingleSelect) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        selected: Option<Rc<RefCell<SwBlockDefinition>>>,
+        select_changed: bool,
+    ) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
             .inner_margin(0.0)
@@ -62,7 +70,7 @@ impl Definition3dPanel {
                 }
             });
 
-        let (data, meshes) = if let Some(definition) = selector.selected() {
+        let (data, meshes) = if let Some(definition) = selected {
             definition.borrow_mut().load_data_meshes()
         } else {
             (None, None)
@@ -73,10 +81,7 @@ impl Definition3dPanel {
         self.mesh_loaded = mesh_loaded;
 
         let scene_state_changed = self.scene.state_ui(ui, &meshes);
-        if mesh_loaded_now
-            || selector.check_update(self.tracker_id).unwrap_or(false)
-            || scene_state_changed
-        {
+        if mesh_loaded_now || select_changed || scene_state_changed {
             self.scene.update(&data, &meshes);
         }
     }

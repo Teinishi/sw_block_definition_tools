@@ -1,11 +1,15 @@
 use super::{
-    ui_attribute_value, AttributeValueContainer, DefinitionSelect, DefinitionsStore, State,
-    WeakDefinitionPointer,
+    ui_attribute_value, AttributeValueContainer, DefinitionSelect, DefinitionSingleSelect,
+    DefinitionsStore, State, WeakDefinitionPointer,
 };
 use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet},
+    rc::Rc,
+};
 
 const DEFAULT_ROW_HEIGHT: f32 = 18.0;
 
@@ -60,7 +64,7 @@ impl AttributeDetailWindow {
         ctx: &egui::Context,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
-        selector: &mut impl DefinitionSelect,
+        selector: Rc<RefCell<DefinitionSingleSelect>>,
     ) {
         if let Some(id) = self.id {
             let loading_count = definitions_store.load_all_definitions();
@@ -127,7 +131,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: &mut impl DefinitionSelect,
+        selector: Rc<RefCell<DefinitionSingleSelect>>,
     ) {
         ScrollArea::vertical().show(ui, |ui| match self.tab {
             AttributeDetailTabs::Definitions => {
@@ -143,7 +147,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: &mut impl DefinitionSelect,
+        selector: Rc<RefCell<DefinitionSingleSelect>>,
     ) {
         if let Some(definition_map) = self.value_container.as_ref().map(|c| c.definition_map()) {
             TableBuilder::new(ui)
@@ -159,7 +163,7 @@ impl AttributeDetailWindow {
                         let (filename, (definition, values)) = entries[row.index()];
                         let checked = definition
                             .upgrade()
-                            .map(|d| selector.is_selected(&d))
+                            .map(|d| selector.borrow().is_selected(&d))
                             .unwrap_or(false);
 
                         row.col(|ui| {
@@ -170,7 +174,7 @@ impl AttributeDetailWindow {
                                     });
                             if label.clicked() {
                                 if let Some(d) = definition.upgrade() {
-                                    selector.select(&d);
+                                    selector.borrow_mut().select(&d);
                                 }
                             }
                         });
@@ -200,7 +204,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: &mut impl DefinitionSelect,
+        selector: Rc<RefCell<DefinitionSingleSelect>>,
     ) {
         if let Some(value_map) = self.value_container.as_ref().map(|c| c.value_map()) {
             TableBuilder::new(ui)
@@ -223,21 +227,22 @@ impl AttributeDetailWindow {
                                 let mut rect;
                                 if definitions.len() == 1 {
                                     let (filename, definition) = definitions.iter().next().unwrap();
-                                    let checked = selector.is_selected_weak(definition);
+                                    let checked = selector.borrow().is_selected_weak(definition);
                                     let response = ui.selectable_label(checked, filename);
                                     rect = response.rect;
                                     if response.clicked() {
-                                        selector.select_weak(definition);
+                                        selector.borrow_mut().select_weak(definition);
                                     }
                                 } else {
                                     let collapsing_response = ui.collapsing(
                                         format!("{} definitions", definitions.len()),
                                         |ui| {
                                             for (filename, definition) in definitions {
-                                                let checked = selector.is_selected_weak(definition);
+                                                let checked =
+                                                    selector.borrow().is_selected_weak(definition);
                                                 if ui.selectable_label(checked, filename).clicked()
                                                 {
-                                                    selector.select_weak(definition);
+                                                    selector.borrow_mut().select_weak(definition);
                                                 }
                                             }
                                         },

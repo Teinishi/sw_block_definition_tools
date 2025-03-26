@@ -6,11 +6,15 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionSelectPanel {
     search_text: String,
-    selector: DefinitionSingleSelect,
+    selector: Rc<RefCell<DefinitionSingleSelect>>,
     search_result: BTreeMap<String, bool>,
 }
 
 impl DefinitionSelectPanel {
+    pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
+        self.selector = selector;
+    }
+
     pub fn ui(&mut self, ui: &mut egui::Ui, definitions_store: &mut DefinitionsStore) {
         ui.add_space(6.0);
 
@@ -46,10 +50,10 @@ impl DefinitionSelectPanel {
                         continue;
                     }
                     if ui
-                        .selectable_label(self.selector.is_selected(definition), filename)
+                        .selectable_label(self.selector.borrow().is_selected(definition), filename)
                         .clicked()
                     {
-                        self.selector.select(definition);
+                        self.selector.borrow_mut().select(definition);
                     }
                 }
             });
@@ -59,12 +63,20 @@ impl DefinitionSelectPanel {
         self.update_search(definitions_store);
     }
 
-    pub fn selected_definition(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
-        self.selector.selected()
+    pub fn selector(&mut self) -> Rc<RefCell<DefinitionSingleSelect>> {
+        self.selector.clone()
     }
 
-    pub fn selector_mut(&mut self) -> &mut DefinitionSingleSelect {
-        &mut self.selector
+    pub fn selected_definition(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
+        self.selector.borrow().selected()
+    }
+
+    pub fn register_tracker(&mut self) -> u32 {
+        self.selector.borrow_mut().register_tracker()
+    }
+
+    pub fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
+        self.selector.borrow_mut().check_update(tracker_id)
     }
 
     fn reset_search(&mut self) {
