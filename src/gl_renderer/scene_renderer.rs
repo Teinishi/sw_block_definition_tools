@@ -164,6 +164,7 @@ impl SceneRenderer {
                     gl.depth_func(glow::LESS);
                 }
 
+                set_uniform_f32(gl, program, "z_offset_unit", camera.z_offset_unit());
                 set_uniform_f32(gl, program, "z_offset", vao_container.z_offset);
 
                 set_uniform_mat4(gl, program, "mat_view_proj", mat_view_proj);

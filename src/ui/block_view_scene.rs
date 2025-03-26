@@ -96,7 +96,6 @@ impl Default for BlockViewState {
 pub struct BlockViewScene {
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
-    is_orthographic: bool,
 }
 
 impl BlockViewScene {
@@ -199,7 +198,7 @@ impl BlockViewScene {
                         self.add_object(obj);
                     }
                     if let Some(obj) = line_obj {
-                        self.add_object(obj.set_z_offset(self.z_offset(-1)));
+                        self.add_object(obj.set_z_offset(-1.0));
                     }
                 }
             }
@@ -218,10 +217,10 @@ impl BlockViewScene {
                             BUOYANCY_SURFACE_LINE_COLOR,
                         );
                         if let Some(obj) = mesh_obj {
-                            self.add_object(obj.set_z_offset(self.z_offset(-1)));
+                            self.add_object(obj.set_z_offset(-1.0));
                         }
                         if let Some(obj) = line_obj {
-                            self.add_object(obj.set_z_offset(self.z_offset(-2)));
+                            self.add_object(obj.set_z_offset(-2.0));
                         }
                     }
                 }
@@ -234,8 +233,8 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
                             .objects(BOUNDING_BOX_VOXEL_MESH_COLOR, BOUNDING_BOX_VOXEL_LINE_COLOR);
-                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-4)));
-                    self.add_object(line_obj.set_z_offset(self.z_offset(-5)));
+                    self.add_object(mesh_obj.set_z_offset(-4.0));
+                    self.add_object(line_obj.set_z_offset(-5.0));
                 }
             }
 
@@ -253,8 +252,8 @@ impl BlockViewScene {
                         BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR,
                         BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR,
                     );
-                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-3)));
-                    self.add_object(line_obj.set_z_offset(self.z_offset(-4)));
+                    self.add_object(mesh_obj.set_z_offset(-3.0));
+                    self.add_object(line_obj.set_z_offset(-4.0));
                 }
             }
 
@@ -267,8 +266,8 @@ impl BlockViewScene {
                             BOUNDING_BOX_PHYSICS_MESH_COLOR,
                             BOUNDING_BOX_PHYSICS_LINE_COLOR,
                         );
-                    self.add_object(mesh_obj.set_z_offset(self.z_offset(-2)));
-                    self.add_object(line_obj.set_z_offset(self.z_offset(-3)));
+                    self.add_object(mesh_obj.set_z_offset(-2.0));
+                    self.add_object(line_obj.set_z_offset(-3.0));
                 }
             }
         }
@@ -285,26 +284,5 @@ impl BlockViewScene {
                 }
             }
         }
-    }
-
-    pub fn set_orthographic(
-        &mut self,
-        is_orthographic: bool,
-    ) -> bool {
-        if self.is_orthographic != is_orthographic {
-            self.is_orthographic = is_orthographic;
-            true
-        } else {
-            false
-        }
-    }
-
-    fn z_offset(&self, count: i32) -> f32 {
-        let unit: f32 = if self.is_orthographic {
-            0.0000005
-        } else {
-            0.00001
-        };
-        unit * count as f32
     }
 }

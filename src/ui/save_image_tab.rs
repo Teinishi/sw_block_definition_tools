@@ -176,12 +176,11 @@ impl SaveImageTab {
 
         self.camera_control(&definition);
 
-        if self.scene.set_orthographic(self.is_orthographic)
-            || self
-                .definition_select_panel
-                .selector_mut()
-                .check_update(self.tracker_id)
-                .unwrap_or(false)
+        if self
+            .definition_select_panel
+            .selector_mut()
+            .check_update(self.tracker_id)
+            .unwrap_or(false)
         {
             self.update_scene(&definition);
         }

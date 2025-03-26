@@ -8,6 +8,7 @@ pub trait Camera: Default {
         self.mat_proj().mul_mat4(&self.mat_view().into())
     }
     fn position(&self) -> Vec3;
+    fn z_offset_unit(&self) -> f32;
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -86,6 +87,13 @@ impl Camera for OrbitCamera {
 
     fn position(&self) -> Vec3 {
         self.center - self.direction
+    }
+
+    fn z_offset_unit(&self) -> f32 {
+        match self.mode {
+            CameraMode::Perspective => 0.00001,
+            CameraMode::Orthographic => 0.0000005,
+        }
     }
 }
 
