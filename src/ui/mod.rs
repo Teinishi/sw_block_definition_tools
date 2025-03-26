@@ -1,5 +1,7 @@
 mod app;
 pub use app::MainApp;
+mod tab;
+pub use tab::TabVariants;
 mod state;
 pub use state::State;
 mod definitions_store;

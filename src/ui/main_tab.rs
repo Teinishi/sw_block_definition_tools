@@ -1,16 +1,20 @@
 use super::{
-    AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelect,
+    tab::Tab, AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelect,
     DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
 };
 use egui::{CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct MainTab {
+    #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
+    #[serde(skip)]
+    selector_observer_id: u32,
+
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
-    selector_observer_id: u32,
     window_id: u32,
 }
 
@@ -22,39 +26,31 @@ impl Default for MainTab {
 
         Self {
             definition_select_panel,
+            selector_observer_id,
+
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
-            selector_observer_id,
             window_id: 0,
         }
     }
 }
 
-impl MainTab {
-    pub fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
+impl Tab for MainTab {
+    fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
         self.definition_3d_panel.creation_context(cc);
     }
 
-    pub fn use_selector(
-        &mut self,
-        selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
-    ) {
+    fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {
         self.selector_observer_id = selector.borrow_mut().register_observer();
         self.definition_select_panel.use_selector(selector);
     }
 
-    pub fn destory(&mut self, gl: Option<&eframe::glow::Context>) {
+    fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
         self.definition_3d_panel.destroy(gl);
     }
 
-    pub fn add_attribute_detail_window(&mut self, mut window: AttributeDetailWindow) {
-        window.set_id(Id::new(format!("window_{}", self.window_id)));
-        self.attribute_detail_windows.push(window);
-        self.window_id += 1;
-    }
-
-    pub fn update(
+    fn update(
         &mut self,
         ctx: &eframe::egui::Context,
         _frame: &mut eframe::Frame,
@@ -121,5 +117,13 @@ impl MainTab {
                 }
             });
         });
+    }
+}
+
+impl MainTab {
+    pub fn add_attribute_detail_window(&mut self, mut window: AttributeDetailWindow) {
+        window.set_id(Id::new(format!("window_{}", self.window_id)));
+        self.attribute_detail_windows.push(window);
+        self.window_id += 1;
     }
 }

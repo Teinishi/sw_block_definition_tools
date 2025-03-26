@@ -1,5 +1,5 @@
 use super::{
-    paint_canvas_3d, BlockViewScene, DefinitionSelect, DefinitionSelectPanel,
+    paint_canvas_3d, tab::Tab, BlockViewScene, DefinitionSelect, DefinitionSelectPanel,
     DefinitionSingleSelect, DefinitionsStore, State,
 };
 use crate::{
@@ -17,15 +17,20 @@ use std::{
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct SaveImageTab {
-    selector_observer_id: u32,
     width: i32,
     height: i32,
     is_orthographic: bool,
     fov: f32,
     camera_auto: bool,
     margin: i32,
+
+    #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
+    #[serde(skip)]
+    selector_observer_id: u32,
+
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
@@ -54,14 +59,14 @@ impl Default for SaveImageTab {
         let selector_observer_id = definition_select_panel.register_observer();
 
         Self {
-            definition_select_panel,
-            selector_observer_id,
             width,
             height,
             is_orthographic: false,
             fov,
             camera_auto: false,
             margin: 0,
+            definition_select_panel,
+            selector_observer_id,
             gl: None,
             scene: Default::default(),
             camera,
@@ -71,8 +76,8 @@ impl Default for SaveImageTab {
     }
 }
 
-impl SaveImageTab {
-    pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
+impl Tab for SaveImageTab {
+    fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
@@ -80,33 +85,19 @@ impl SaveImageTab {
         }
     }
 
-    pub fn use_selector(
-        &mut self,
-        selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
-    ) {
+    fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {
         self.selector_observer_id = selector.borrow_mut().register_observer();
         self.definition_select_panel.use_selector(selector);
     }
 
-    pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
+    fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
         if let Some(renderer) = &self.renderer {
             renderer.lock().destroy(gl);
         }
     }
 
-    fn update_scene(&mut self, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {
-        if let Some(definition) = definition {
-            let (data, meshes) = definition.borrow_mut().load_data_meshes();
-            self.scene.update(&data, &meshes);
-        }
-    }
-
-    fn aspect_ratio(&self) -> f32 {
-        self.width as f32 / self.height as f32
-    }
-
     #[allow(unused_variables)]
-    pub fn update(
+    fn update(
         &mut self,
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
@@ -190,6 +181,19 @@ impl SaveImageTab {
         {
             self.update_scene(&definition);
         }
+    }
+}
+
+impl SaveImageTab {
+    fn update_scene(&mut self, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {
+        if let Some(definition) = definition {
+            let (data, meshes) = definition.borrow_mut().load_data_meshes();
+            self.scene.update(&data, &meshes);
+        }
+    }
+
+    fn aspect_ratio(&self) -> f32 {
+        self.width as f32 / self.height as f32
     }
 
     fn camera_control(&self, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {

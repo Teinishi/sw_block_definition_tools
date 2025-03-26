@@ -7,7 +7,6 @@ use egui::{vec2, Align, Button, Checkbox, Layout, RichText, TextEdit};
 use egui_extras::{Size, StripBuilder};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-#[derive(serde::Serialize, serde::Deserialize)]
 pub struct DefinitionSelectPanel {
     search_text: String,
     selector: Rc<RefCell<DefinitionSingleSelect>>,

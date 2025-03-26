@@ -161,7 +161,7 @@ pub trait DefinitionSelect {
     fn check_update(&mut self, observer_id: u32) -> Option<bool>;
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[derive(Default)]
 pub struct DefinitionSingleSelect {
     selected: Option<WeakDefinitionPointer>,
     subject: ChangeObserverSubject,
@@ -211,7 +211,7 @@ impl DefinitionSingleSelect {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[derive(Default)]
 pub struct DefinitionMultiSelect {
     selected: Vec<WeakDefinitionPointer>,
     subject: ChangeObserverSubject,

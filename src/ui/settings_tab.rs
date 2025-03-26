@@ -1,4 +1,4 @@
-use super::{DefinitionsStore, State};
+use super::{tab::Tab, DefinitionsStore, State};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -6,9 +6,9 @@ pub struct SettingsTab {
     rom_path: String,
 }
 
-impl SettingsTab {
+impl Tab for SettingsTab {
     #[allow(unused_variables)]
-    pub fn update(
+    fn update(
         &mut self,
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
@@ -62,7 +62,9 @@ impl SettingsTab {
             });
         });
     }
+}
 
+impl SettingsTab {
     #[cfg(not(target_arch = "wasm32"))]
     fn update_rom_folder(
         &self,
