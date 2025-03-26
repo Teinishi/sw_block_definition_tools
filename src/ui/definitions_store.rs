@@ -167,13 +167,6 @@ pub struct DefinitionSingleSelect {
     change_tracker: ChangeTracker,
 }
 
-impl DefinitionSingleSelect {
-    pub fn selected(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
-        let selected = self.selected.as_ref()?;
-        selected.upgrade()
-    }
-}
-
 impl DefinitionSelect for DefinitionSingleSelect {
     fn is_selected_weak(&self, definition: &WeakDefinitionPointer) -> bool {
         self.selected
@@ -208,6 +201,60 @@ impl DefinitionSelect for DefinitionSingleSelect {
 
     fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
         self.change_tracker.check(tracker_id)
+    }
+}
+
+impl DefinitionSingleSelect {
+    pub fn selected(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
+        let selected = self.selected.as_ref()?;
+        selected.upgrade()
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub struct DefinitionMultiSelect {
+    selected: Vec<WeakDefinitionPointer>,
+    change_tracker: ChangeTracker,
+}
+
+impl DefinitionSelect for DefinitionMultiSelect {
+    fn is_selected_weak(&self, definition: &WeakDefinitionPointer) -> bool {
+        self.selected.iter().any(|s| s.ptr_eq(definition))
+    }
+
+    fn clear(&mut self) {
+        self.selected.clear();
+    }
+
+    fn select_weak(&mut self, definition: &WeakDefinitionPointer) {
+        self.selected.push(definition.clone());
+    }
+
+    fn unselect(&mut self, definition: &DefinitionPointer) {
+        let target = Rc::downgrade(definition);
+        self.selected.retain(|s| !s.ptr_eq(&target));
+    }
+
+    fn register_tracker(&mut self) -> u32 {
+        self.change_tracker.register()
+    }
+
+    fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
+        self.change_tracker.check(tracker_id)
+    }
+}
+
+impl DefinitionMultiSelect {
+    pub fn count(&self) -> usize {
+        self.selected.len()
+    }
+
+    pub fn set_selection_weak(&mut self, selection: impl Iterator<Item = WeakDefinitionPointer>) {
+        self.selected = selection.collect();
+    }
+
+    pub fn set_selection<'a>(&mut self, selection: impl Iterator<Item = &'a DefinitionPointer>) {
+        self.set_selection_weak(selection.map(Rc::downgrade));
     }
 }
 

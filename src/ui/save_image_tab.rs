@@ -18,7 +18,6 @@ use std::{
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaveImageTab {
-    definition_select_panel: DefinitionSelectPanel,
     tracker_id: u32,
     width: i32,
     height: i32,
@@ -26,6 +25,7 @@ pub struct SaveImageTab {
     fov: f32,
     camera_auto: bool,
     margin: i32,
+    definition_select_panel: DefinitionSelectPanel,
     #[serde(skip)]
     gl: Option<Arc<Context>>,
     #[serde(skip)]
@@ -50,7 +50,7 @@ impl Default for SaveImageTab {
             width as f32 / height as f32,
         )));
 
-        let mut definition_select_panel = DefinitionSelectPanel::default();
+        let mut definition_select_panel = DefinitionSelectPanel::multi_select();
         let tracker_id = definition_select_panel.register_tracker();
 
         Self {

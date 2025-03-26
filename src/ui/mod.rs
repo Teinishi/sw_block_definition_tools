@@ -4,8 +4,8 @@ mod state;
 pub use state::State;
 mod definitions_store;
 pub use definitions_store::{
-    AttributeValueContainer, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore,
-    WeakDefinitionPointer,
+    AttributeValueContainer, DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect,
+    DefinitionsStore, WeakDefinitionPointer,
 };
 mod attribute_value;
 pub use attribute_value::ui_attribute_value;
