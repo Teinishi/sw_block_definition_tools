@@ -7,7 +7,7 @@ use crate::{
     sw_block_definition::SwBlockDefinition,
 };
 use eframe::glow::Context;
-use egui::{CentralPanel, DragValue, Grid, Id, Rect, SidePanel, Sides, Slider, UiBuilder};
+use egui::{CentralPanel, DragValue, Grid, Id, Rect, SidePanel, Slider, UiBuilder};
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
 use std::{
@@ -122,10 +122,8 @@ impl SaveImageTab {
 
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
-                .clip(true)
                 .size(Size::remainder())
                 .size(Size::initial(200.0))
-                .size(Size::initial(20.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
                         let canvas_size = fit_size_aspect(ui.available_size(), self.aspect_ratio());
@@ -155,29 +153,23 @@ impl SaveImageTab {
                     });
 
                     strip.strip(|strip| {
-                        strip.sizes(Size::remainder(), 2).horizontal(|mut strip| {
-                            strip.cell(|ui| {
-                                self.ui_camera_params(ui, Id::new("save_image_camera_params"));
-                            });
-                            strip.cell(|ui| {
-                                self.ui_scene(ui, definition_c);
-                            });
-                        });
-                    });
-
-                    strip.cell(|ui| {
-                        Sides::new().show(
-                            ui,
-                            |_ui| {},
-                            |ui| {
-                                ui.horizontal(|ui| {
+                        strip
+                            .sizes(Size::remainder(), 2)
+                            .size(Size::initial(100.0))
+                            .horizontal(|mut strip| {
+                                strip.cell(|ui| {
+                                    self.ui_camera_params(ui, Id::new("save_image_camera_params"));
+                                });
+                                strip.cell(|ui| {
+                                    self.ui_scene(ui, definition_c);
+                                });
+                                strip.cell(|ui| {
                                     if ui.button("Save image").clicked() {
                                         #[cfg(not(target_arch = "wasm32"))]
                                         self.save_image(Some(frame));
                                     }
                                 });
-                            },
-                        );
+                            });
                     });
                 });
         });
