@@ -110,15 +110,13 @@ impl DefinitionSelectPanel {
 
         self.update_search(definitions_store);
 
+        let select_updated = self
+            .selector
+            .borrow_mut()
+            .check_update(self.selector_observer_id)
+            .unwrap_or(false);
         if let Some(multi_selector) = &self.multi_selector {
-            if self.auto_select
-                && multi_selector.borrow().count() > 0
-                && self
-                    .selector
-                    .borrow_mut()
-                    .check_update(self.selector_observer_id)
-                    .unwrap_or(false)
-            {
+            if self.auto_select && multi_selector.borrow().count() > 0 && select_updated {
                 if let Some(selected) = self.selector.borrow().selected() {
                     multi_selector.borrow_mut().select(&selected);
                 }
