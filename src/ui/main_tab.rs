@@ -10,14 +10,14 @@ pub struct MainTab {
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
-    tracker_id: u32,
+    selector_observer_id: u32,
     window_id: u32,
 }
 
 impl Default for MainTab {
     fn default() -> Self {
         let mut definition_select_panel = DefinitionSelectPanel::default();
-        let tracker_id = definition_select_panel.register_tracker();
+        let selector_observer_id = definition_select_panel.register_observer();
         let definition_3d_panel = Definition3dPanel::new(None);
 
         Self {
@@ -25,7 +25,7 @@ impl Default for MainTab {
             definition_detail_panel: DefinitionDetailPanel::default(),
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
-            tracker_id,
+            selector_observer_id,
             window_id: 0,
         }
     }
@@ -40,7 +40,7 @@ impl MainTab {
         &mut self,
         selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
     ) {
-        self.tracker_id = selector.borrow_mut().register_tracker();
+        self.selector_observer_id = selector.borrow_mut().register_observer();
         self.definition_select_panel.use_selector(selector);
     }
 
@@ -90,7 +90,7 @@ impl MainTab {
                         ui,
                         self.definition_select_panel.selected_definition(),
                         self.definition_select_panel
-                            .check_update(self.tracker_id)
+                            .check_update(self.selector_observer_id)
                             .unwrap_or(false),
                     );
                     ui.add_space(4.0);

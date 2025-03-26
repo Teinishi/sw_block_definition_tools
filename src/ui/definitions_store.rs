@@ -157,14 +157,14 @@ pub trait DefinitionSelect {
             self.unselect(definition);
         }
     }
-    fn register_tracker(&mut self) -> u32;
-    fn check_update(&mut self, tracker_id: u32) -> Option<bool>;
+    fn register_observer(&mut self) -> u32;
+    fn check_update(&mut self, observer_id: u32) -> Option<bool>;
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionSingleSelect {
     selected: Option<WeakDefinitionPointer>,
-    change_tracker: ChangeTracker,
+    subject: ChangeObserverSubject,
 }
 
 impl DefinitionSelect for DefinitionSingleSelect {
@@ -178,14 +178,14 @@ impl DefinitionSelect for DefinitionSingleSelect {
     fn clear(&mut self) {
         if self.selected.is_some() {
             self.selected = None;
-            self.change_tracker.changed();
+            self.subject.changed();
         }
     }
 
     fn select_weak(&mut self, definition: &WeakDefinitionPointer) {
         if !self.is_selected_weak(definition) {
             self.selected = Some(definition.clone());
-            self.change_tracker.changed();
+            self.subject.changed();
         }
     }
 
@@ -195,12 +195,12 @@ impl DefinitionSelect for DefinitionSingleSelect {
         }
     }
 
-    fn register_tracker(&mut self) -> u32 {
-        self.change_tracker.register()
+    fn register_observer(&mut self) -> u32 {
+        self.subject.register()
     }
 
-    fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
-        self.change_tracker.check(tracker_id)
+    fn check_update(&mut self, observer_id: u32) -> Option<bool> {
+        self.subject.check(observer_id)
     }
 }
 
@@ -214,7 +214,7 @@ impl DefinitionSingleSelect {
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionMultiSelect {
     selected: Vec<WeakDefinitionPointer>,
-    change_tracker: ChangeTracker,
+    subject: ChangeObserverSubject,
 }
 
 impl DefinitionSelect for DefinitionMultiSelect {
@@ -235,12 +235,12 @@ impl DefinitionSelect for DefinitionMultiSelect {
         self.selected.retain(|s| !s.ptr_eq(&target));
     }
 
-    fn register_tracker(&mut self) -> u32 {
-        self.change_tracker.register()
+    fn register_observer(&mut self) -> u32 {
+        self.subject.register()
     }
 
-    fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
-        self.change_tracker.check(tracker_id)
+    fn check_update(&mut self, observer_id: u32) -> Option<bool> {
+        self.subject.check(observer_id)
     }
 }
 
@@ -260,23 +260,23 @@ impl DefinitionMultiSelect {
 
 // 複数箇所から毎フレーム変更を追跡できるようにする
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-struct ChangeTracker {
-    tracker_id: u32,
-    trackers: HashMap<u32, bool>,
+struct ChangeObserverSubject {
+    observer_id: u32,
+    observers: HashMap<u32, bool>,
 }
 
-impl ChangeTracker {
+impl ChangeObserverSubject {
     // 追跡者にIDを配る
     fn register(&mut self) -> u32 {
-        let tracker_id = self.tracker_id;
-        self.tracker_id += 1;
-        tracker_id
+        let observer_id = self.observer_id;
+        self.observer_id += 1;
+        observer_id
     }
 
     // 変更をチェックされたら返してフラグを下ろす
-    fn check(&mut self, tracker_id: u32) -> Option<bool> {
-        if let Some(changed) = self.trackers.get(&tracker_id).cloned() {
-            self.trackers.insert(tracker_id, false);
+    fn check(&mut self, observer_id: u32) -> Option<bool> {
+        if let Some(changed) = self.observers.get(&observer_id).cloned() {
+            self.observers.insert(observer_id, false);
             Some(changed)
         } else {
             None
@@ -285,8 +285,8 @@ impl ChangeTracker {
 
     // 変更があったときすべてフラグ立てる
     fn changed(&mut self) {
-        for key in 0..self.tracker_id {
-            self.trackers.insert(key, true);
+        for key in 0..self.observer_id {
+            self.observers.insert(key, true);
         }
     }
 }

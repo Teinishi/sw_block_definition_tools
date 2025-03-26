@@ -11,7 +11,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 pub struct DefinitionSelectPanel {
     search_text: String,
     selector: Rc<RefCell<DefinitionSingleSelect>>,
-    selector_tracker_id: u32,
+    selector_observer_id: u32,
     multi_selector: Option<Rc<RefCell<DefinitionMultiSelect>>>,
     search_result: BTreeMap<String, bool>,
     pub auto_select: bool,
@@ -20,12 +20,12 @@ pub struct DefinitionSelectPanel {
 impl Default for DefinitionSelectPanel {
     fn default() -> Self {
         let mut selector = DefinitionSingleSelect::default();
-        let tracker_id = selector.register_tracker();
+        let observer_id = selector.register_observer();
 
         Self {
             search_text: Default::default(),
             selector: Rc::new(RefCell::new(selector)),
-            selector_tracker_id: tracker_id,
+            selector_observer_id: observer_id,
             multi_selector: None,
             search_result: Default::default(),
             auto_select: false,
@@ -43,7 +43,7 @@ impl DefinitionSelectPanel {
     }
 
     pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
-        self.selector_tracker_id = selector.borrow_mut().register_tracker();
+        self.selector_observer_id = selector.borrow_mut().register_observer();
         self.selector = selector;
     }
 
@@ -117,7 +117,7 @@ impl DefinitionSelectPanel {
                 && self
                     .selector
                     .borrow_mut()
-                    .check_update(self.selector_tracker_id)
+                    .check_update(self.selector_observer_id)
                     .unwrap_or(false)
             {
                 if let Some(selected) = self.selector.borrow().selected() {
@@ -197,12 +197,12 @@ impl DefinitionSelectPanel {
         self.selector.borrow().selected()
     }
 
-    pub fn register_tracker(&mut self) -> u32 {
-        self.selector.borrow_mut().register_tracker()
+    pub fn register_observer(&mut self) -> u32 {
+        self.selector.borrow_mut().register_observer()
     }
 
-    pub fn check_update(&mut self, tracker_id: u32) -> Option<bool> {
-        self.selector.borrow_mut().check_update(tracker_id)
+    pub fn check_update(&mut self, observer_id: u32) -> Option<bool> {
+        self.selector.borrow_mut().check_update(observer_id)
     }
 
     fn reset_search(&mut self) {

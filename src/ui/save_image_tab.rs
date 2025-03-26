@@ -18,7 +18,7 @@ use std::{
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaveImageTab {
-    tracker_id: u32,
+    selector_observer_id: u32,
     width: i32,
     height: i32,
     is_orthographic: bool,
@@ -51,11 +51,11 @@ impl Default for SaveImageTab {
         )));
 
         let mut definition_select_panel = DefinitionSelectPanel::multi_select();
-        let tracker_id = definition_select_panel.register_tracker();
+        let selector_observer_id = definition_select_panel.register_observer();
 
         Self {
             definition_select_panel,
-            tracker_id,
+            selector_observer_id,
             width,
             height,
             is_orthographic: false,
@@ -84,7 +84,7 @@ impl SaveImageTab {
         &mut self,
         selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>,
     ) {
-        self.tracker_id = selector.borrow_mut().register_tracker();
+        self.selector_observer_id = selector.borrow_mut().register_observer();
         self.definition_select_panel.use_selector(selector);
     }
 
@@ -185,7 +185,7 @@ impl SaveImageTab {
 
         if self
             .definition_select_panel
-            .check_update(self.tracker_id)
+            .check_update(self.selector_observer_id)
             .unwrap_or(false)
         {
             self.update_scene(&definition);
