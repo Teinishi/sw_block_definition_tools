@@ -15,12 +15,6 @@ pub struct MainTab {
 
 impl Default for MainTab {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MainTab {
-    pub fn new() -> Self {
         let mut definition_select_panel = DefinitionSelectPanel::default();
         let definition_3d_panel =
             Definition3dPanel::new(None, definition_select_panel.selector_mut());
@@ -33,7 +27,9 @@ impl MainTab {
             window_id: 0,
         }
     }
+}
 
+impl MainTab {
     pub fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
         self.definition_3d_panel.creation_context(cc);
     }
@@ -51,7 +47,7 @@ impl MainTab {
     pub fn update(
         &mut self,
         ctx: &eframe::egui::Context,
-        frame: &mut eframe::Frame,
+        _frame: &mut eframe::Frame,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
     ) {
@@ -80,11 +76,8 @@ impl MainTab {
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(4.0);
-                    self.definition_3d_panel.ui(
-                        ui,
-                        frame,
-                        self.definition_select_panel.selector_mut(),
-                    );
+                    self.definition_3d_panel
+                        .ui(ui, self.definition_select_panel.selector_mut());
                     ui.add_space(4.0);
                 });
             });

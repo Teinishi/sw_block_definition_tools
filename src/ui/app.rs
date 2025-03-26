@@ -1,6 +1,6 @@
 use egui::TopBottomPanel;
 
-use super::{DefinitionsStore, MainTab, SettingsTab, State};
+use super::{DefinitionsStore, MainTab, SaveImageTab, SettingsTab, State};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 enum Tab {
@@ -15,12 +15,13 @@ impl Default for Tab {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct MainApp {
     state: State,
     definitions_store: DefinitionsStore,
     tab: Tab,
     main_tab: MainTab,
+    save_image_tab: SaveImageTab,
     settings_tab: SettingsTab,
 }
 
@@ -65,21 +66,28 @@ impl MainApp {
                 if let Some(rom_path) = app.definitions_store.rom_path() {
                     app.state.rom_path = Some(rom_path.clone());
                 }
-                app.main_tab.creation_context(cc);
-                return app;
             }
         }
 
-        let mut main_tab = MainTab::new();
-        main_tab.creation_context(cc);
+        let mut app = cc
+            .storage
+            .and_then(|storage| {
+                let app: Option<Self> = eframe::get_value(storage, eframe::APP_KEY);
+                app
+            })
+            .map(|mut app| {
+                let _ = app.definitions_store.open_rom_directory(None);
+                if let Some(rom_path) = app.definitions_store.rom_path() {
+                    app.state.rom_path = Some(rom_path.clone());
+                }
+                app
+            })
+            .unwrap_or_default();
 
-        Self {
-            state: State::default(),
-            definitions_store: DefinitionsStore::default(),
-            tab: Tab::default(),
-            main_tab,
-            settings_tab: SettingsTab::default(),
-        }
+        app.main_tab.creation_context(cc);
+        app.save_image_tab.creation_context(cc);
+
+        app
     }
 }
 
@@ -90,6 +98,7 @@ impl eframe::App for MainApp {
 
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
         self.main_tab.destory(gl);
+        self.save_image_tab.destroy(gl);
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
@@ -107,7 +116,8 @@ impl eframe::App for MainApp {
                     .update(ctx, frame, &mut self.state, &mut self.definitions_store)
             }
             Tab::SaveImage => {
-                todo!()
+                self.save_image_tab
+                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
             }
             Tab::Settings => {
                 self.settings_tab

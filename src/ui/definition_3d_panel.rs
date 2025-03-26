@@ -1,6 +1,5 @@
 use super::{
     definitions_store::DefinitionSelect, paint_canvas_3d, BlockViewScene, DefinitionSingleSelect,
-    SaveImageModal,
 };
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
@@ -9,7 +8,6 @@ use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
-    save_image_modal: SaveImageModal,
     #[serde(skip)]
     scene: BlockViewScene,
     camera: Arc<Mutex<OrbitCamera>>,
@@ -30,7 +28,6 @@ impl Definition3dPanel {
         let camera = Arc::new(Mutex::new(camera));
 
         Self {
-            save_image_modal: SaveImageModal::default(),
             scene: Default::default(),
             camera,
             renderer: None,
@@ -44,22 +41,15 @@ impl Definition3dPanel {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
         }
-        self.save_image_modal.creation_context(cc);
     }
 
     pub fn destroy(&self, gl: Option<&eframe::glow::Context>) {
         if let Some(renderer) = &self.renderer {
             renderer.lock().destroy(gl);
         }
-        self.save_image_modal.destroy(gl);
     }
 
-    pub fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        frame: &eframe::Frame,
-        selector: &mut DefinitionSingleSelect,
-    ) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, selector: &mut DefinitionSingleSelect) {
         egui::Frame::canvas(ui.style())
             .fill(egui::Color32::TRANSPARENT)
             .inner_margin(0.0)
@@ -89,13 +79,5 @@ impl Definition3dPanel {
         {
             self.scene.update(&data, &meshes);
         }
-
-        ui.separator();
-
-        if ui.button("Save image").clicked() {
-            self.save_image_modal.open(selector.selected());
-        }
-
-        self.save_image_modal.ui(ui, frame, selector.selected());
     }
 }

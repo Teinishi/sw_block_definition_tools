@@ -1,10 +1,13 @@
-use super::{paint_canvas_3d, BlockViewScene};
+use super::{
+    paint_canvas_3d, BlockViewScene, DefinitionSelect, DefinitionSelectPanel, DefinitionsStore,
+    State,
+};
 use crate::{
     gl_renderer::{Camera, OrbitCamera, SceneRenderer},
     sw_block_definition::SwBlockDefinition,
 };
 use eframe::glow::Context;
-use egui::{vec2, Align, DragValue, Grid, Id, Layout, Modal, Sides, Slider};
+use egui::{CentralPanel, DragValue, Grid, Id, Rect, SidePanel, Sides, Slider, UiBuilder};
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
 use std::{
@@ -14,9 +17,9 @@ use std::{
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct SaveImageModal {
-    #[serde(skip)]
-    open: bool,
+pub struct SaveImageTab {
+    definition_select_panel: DefinitionSelectPanel,
+    tracker_id: u32,
     width: i32,
     height: i32,
     is_orthographic: bool,
@@ -34,7 +37,7 @@ pub struct SaveImageModal {
     mesh_loaded: bool,
 }
 
-impl Default for SaveImageModal {
+impl Default for SaveImageTab {
     fn default() -> Self {
         let mut camera = OrbitCamera {
             direction: Vec3::new(1.0, -0.5, -1.0),
@@ -43,8 +46,12 @@ impl Default for SaveImageModal {
         camera.orthogonalize_up();
         let camera = Arc::new(Mutex::new(camera));
 
+        let mut definition_select_panel = DefinitionSelectPanel::default();
+        let tracker_id = definition_select_panel.selector_mut().register_tracker();
+
         Self {
-            open: false,
+            definition_select_panel,
+            tracker_id,
             width: 512,
             height: 512,
             is_orthographic: false,
@@ -60,22 +67,7 @@ impl Default for SaveImageModal {
     }
 }
 
-impl SaveImageModal {
-    pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Self {
-        let mut instance = Self::default();
-        instance.creation_context(cc);
-        instance
-    }
-
-    pub fn open(&mut self, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
-        self.open = true;
-        self.update_scene(definition);
-    }
-
-    pub fn close(&mut self) {
-        self.open = false;
-    }
-
+impl SaveImageTab {
     pub fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
@@ -90,53 +82,58 @@ impl SaveImageModal {
         }
     }
 
-    pub fn update_scene(&mut self, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
+    fn update_scene(&mut self, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {
         if let Some(definition) = definition {
             let (data, meshes) = definition.borrow_mut().load_data_meshes();
             self.scene.update(&data, &meshes);
         }
     }
 
+    fn aspect_ratio(&self) -> f32 {
+        self.width as f32 / self.height as f32
+    }
+
     #[allow(unused_variables)]
-    pub fn ui(
+    pub fn update(
         &mut self,
-        ui: &mut egui::Ui,
-        frame: &eframe::Frame,
-        definition: Option<Rc<RefCell<SwBlockDefinition>>>,
+        ctx: &eframe::egui::Context,
+        frame: &mut eframe::Frame,
+        _state: &mut State,
+        definitions_store: &mut DefinitionsStore,
     ) {
-        if !self.open {
-            return;
-        }
+        SidePanel::left("left_panel")
+            .resizable(true)
+            .default_width(200.0)
+            .width_range(80.0..=500.0)
+            .show(ctx, |ui| {
+                self.definition_select_panel.ui(ui, definitions_store);
+            });
 
-        let viewport_size: Option<egui::Vec2> =
-            ui.ctx().input(|i| Some(i.viewport().inner_rect?.size()));
-        let view_container_size = viewport_size
-            .map(|viewport_size| vec2(0.7 * viewport_size.x, 0.4 * viewport_size.y))
-            .unwrap_or_else(|| vec2(self.width as f32, self.height as f32));
-        let aspect_ratio = self.width as f32 / self.height as f32;
-
+        let definition = self.definition_select_panel.selector_mut().selected();
         let definition_c = definition.clone();
 
-        let id = Id::new("save_image_modal");
-        let modal = Modal::new(id).show(ui.ctx(), |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
-                .size(Size::exact(view_container_size.y))
+                .clip(true)
+                .size(Size::remainder())
                 .size(Size::initial(200.0))
                 .size(Size::initial(20.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
-                        ui.allocate_ui_with_layout(
-                            view_container_size,
-                            Layout::top_down(Align::Center),
-                            |ui| {
-                                egui::Frame::new().show(ui, |ui| {
+                        let canvas_size = fit_size_aspect(ui.available_size(), self.aspect_ratio());
+
+                        ui_center(ui, canvas_size, |ui| {
+                            egui::Frame::canvas(ui.style())
+                                .inner_margin(0.0)
+                                .show(ui, |ui| {
                                     let (rect, response) = ui.allocate_exact_size(
-                                        fit_size_aspect(view_container_size, aspect_ratio),
+                                        canvas_size - egui::vec2(2.0, 2.0),
                                         egui::Sense::drag(),
                                     );
                                     self.camera.lock().unwrap().control(ui, response);
 
                                     super::paint_checker_pattern(ui, rect);
+
                                     if let Some(renderer) = &self.renderer {
                                         paint_canvas_3d(
                                             ui,
@@ -146,14 +143,13 @@ impl SaveImageModal {
                                         );
                                     }
                                 });
-                            },
-                        );
+                        });
                     });
 
                     strip.strip(|strip| {
                         strip.sizes(Size::remainder(), 2).horizontal(|mut strip| {
                             strip.cell(|ui| {
-                                self.ui_camera_params(ui, id.with("camera_params"));
+                                self.ui_camera_params(ui, Id::new("save_image_camera_params"));
                             });
                             strip.cell(|ui| {
                                 self.ui_scene(ui, definition_c);
@@ -171,9 +167,6 @@ impl SaveImageModal {
                                         #[cfg(not(target_arch = "wasm32"))]
                                         self.save_image(Some(frame));
                                     }
-                                    if ui.button("Cancel").clicked() {
-                                        self.close();
-                                    }
                                 });
                             },
                         );
@@ -181,6 +174,20 @@ impl SaveImageModal {
                 });
         });
 
+        self.camera_control(&definition);
+
+        if self.scene.set_orthographic(self.is_orthographic)
+            || self
+                .definition_select_panel
+                .selector_mut()
+                .check_update(self.tracker_id)
+                .unwrap_or(false)
+        {
+            self.update_scene(&definition);
+        }
+    }
+
+    fn camera_control(&self, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {
         if let Ok(mut camera) = self.camera.lock() {
             camera.set_aspect_ratio(self.width as f32 / self.height as f32);
             if self.is_orthographic {
@@ -255,7 +262,7 @@ impl SaveImageModal {
                         let tan = (self.fov.to_radians() / 2.0).tan();
                         let tan_x = (self.width - 2 * self.margin) as f32 / self.width as f32
                             * tan
-                            * aspect_ratio;
+                            * self.aspect_ratio();
                         let tan_y =
                             (self.height - 2 * self.margin) as f32 / self.height as f32 * tan;
                         let len = camera.direction.length();
@@ -272,15 +279,6 @@ impl SaveImageModal {
                     camera.direction *= s;
                 }
             }
-        }
-        if let Some(definition) = definition {
-            let (data, meshes) = definition.borrow_mut().load_data_meshes();
-            self.scene
-                .set_orthographic(self.is_orthographic, &data, &meshes);
-        }
-
-        if modal.should_close() {
-            self.close();
         }
     }
 
@@ -441,6 +439,21 @@ impl SaveImageModal {
     }
 }
 
+fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
+    let width = size.x;
+    let height = size.y;
+    if width / height > aspect_ratio {
+        egui::vec2(height * aspect_ratio, height)
+    } else {
+        egui::vec2(width, width / aspect_ratio)
+    }
+}
+
+fn ui_center(ui: &mut egui::Ui, size: egui::Vec2, add_contents: impl FnOnce(&mut egui::Ui)) {
+    let rect = Rect::from_center_size(ui.available_rect_before_wrap().center(), size);
+    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), add_contents);
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn save_image_dialog<
     W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
@@ -454,14 +467,4 @@ fn save_image_dialog<
         dialog = dialog.set_parent(p)
     }
     dialog.save_file()
-}
-
-fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
-    let width = size.x;
-    let height = size.y;
-    if width / height > aspect_ratio {
-        vec2(height * aspect_ratio, height)
-    } else {
-        vec2(width, width / aspect_ratio)
-    }
 }

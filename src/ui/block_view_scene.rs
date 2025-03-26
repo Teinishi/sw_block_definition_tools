@@ -290,12 +290,12 @@ impl BlockViewScene {
     pub fn set_orthographic(
         &mut self,
         is_orthographic: bool,
-        data: &Option<Arc<Definition>>,
-        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
-    ) {
+    ) -> bool {
         if self.is_orthographic != is_orthographic {
             self.is_orthographic = is_orthographic;
-            self.update(data, meshes);
+            true
+        } else {
+            false
         }
     }
 
