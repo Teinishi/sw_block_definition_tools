@@ -1,6 +1,5 @@
 use super::{DefinitionsStore, State};
-use egui::{CentralPanel, Grid, Slider, TextEdit};
-use std::path::PathBuf;
+use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsTab {
@@ -8,6 +7,7 @@ pub struct SettingsTab {
 }
 
 impl SettingsTab {
+    #[allow(unused_variables)]
     pub fn update(
         &mut self,
         ctx: &eframe::egui::Context,
@@ -40,10 +40,10 @@ impl SettingsTab {
                             .unwrap_or_default()
                             .to_string();
                         let text_edit =
-                            ui.add_sized([300.0, 18.0], TextEdit::singleline(&mut self.rom_path));
+                            ui.add_sized([300.0, 18.0], egui::TextEdit::singleline(&mut self.rom_path));
                         if text_edit.changed() {
                             self.update_rom_folder(
-                                PathBuf::from(self.rom_path.clone()),
+                                std::path::PathBuf::from(self.rom_path.clone()),
                                 state,
                                 definitions_store,
                             );
@@ -64,7 +64,7 @@ impl SettingsTab {
     #[cfg(not(target_arch = "wasm32"))]
     fn update_rom_folder(
         &self,
-        rom_path: PathBuf,
+        rom_path: std::path::PathBuf,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
     ) {
@@ -79,7 +79,7 @@ fn open_rom_folder_dialog<
     W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
 >(
     parent: Option<&W>,
-) -> Option<PathBuf> {
+) -> Option<std::path::PathBuf> {
     const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
     use rfd::FileDialog;
     use std::path::Path;
