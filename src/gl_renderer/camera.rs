@@ -1,6 +1,8 @@
 use egui::PointerButton;
 use glam::{Affine3A, Mat4, Quat, Vec3, Vec3Swizzles};
 
+const ORTHOGRAPHIC_ZOOM_FACTOR: f32 = 0.05;
+
 pub trait Camera: Default {
     fn mat_view(&self) -> Affine3A;
     fn mat_proj(&self) -> Mat4;
@@ -22,7 +24,7 @@ pub struct OrbitCamera {
     pub center: Vec3,
     pub direction: Vec3,
     pub up: Vec3,
-    pub mode: CameraMode,
+    mode: CameraMode,
     pub fov_y: f32,
     pub aspect_ratio: f32,
     pub near_clip: f32,
@@ -41,7 +43,7 @@ impl Default for OrbitCamera {
             direction: Vec3::NEG_Z,
             up: Vec3::Y,
             mode: CameraMode::Perspective,
-            fov_y: 60f32.to_radians(),
+            fov_y: 45f32.to_radians(),
             aspect_ratio: 1.0,
             near_clip: 0.025,
             far_clip: 20100.0,
@@ -72,7 +74,7 @@ impl Camera for OrbitCamera {
                 self.far_clip,
             ),
             CameraMode::Orthographic => {
-                let zoom = self.direction.length() * self.fov_y / 2.0;
+                let zoom = self.direction.length() * ORTHOGRAPHIC_ZOOM_FACTOR;
                 Mat4::orthographic_rh_gl(
                     -zoom * self.aspect_ratio,
                     zoom * self.aspect_ratio,
@@ -98,6 +100,18 @@ impl Camera for OrbitCamera {
 }
 
 impl OrbitCamera {
+    pub fn new(center: Vec3, direction: Vec3, fov_y: f32, aspect_ratio: f32) -> Self {
+        let mut camera = Self {
+            center,
+            direction,
+            fov_y,
+            aspect_ratio,
+            ..Default::default()
+        };
+        camera.orthogonalize_up();
+        camera
+    }
+
     pub fn azimuth_angle(&self) -> f32 {
         let v = if self.direction.xz().length() > 0.00001 {
             self.direction
@@ -120,11 +134,22 @@ impl OrbitCamera {
     }
 
     pub fn set_perspective(&mut self) {
-        self.mode = CameraMode::Perspective;
+        if !matches!(self.mode, CameraMode::Perspective) {
+            self.direction /= self.orthographic_distance_ratio();
+            self.mode = CameraMode::Perspective;
+        }
     }
 
     pub fn set_orthographic(&mut self) {
-        self.mode = CameraMode::Orthographic;
+        if !matches!(self.mode, CameraMode::Orthographic) {
+            self.direction *= self.orthographic_distance_ratio();
+            self.mode = CameraMode::Orthographic;
+        }
+    }
+
+    fn orthographic_distance_ratio(&self) -> f32 {
+        // 透視投影から平行投影にするときの、direction の変更倍率
+        self.fov_y / 2.0 / ORTHOGRAPHIC_ZOOM_FACTOR
     }
 
     pub fn set_fov_y(&mut self, value: f32) {

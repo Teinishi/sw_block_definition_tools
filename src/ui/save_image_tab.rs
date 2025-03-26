@@ -39,12 +39,16 @@ pub struct SaveImageTab {
 
 impl Default for SaveImageTab {
     fn default() -> Self {
-        let mut camera = OrbitCamera {
-            direction: Vec3::new(1.0, -0.5, -1.0),
-            ..Default::default()
-        };
-        camera.orthogonalize_up();
-        let camera = Arc::new(Mutex::new(camera));
+        let width = 512;
+        let height = 512;
+        let fov: f32 = 45.0;
+
+        let camera = Arc::new(Mutex::new(OrbitCamera::new(
+            Vec3::ZERO,
+            Vec3::new(1.0, -0.5, 1.0),
+            fov.to_radians(),
+            width as f32 / height as f32,
+        )));
 
         let mut definition_select_panel = DefinitionSelectPanel::default();
         let tracker_id = definition_select_panel.register_tracker();
@@ -52,10 +56,10 @@ impl Default for SaveImageTab {
         Self {
             definition_select_panel,
             tracker_id,
-            width: 512,
-            height: 512,
+            width,
+            height,
             is_orthographic: false,
-            fov: 60.0,
+            fov,
             camera_auto: false,
             margin: 0,
             gl: None,

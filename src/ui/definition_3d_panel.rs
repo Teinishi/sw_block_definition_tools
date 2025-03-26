@@ -24,16 +24,18 @@ pub struct Definition3dPanel {
 
 impl Definition3dPanel {
     pub fn new(camera: Option<OrbitCamera>) -> Self {
-        let mut camera = camera.unwrap_or_else(|| OrbitCamera {
-            direction: Vec3::new(1.0, -0.5, -1.0),
-            ..Default::default()
+        let camera = camera.unwrap_or_else(|| {
+            OrbitCamera::new(
+                Vec3::ZERO,
+                Vec3::new(1.0, -0.5, 1.0),
+                45f32.to_radians(),
+                1.0,
+            )
         });
-        camera.orthogonalize_up();
-        let camera = Arc::new(Mutex::new(camera));
 
         Self {
             scene: Default::default(),
-            camera,
+            camera: Arc::new(Mutex::new(camera)),
             renderer: None,
             mesh_loaded: false,
         }
