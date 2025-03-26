@@ -1,7 +1,4 @@
-use super::{
-    definitions_store::DefinitionSelect, DefinitionMultiSelect, DefinitionSingleSelect,
-    DefinitionsStore,
-};
+use super::{DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore};
 use crate::sw_block_definition::SwBlockDefinition;
 use egui::{vec2, Align, Button, Checkbox, Layout, RichText, TextEdit};
 use egui_extras::{Size, StripBuilder};

@@ -5,10 +5,9 @@ pub use tab::TabVariants;
 mod state;
 pub use state::State;
 mod definitions_store;
-pub use definitions_store::{
-    AttributeValueContainer, DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect,
-    DefinitionsStore, WeakDefinitionPointer,
-};
+pub use definitions_store::{AttributeValueContainer, DefinitionsStore, WeakDefinitionPointer};
+mod definition_selector;
+pub use definition_selector::{DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect};
 mod attribute_value;
 pub use attribute_value::ui_attribute_value;
 mod definition_selelct_panel;
