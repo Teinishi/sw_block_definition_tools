@@ -39,8 +39,10 @@ impl SettingsTab {
                             .to_str()
                             .unwrap_or_default()
                             .to_string();
-                        let text_edit =
-                            ui.add_sized([300.0, 18.0], egui::TextEdit::singleline(&mut self.rom_path));
+                        let text_edit = ui.add_sized(
+                            [300.0, 18.0],
+                            egui::TextEdit::singleline(&mut self.rom_path),
+                        );
                         if text_edit.changed() {
                             self.update_rom_folder(
                                 std::path::PathBuf::from(self.rom_path.clone()),
