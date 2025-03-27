@@ -48,12 +48,16 @@ impl AutoCamera {
         self.camera.control(ui, response, true, true, !self.is_auto);
     }
 
-    pub fn update(&mut self, data: &Definition) {
-        let camera = &mut self.camera;
+    pub fn aspect_ratio(&self) -> f32 {
+        self.width as f32 / self.height as f32
+    }
 
+    pub fn update(&mut self, data: &Definition) {
         let width = self.width as f32;
         let height = self.height as f32;
-        let aspect_ratio = width / height;
+        let aspect_ratio = self.aspect_ratio();
+
+        let camera = &mut self.camera;
 
         camera.set_aspect_ratio(aspect_ratio);
         if self.is_orthographic {

@@ -15,9 +15,8 @@ use std::sync::Arc;
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct SaveImageTab {
-    width: i32,
-    height: i32,
     auto_camera: AutoCamera,
+    msaa_samples: i32,
 
     #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
@@ -41,17 +40,14 @@ pub struct SaveImageTab {
 
 impl Default for SaveImageTab {
     fn default() -> Self {
-        let width = 512;
-        let height = 512;
         let auto_camera = AutoCamera::default();
 
         let mut definition_select_panel = DefinitionSelectPanel::multi_select();
         let selector_observer_id = definition_select_panel.register_observer();
 
         Self {
-            width,
-            height,
             auto_camera,
+            msaa_samples: 8,
             definition_select_panel,
             selector_observer_id,
             gl: None,
@@ -108,15 +104,20 @@ impl Tab for SaveImageTab {
                 .size(Size::initial(240.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
-                        let canvas_size =
-                            utils::fit_size_aspect(ui.available_size(), self.aspect_ratio());
+                        let canvas_size = utils::fit_size_aspect(
+                            ui.available_size(),
+                            self.auto_camera.aspect_ratio(),
+                        );
 
                         utils::ui_center(ui, canvas_size, |ui| {
                             egui::Frame::canvas(ui.style())
                                 .inner_margin(0.0)
                                 .show(ui, |ui| {
                                     let (rect, response) = ui.allocate_exact_size(
-                                        canvas_size - egui::vec2(2.0, 2.0),
+                                        egui::vec2(
+                                            (canvas_size.x - 2.0).max(1.0),
+                                            (canvas_size.y - 2.0).max(1.0),
+                                        ),
                                         egui::Sense::drag(),
                                     );
                                     self.auto_camera.control(ui, response);
@@ -204,22 +205,18 @@ impl SaveImageTab {
         }
     }
 
-    fn aspect_ratio(&self) -> f32 {
-        self.width as f32 / self.height as f32
-    }
-
     fn ui_camera_params(&mut self, ui: &mut egui::Ui, id: Id) {
         Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
             ui.label("Image size");
             ui.horizontal(|ui| {
                 ui.add(
-                    DragValue::new(&mut self.width)
+                    DragValue::new(&mut self.auto_camera.width)
                         .range(1..=10000)
                         .suffix("px"),
                 );
                 ui.label("x");
                 ui.add(
-                    DragValue::new(&mut self.height)
+                    DragValue::new(&mut self.auto_camera.height)
                         .range(1..=10000)
                         .suffix("px"),
                 );
@@ -260,7 +257,8 @@ impl SaveImageTab {
                 ui.add(
                     Slider::new(
                         &mut self.auto_camera.margin,
-                        0.0..=((self.width.min(self.height) - 10) / 2) as f32,
+                        0.0..=((self.auto_camera.width.min(self.auto_camera.height) - 10) / 2)
+                            as f32,
                     )
                     .suffix("px"),
                 );
@@ -442,7 +440,12 @@ impl SaveImageTab {
                 scene,
                 renderer,
                 &self.auto_camera,
-                MultisampleFramebuffer::new(gl.clone(), self.width, self.height, 8),
+                MultisampleFramebuffer::new(
+                    gl.clone(),
+                    self.auto_camera.width,
+                    self.auto_camera.height,
+                    self.msaa_samples,
+                ),
                 save_path,
                 !is_single,
             ));
