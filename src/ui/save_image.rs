@@ -176,6 +176,7 @@ impl ImageRenderer {
     }
 
     pub fn update(&mut self) {
+        let start_time = std::time::Instant::now();
         loop {
             if let Ok((data, meshes, filename)) = self.rx.try_recv() {
                 self.auto_camera.update(&data);
@@ -189,6 +190,11 @@ impl ImageRenderer {
                     image.save(&self.save_path)
                 };
             } else {
+                return;
+            }
+
+            // 1フレームに16ミリ秒以上かけない、でも1フレームに最低1枚は処理する
+            if start_time.elapsed().as_millis() >= 16 {
                 return;
             }
         }
