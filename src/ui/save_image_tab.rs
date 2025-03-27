@@ -1,7 +1,7 @@
 use super::{
-    paint_canvas_3d, utils, AutoCamera, BlockViewScene, DefinitionPointer, DefinitionSelect,
-    DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, ImageRenderer,
-    SaveImageProgress, State, Tab,
+    paint_canvas_3d, utils, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
+    DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
+    DefinitionsStore, ImageRenderer, SaveImageProgress, State, Tab,
 };
 use crate::gl_renderer::{MultisampleFramebuffer, SceneRenderer};
 use eframe::glow::Context;
@@ -334,7 +334,24 @@ impl SaveImageTab {
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
-        let scene_state_changed = self.scene.state_ui(ui, &meshes);
+        let mut mesh_options = BlockViewStateMeshOptions::default();
+        if let Some(definition) = self.definition_select_panel.selected_definition() {
+            if let Some(meshes) = definition.lock().ok().and_then(|mut d| d.load_meshes()) {
+                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                mesh_options.or(&options);
+            }
+        }
+        if let Some(selector) = self.definition_select_panel.multi_selector() {
+            for s in selector.borrow().selection() {
+                if let Some(meshes) = s.lock().ok().and_then(|mut d| d.load_meshes()) {
+                    let options =
+                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                    mesh_options.or(&options);
+                }
+            }
+        }
+
+        let scene_state_changed = self.scene.state_ui(ui, mesh_options);
         if mesh_loaded_now || scene_state_changed {
             self.scene.update(&data, &meshes);
         }

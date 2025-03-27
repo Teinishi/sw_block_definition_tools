@@ -90,6 +90,28 @@ impl Default for BlockViewState {
 }
 
 #[derive(Default)]
+pub struct BlockViewStateMeshOptions {
+    meshes: EnumMap<SwBlockDefinitionMeshKey, bool>,
+}
+
+impl BlockViewStateMeshOptions {
+    pub fn from_definition_meshes(definition_meshes: &SwBlockDefinitionMeshes) -> Self {
+        let mut meshes: EnumMap<SwBlockDefinitionMeshKey, bool> = Default::default();
+        for (key, value) in meshes.iter_mut() {
+            *value = definition_meshes.get_mesh(&key).is_some();
+        }
+
+        Self { meshes }
+    }
+
+    pub fn or(&mut self, other: &Self) {
+        for (key, value) in self.meshes.iter_mut() {
+            *value = *value || other.meshes[key];
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct BlockViewScene {
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
@@ -112,12 +134,7 @@ impl BlockViewScene {
         is_changed
     }
 
-    pub fn state_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        meshes: &Option<Arc<SwBlockDefinitionMeshes>>,
-    ) -> bool {
-        let meshes_c = meshes.clone();
+    pub fn state_ui(&mut self, ui: &mut egui::Ui, mesh_options: BlockViewStateMeshOptions) -> bool {
         self.state_mut(|state| {
             ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
             ui.checkbox(&mut state.show_surfaces, "Surfaces");
@@ -133,18 +150,9 @@ impl BlockViewScene {
                 "Bounding box (physics)",
             );
 
-            if let Some(meshes) = meshes_c {
-                for (key, show) in state.show_mesh.iter_mut() {
-                    if let Some(mesh) = meshes.get_mesh(&key) {
-                        let name = key.ui_name();
-                        if let Err(err) = mesh {
-                            ui.collapsing(format!("{}: Error", name), |ui| {
-                                ui.label(format!("{}", err));
-                            });
-                        } else {
-                            ui.checkbox(show, name);
-                        }
-                    }
+            for (key, show_option) in mesh_options.meshes {
+                if show_option {
+                    ui.checkbox(&mut state.show_mesh[key.clone()], key.ui_name());
                 }
             }
         })

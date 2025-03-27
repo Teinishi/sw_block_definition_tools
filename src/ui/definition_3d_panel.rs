@@ -1,4 +1,7 @@
-use super::{definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScene};
+use super::{
+    definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScene,
+    BlockViewStateMeshOptions,
+};
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
@@ -77,7 +80,14 @@ impl Definition3dPanel {
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
-        let scene_state_changed = self.scene.state_ui(ui, &meshes);
+        let scene_state_changed = self.scene.state_ui(
+            ui,
+            if let Some(meshes) = &meshes {
+                BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref())
+            } else {
+                Default::default()
+            },
+        );
         if mesh_loaded_now || select_changed || scene_state_changed {
             self.scene.update(&data, &meshes);
         }
