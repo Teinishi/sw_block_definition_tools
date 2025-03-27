@@ -1,4 +1,4 @@
-use super::{file_dialog, tab::Tab, DefinitionsStore, State};
+use super::{DefinitionsStore, State, Tab};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -31,6 +31,8 @@ impl Tab for SettingsTab {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 {
+                    use super::file_dialog;
+
                     ui.label("rom folder");
                     ui.horizontal(|ui| {
                         let rom_path_buf = state.rom_path.clone().unwrap_or_default();

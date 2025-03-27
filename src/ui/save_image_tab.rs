@@ -3,7 +3,7 @@ use super::{
     DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
     DefinitionsStore, ImageRenderer, SaveImageProgress, State, Tab,
 };
-use crate::gl_renderer::{MultisampleFramebuffer, SceneRenderer};
+use crate::gl_renderer::SceneRenderer;
 use eframe::glow::Context;
 use egui::{
     Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel, Sides,
@@ -357,9 +357,9 @@ impl SaveImageTab {
         }
     }
 
+    #[allow(unused_variables)]
     fn ui_buttons(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-            #[cfg(not(target_arch = "wasm32"))]
             if let Some(multi_selector) = self.definition_select_panel.multi_selector() {
                 let count = multi_selector.borrow().count();
                 let mut save_definitions = None;
@@ -378,6 +378,7 @@ impl SaveImageTab {
                 }
 
                 if let Some(definitions) = save_definitions {
+                    #[cfg(not(target_arch = "wasm32"))]
                     self.save_image(definitions, Some(frame));
                 }
             }
@@ -417,7 +418,10 @@ impl SaveImageTab {
         definitions: Vec<DefinitionPointer>,
         dialog_parent: Option<&W>,
     ) {
-        use crate::ui::{ImageRenderer, ProgressMessage};
+        use crate::{
+            gl_renderer,
+            ui::{ImageRenderer, ProgressMessage},
+        };
 
         use super::file_dialog;
         use std::{cmp::Ordering, sync::mpsc, thread};
@@ -457,7 +461,7 @@ impl SaveImageTab {
                 scene,
                 renderer,
                 &self.auto_camera,
-                MultisampleFramebuffer::new(
+                gl_renderer::MultisampleFramebuffer::new(
                     gl.clone(),
                     self.auto_camera.width,
                     self.auto_camera.height,
