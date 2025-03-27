@@ -183,8 +183,12 @@ impl DefinitionSelectPanel {
             });
     }
 
-    pub fn selector(&mut self) -> Rc<RefCell<DefinitionSingleSelect>> {
+    pub fn selector(&self) -> Rc<RefCell<DefinitionSingleSelect>> {
         self.selector.clone()
+    }
+
+    pub fn multi_selector(&self) -> Option<Rc<RefCell<DefinitionMultiSelect>>> {
+        self.multi_selector.clone()
     }
 
     pub fn selected_definition(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {

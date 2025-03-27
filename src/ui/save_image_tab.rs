@@ -7,7 +7,7 @@ use crate::{
     sw_block_definition::SwBlockDefinition,
 };
 use eframe::glow::Context;
-use egui::{CentralPanel, DragValue, Grid, Id, Rect, SidePanel, Slider, UiBuilder};
+use egui::{Align, CentralPanel, DragValue, Grid, Id, Layout, Rect, SidePanel, Slider, UiBuilder};
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
 use std::{
@@ -113,10 +113,6 @@ impl Tab for SaveImageTab {
             });
 
         let definition = self.definition_select_panel.selected_definition();
-        let definition_c = definition.clone();
-        let initial_filename = definition
-            .as_ref()
-            .map(|d| replace_extension(&d.borrow().filename(), "png"));
 
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
@@ -153,19 +149,16 @@ impl Tab for SaveImageTab {
                     strip.strip(|strip| {
                         strip
                             .sizes(Size::remainder(), 2)
-                            .size(Size::initial(100.0))
+                            .size(Size::initial(120.0))
                             .horizontal(|mut strip| {
                                 strip.cell(|ui| {
                                     self.ui_camera_params(ui, Id::new("save_image_camera_params"));
                                 });
                                 strip.cell(|ui| {
-                                    self.ui_scene(ui, definition_c);
+                                    self.ui_scene(ui, &definition);
                                 });
                                 strip.cell(|ui| {
-                                    if ui.button("Save image").clicked() {
-                                        #[cfg(not(target_arch = "wasm32"))]
-                                        self.save_image(Some(frame), initial_filename);
-                                    }
+                                    self.ui_buttons(ui, frame, &definition);
                                 });
                             });
                     });
@@ -407,8 +400,8 @@ impl SaveImageTab {
         });
     }
 
-    fn ui_scene(&mut self, ui: &mut egui::Ui, definition: Option<Rc<RefCell<SwBlockDefinition>>>) {
-        let (data, meshes) = if let Some(definition) = definition {
+    fn ui_scene(&mut self, ui: &mut egui::Ui, definition: &Option<Rc<RefCell<SwBlockDefinition>>>) {
+        let (data, meshes) = if let Some(definition) = definition.as_ref() {
             definition.borrow_mut().load_data_meshes()
         } else {
             (None, None)
@@ -424,8 +417,39 @@ impl SaveImageTab {
         }
     }
 
+    fn ui_buttons(
+        &self,
+        ui: &mut egui::Ui,
+        frame: &mut eframe::Frame,
+        definition: &Option<Rc<RefCell<SwBlockDefinition>>>,
+    ) {
+        let initial_filename = definition
+            .as_ref()
+            .map(|d| replace_extension(&d.borrow().filename(), "png"));
+
+        ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+            if let Some(multi_selector) = self.definition_select_panel.multi_selector() {
+                let count = multi_selector.borrow().count();
+                if count > 0 {
+                    let button = ui.button(format!("Save {} images", count));
+                    if button.clicked() {
+                        todo!()
+                    }
+                } else {
+                    let button = ui.button("Save image");
+                    if button.clicked() {
+                        #[cfg(not(target_arch = "wasm32"))]
+                        self.save_current_image(Some(frame), initial_filename);
+                    }
+                }
+            }
+        });
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
+    fn save_current_image<
+        W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
+    >(
         &self,
         parent: Option<&W>,
         initial_filename: Option<String>,
