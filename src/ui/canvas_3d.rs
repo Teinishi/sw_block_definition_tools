@@ -1,19 +1,17 @@
 use eframe::egui_glow;
 use egui::{Image, Rect, TextureOptions};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 
 pub fn paint_canvas_3d(
     ui: &mut egui::Ui,
     rect: Rect,
-    camera: Arc<Mutex<OrbitCamera>>,
+    camera: OrbitCamera,
     renderer: Arc<egui::mutex::Mutex<SceneRenderer>>,
 ) {
     let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-        if let Ok(camera) = camera.lock() {
-            renderer.lock().paint(painter.gl(), &*camera);
-        }
+        renderer.lock().paint(painter.gl(), &camera);
     });
 
     let callback = egui::PaintCallback {

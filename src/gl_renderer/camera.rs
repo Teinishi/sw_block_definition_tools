@@ -169,8 +169,15 @@ impl OrbitCamera {
         self.up = quat.mul_vec3(self.up);
     }
 
-    pub fn control(&mut self, ui: &mut egui::Ui, response: egui::Response) {
-        if response.dragged_by(self.rotate_pointer_button) {
+    pub fn control(
+        &mut self,
+        ui: &mut egui::Ui,
+        response: egui::Response,
+        rotate: bool,
+        pan: bool,
+        zoom: bool,
+    ) {
+        if rotate && response.dragged_by(self.rotate_pointer_button) {
             let motion = -self.rotate_speed * response.drag_motion();
             self.rotate(
                 Quat::from_rotation_y(motion.x)
@@ -178,12 +185,12 @@ impl OrbitCamera {
             );
         }
 
-        if response.dragged_by(self.pan_pointer_button) {
+        if pan && response.dragged_by(self.pan_pointer_button) {
             let motion = self.pan_speed * self.direction.length() * response.drag_motion();
             self.center += -motion.x * self.right_vec() + motion.y * self.up;
         }
 
-        if response.hovered() {
+        if zoom && response.hovered() {
             let wheel = ui.input(|i| {
                 i.events.iter().find_map(|e| match e {
                     egui::Event::MouseWheel {

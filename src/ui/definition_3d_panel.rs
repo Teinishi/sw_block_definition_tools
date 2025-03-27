@@ -2,13 +2,13 @@ use super::{definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScen
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
     #[serde(skip)]
     scene: BlockViewScene,
-    camera: Arc<Mutex<OrbitCamera>>,
+    camera: OrbitCamera,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
@@ -28,7 +28,7 @@ impl Definition3dPanel {
 
         Self {
             scene: Default::default(),
-            camera: Arc::new(Mutex::new(camera)),
+            camera,
             renderer: None,
             mesh_loaded: false,
         }
@@ -59,7 +59,7 @@ impl Definition3dPanel {
             .show(ui, |ui| {
                 let s = ui.available_width();
                 let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
-                self.camera.lock().unwrap().control(ui, response);
+                self.camera.control(ui, response, true, true, true);
                 if let Some(renderer) = &self.renderer {
                     paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone());
                 }

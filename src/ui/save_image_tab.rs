@@ -1,27 +1,23 @@
 use super::{
-    paint_canvas_3d, utils, BlockViewScene, DefinitionPointer, DefinitionSelect,
+    paint_canvas_3d, utils, AutoCamera, BlockViewScene, DefinitionPointer, DefinitionSelect,
     DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, ImageRenderer,
     SaveImageProgress, State, Tab,
 };
-use crate::gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer};
+use crate::gl_renderer::{MultisampleFramebuffer, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
     Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel, Sides,
     Slider,
 };
 use egui_extras::{Size, StripBuilder};
-use glam::{Vec3, Vec4};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct SaveImageTab {
     width: i32,
     height: i32,
-    is_orthographic: bool,
-    fov: f32,
-    camera_auto: bool,
-    margin: i32,
+    auto_camera: AutoCamera,
 
     #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
@@ -32,7 +28,6 @@ pub struct SaveImageTab {
     gl: Option<Arc<Context>>,
     #[serde(skip)]
     scene: BlockViewScene,
-    camera: Arc<Mutex<OrbitCamera>>,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
@@ -48,14 +43,7 @@ impl Default for SaveImageTab {
     fn default() -> Self {
         let width = 512;
         let height = 512;
-        let fov: f32 = 45.0;
-
-        let camera = Arc::new(Mutex::new(OrbitCamera::new(
-            Vec3::ZERO,
-            Vec3::new(1.0, -0.5, 1.0),
-            fov.to_radians(),
-            width as f32 / height as f32,
-        )));
+        let auto_camera = AutoCamera::default();
 
         let mut definition_select_panel = DefinitionSelectPanel::multi_select();
         let selector_observer_id = definition_select_panel.register_observer();
@@ -63,15 +51,11 @@ impl Default for SaveImageTab {
         Self {
             width,
             height,
-            is_orthographic: false,
-            fov,
-            camera_auto: false,
-            margin: 0,
+            auto_camera,
             definition_select_panel,
             selector_observer_id,
             gl: None,
             scene: Default::default(),
-            camera,
             renderer: None,
             mesh_loaded: false,
             save_progress: None,
@@ -135,7 +119,7 @@ impl Tab for SaveImageTab {
                                         canvas_size - egui::vec2(2.0, 2.0),
                                         egui::Sense::drag(),
                                     );
-                                    self.camera.lock().unwrap().control(ui, response);
+                                    self.auto_camera.control(ui, response);
 
                                     super::paint_checker_pattern(ui, rect);
 
@@ -144,7 +128,7 @@ impl Tab for SaveImageTab {
                                             paint_canvas_3d(
                                                 ui,
                                                 rect,
-                                                self.camera.clone(),
+                                                self.auto_camera.camera.clone(),
                                                 renderer.clone(),
                                             );
                                         }
@@ -187,7 +171,14 @@ impl Tab for SaveImageTab {
             }
         }
 
-        self.camera_control(&definition);
+        if let Some(data) = definition
+            .as_ref()
+            .and_then(|d| d.lock().ok())
+            .and_then(|mut d| d.load_data())
+            .and_then(|d| d.ok())
+        {
+            self.auto_camera.update(&data);
+        }
 
         if self
             .definition_select_panel
@@ -217,102 +208,6 @@ impl SaveImageTab {
         self.width as f32 / self.height as f32
     }
 
-    fn camera_control(&self, definition: &Option<DefinitionPointer>) {
-        if let Ok(mut camera) = self.camera.lock() {
-            camera.set_aspect_ratio(self.width as f32 / self.height as f32);
-            if self.is_orthographic {
-                camera.set_orthographic();
-            } else {
-                camera.set_perspective();
-                camera.set_fov_y(self.fov.to_radians());
-            }
-
-            if self.camera_auto {
-                if let Some(data) = definition
-                    .as_ref()
-                    .and_then(|d| d.lock().ok())
-                    .and_then(|mut d| d.load_data())
-                    .and_then(|d| d.ok())
-                {
-                    let voxel_min: Option<Vec3> = data.voxel_min.last().map(|v| (*v).into());
-                    let voxel_max: Option<Vec3> = data.voxel_max.last().map(|v| (*v).into());
-                    let corner_min: Vec3 = (voxel_min.unwrap_or_default() - 0.5 * Vec3::ONE) * 0.25;
-                    let corner_max: Vec3 = (voxel_max.unwrap_or_default() + 0.5 * Vec3::ONE) * 0.25;
-                    let center = (corner_min + corner_max) * 0.5;
-
-                    let min_x = corner_min.x;
-                    let min_y = corner_min.y;
-                    let min_z = corner_min.z;
-                    let max_x = corner_max.x;
-                    let max_y = corner_max.y;
-                    let max_z = corner_max.z;
-                    let corners = [
-                        Vec3::new(min_x, min_y, min_z),
-                        Vec3::new(min_x, max_y, min_z),
-                        Vec3::new(min_x, max_y, max_z),
-                        Vec3::new(min_x, min_y, max_z),
-                        Vec3::new(max_x, min_y, min_z),
-                        Vec3::new(max_x, max_y, min_z),
-                        Vec3::new(max_x, max_y, max_z),
-                        Vec3::new(max_x, min_y, max_z),
-                    ];
-
-                    camera.center = Vec3::new(center.x, center.y, -center.z);
-
-                    let s = if self.is_orthographic {
-                        // 平行投影
-                        let mat_vp = camera.mat_view_proj();
-                        let (screen_min_x, screen_min_y, screen_max_x, screen_max_y) =
-                            corners.iter().fold(
-                                (
-                                    f32::INFINITY,
-                                    f32::INFINITY,
-                                    f32::NEG_INFINITY,
-                                    f32::NEG_INFINITY,
-                                ),
-                                |(min_x, min_y, max_x, max_y), c| {
-                                    let s = mat_vp.mul_vec4(Vec4::new(c.x, c.y, -c.z, 1.0));
-                                    (
-                                        min_x.min(s.x),
-                                        min_y.min(s.y),
-                                        max_x.max(s.x),
-                                        max_y.max(s.y),
-                                    )
-                                },
-                            );
-
-                        let sx = (-screen_min_x).max(screen_max_x)
-                            / ((self.width - 2 * self.margin) as f32 / self.width as f32);
-                        let sy = (-screen_min_y).max(screen_max_y)
-                            / ((self.height - 2 * self.margin) as f32 / self.height as f32);
-                        sx.max(sy)
-                    } else {
-                        // 透視投影
-                        // 中心をバウンディングボックスの中心にしているが、角度により片側に偏って見えてしまうので、できれば直す
-                        let view = camera.mat_view();
-                        let tan = (self.fov.to_radians() / 2.0).tan();
-                        let tan_x = (self.width - 2 * self.margin) as f32 / self.width as f32
-                            * tan
-                            * self.aspect_ratio();
-                        let tan_y =
-                            (self.height - 2 * self.margin) as f32 / self.height as f32 * tan;
-                        let len = camera.direction.length();
-                        corners.iter().fold(0.0, |s: f32, corner| {
-                            let view_point =
-                                view.transform_point3(Vec3::new(corner.x, corner.y, -corner.z));
-                            let dx = (view_point.x.abs() / tan_x) - (-view_point.z);
-                            let dy = (view_point.y.abs() / tan_y) - (-view_point.z);
-                            let sx = (len + dx) / len;
-                            let sy = (len + dy) / len;
-                            s.max(sx.max(sy))
-                        })
-                    };
-                    camera.direction *= s;
-                }
-            }
-        }
-    }
-
     fn ui_camera_params(&mut self, ui: &mut egui::Ui, id: Id) {
         Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
             ui.label("Image size");
@@ -334,97 +229,98 @@ impl SaveImageTab {
             ui.label("Camera type");
             ui.horizontal(|ui| {
                 if ui
-                    .selectable_label(!self.is_orthographic, "Perspective")
+                    .selectable_label(!self.auto_camera.is_orthographic, "Perspective")
                     .clicked()
                 {
-                    self.is_orthographic = false;
+                    self.auto_camera.is_orthographic = false;
                 }
                 if ui
-                    .selectable_label(self.is_orthographic, "Orthographic")
+                    .selectable_label(self.auto_camera.is_orthographic, "Orthographic")
                     .clicked()
                 {
-                    self.is_orthographic = true;
+                    self.auto_camera.is_orthographic = true;
                 }
             });
             ui.end_row();
 
-            if !self.is_orthographic {
+            if !self.auto_camera.is_orthographic {
+                let mut fov_deg = self.auto_camera.fov_y.to_degrees();
                 ui.label("Field of view");
-                ui.add(Slider::new(&mut self.fov, 5.0..=150.0).suffix("°"));
+                ui.add(Slider::new(&mut fov_deg, 5.0..=150.0).suffix("°"));
                 ui.end_row();
+                self.auto_camera.fov_y = fov_deg.to_radians();
             }
 
             ui.label("Camera position");
-            ui.checkbox(&mut self.camera_auto, "Auto");
+            ui.checkbox(&mut self.auto_camera.is_auto, "Auto");
             ui.end_row();
 
-            if self.camera_auto {
+            if self.auto_camera.is_auto {
                 ui.label("Margin");
                 ui.add(
                     Slider::new(
-                        &mut self.margin,
-                        0..=((self.width.min(self.height) - 10) / 2),
+                        &mut self.auto_camera.margin,
+                        0.0..=((self.width.min(self.height) - 10) / 2) as f32,
                     )
                     .suffix("px"),
                 );
                 ui.end_row();
             }
 
-            if let Ok(mut camera) = self.camera.lock() {
-                let mut direction_changed = false;
+            let camera = &mut self.auto_camera.camera;
+            let mut direction_changed = false;
 
-                let mut distance = camera.direction.length();
-                if !self.camera_auto {
-                    ui.label("Look at");
-                    let mut z = -camera.center.z;
-                    ui.horizontal(|ui| {
-                        ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
-                        ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
-                        ui.add(DragValue::new(&mut z).speed(0.01));
-                    });
-                    camera.center.z = -z;
-                    ui.end_row();
+            let mut distance = camera.direction.length();
+            if !self.auto_camera.is_auto {
+                ui.label("Look at");
+                let mut z = -camera.center.z;
+                ui.horizontal(|ui| {
+                    ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
+                    ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
+                    ui.add(DragValue::new(&mut z).speed(0.01));
+                });
+                camera.center.z = -z;
+                ui.end_row();
 
-                    ui.label("Distance");
-                    direction_changed |= ui
-                        .add(
-                            Slider::new(&mut distance, 0.1..=100.0)
-                                .logarithmic(true)
-                                .clamping(egui::SliderClamping::Never),
-                        )
-                        .changed();
-                    ui.end_row();
-                }
-
-                let mut azimuth_angle = camera.azimuth_angle().to_degrees();
-                ui.label("Azimuth angle");
+                ui.label("Distance");
                 direction_changed |= ui
                     .add(
-                        Slider::new(&mut azimuth_angle, -180.0..=180.0)
-                            .suffix("°")
-                            .drag_value_speed(0.1),
+                        Slider::new(&mut distance, 0.1..=100.0)
+                            .logarithmic(true)
+                            .clamping(egui::SliderClamping::Never),
                     )
                     .changed();
                 ui.end_row();
+            }
 
-                let mut elevation_angle = camera.elevation_angle().to_degrees();
-                ui.label("Elevation angle");
-                direction_changed |= ui
-                    .add(
-                        Slider::new(&mut elevation_angle, -90.0..=90.0)
-                            .suffix("°")
-                            .drag_value_speed(0.1),
-                    )
-                    .changed();
-                ui.end_row();
+            let mut azimuth_angle = camera.azimuth_angle().to_degrees();
+            ui.label("Azimuth angle");
+            direction_changed |= ui
+                .add(
+                    Slider::new(&mut azimuth_angle, -180.0..=180.0)
+                        .suffix("°")
+                        .drag_value_speed(0.1),
+                )
+                .changed();
+            ui.end_row();
 
-                if direction_changed {
-                    camera.set_direction_angle(
-                        azimuth_angle.to_radians(),
-                        elevation_angle.to_radians(),
-                        distance,
-                    );
-                }
+            let mut elevation_angle = camera.elevation_angle().to_degrees();
+            ui.label("Elevation angle");
+            direction_changed |= ui
+                .add(
+                    Slider::new(&mut elevation_angle, -90.0..=90.0)
+                        .suffix("°")
+                        .drag_value_speed(0.1),
+                )
+                .changed();
+            ui.end_row();
+
+            if direction_changed {
+                camera.set_direction_angle(
+                    azimuth_angle.to_radians(),
+                    elevation_angle.to_radians(),
+                    distance,
+                );
             }
         });
     }
@@ -541,7 +437,7 @@ impl SaveImageTab {
             self.framebuffer_render = Some(ImageRenderer::new(
                 rx_render,
                 gl,
-                &self.camera.lock().unwrap(),
+                &self.auto_camera,
                 MultisampleFramebuffer::new(gl.clone(), self.width, self.height, 8),
                 save_path,
                 !is_single,

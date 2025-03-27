@@ -21,7 +21,9 @@ pub use definition_3d_panel::Definition3dPanel;
 mod main_tab;
 pub use main_tab::MainTab;
 mod save_image;
-pub use save_image::{ImageRenderer, ProgressMessage, RenderMessageTuple, SaveImageProgress};
+pub use save_image::{
+    AutoCamera, ImageRenderer, ProgressMessage, RenderMessageTuple, SaveImageProgress,
+};
 mod save_image_tab;
 pub use save_image_tab::SaveImageTab;
 mod settings_tab;
