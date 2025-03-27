@@ -1,5 +1,5 @@
 use super::{
-    definitions_store::DefinitionPointer, ui_attribute_value, AttributeDetailWindow, State,
+    definitions_store::DefinitionPointer, ui_attribute_value, utils, AttributeDetailWindow, State,
 };
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
@@ -766,7 +766,7 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
             TableBuilder::new(ui)
                 .columns(
                     Column::auto_with_initial_suggestion(0.0),
-                    count_true(show_columns.iter()),
+                    utils::count_true(show_columns.iter()),
                 )
                 .striped(true)
                 .vscroll(false)
@@ -972,11 +972,4 @@ fn tabel_cell_aligned(ui: &mut Ui, halign: Align, add_contents: impl FnOnce(&mut
     ui.with_layout(Layout::top_down(halign), |ui| {
         ui.horizontal(add_contents);
     });
-}
-
-fn count_true<'a, I>(iter: I) -> usize
-where
-    I: Iterator<Item = &'a bool>,
-{
-    iter.map(|s| *s as usize).sum()
 }

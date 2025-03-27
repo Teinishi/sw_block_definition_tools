@@ -1,22 +1,17 @@
 use super::{
-    definitions_store::DefinitionPointer, paint_canvas_3d, tab::Tab, BlockViewScene,
-    DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
+    paint_canvas_3d, utils, BlockViewScene, DefinitionPointer, DefinitionSelect,
+    DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, ImageRenderer,
+    SaveImageProgress, State, Tab,
 };
-use crate::{
-    gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer},
-    sw_block_definition::{Definition, SwBlockDefinitionMeshes},
-};
+use crate::gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
-    Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, Rect, SidePanel,
-    Sides, Slider, UiBuilder,
+    Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel, Sides,
+    Slider,
 };
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
-use std::{
-    path::PathBuf,
-    sync::{mpsc, Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -129,9 +124,10 @@ impl Tab for SaveImageTab {
                 .size(Size::initial(240.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
-                        let canvas_size = fit_size_aspect(ui.available_size(), self.aspect_ratio());
+                        let canvas_size =
+                            utils::fit_size_aspect(ui.available_size(), self.aspect_ratio());
 
-                        ui_center(ui, canvas_size, |ui| {
+                        utils::ui_center(ui, canvas_size, |ui| {
                             egui::Frame::canvas(ui.style())
                                 .inner_margin(0.0)
                                 .show(ui, |ui| {
@@ -492,12 +488,12 @@ impl SaveImageTab {
                     Sides::new().show(
                         ui,
                         |ui| {
-                            if let Some(message) = &progress.message {
+                            if let Some(message) = &progress.message() {
                                 ui.label(message);
                             }
                         },
                         |ui| {
-                            ui.label(format!("{} / {}", progress.current, progress.total));
+                            ui.label(format!("{} / {}", progress.current(), progress.total()));
                         },
                     )
                 });
@@ -510,6 +506,8 @@ impl SaveImageTab {
         definitions: Vec<DefinitionPointer>,
         dialog_parent: Option<&W>,
     ) {
+        use crate::ui::{ImageRenderer, ProgressMessage};
+
         use super::file_dialog;
         use std::{cmp::Ordering, sync::mpsc, thread};
 
@@ -521,7 +519,7 @@ impl SaveImageTab {
                     let filename = definitions[0]
                         .lock()
                         .ok()
-                        .map(|d| replace_extension(&d.filename(), "png"));
+                        .map(|d| utils::replace_extension(&d.filename(), "png"));
                     (
                         file_dialog::save_png_dialog(dialog_parent, filename.as_deref()),
                         true,
@@ -549,6 +547,7 @@ impl SaveImageTab {
                 !is_single,
             ));
 
+            // 読み込みは別スレッドで行うが、描画はメインスレッドで行う
             thread::spawn(move || {
                 let start_time = std::time::Instant::now();
 
@@ -575,127 +574,5 @@ impl SaveImageTab {
                 let _ = tx_progress.send(ProgressMessage::Done);
             });
         }
-    }
-}
-
-fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
-    let width = size.x;
-    let height = size.y;
-    if width / height > aspect_ratio {
-        egui::vec2(height * aspect_ratio, height)
-    } else {
-        egui::vec2(width, width / aspect_ratio)
-    }
-}
-
-fn ui_center(ui: &mut egui::Ui, size: egui::Vec2, add_contents: impl FnOnce(&mut egui::Ui)) {
-    let rect = Rect::from_center_size(ui.available_rect_before_wrap().center(), size);
-    ui.allocate_new_ui(UiBuilder::new().max_rect(rect), add_contents);
-}
-
-fn replace_extension(filename: &str, new_ext: &str) -> String {
-    let mut path = std::path::Path::new(filename).to_owned();
-    path.set_extension(new_ext);
-    path.to_string_lossy().into_owned()
-}
-
-type DataMeshesTuple = (Arc<Definition>, Arc<SwBlockDefinitionMeshes>, String);
-
-struct ImageRenderer {
-    rx: mpsc::Receiver<DataMeshesTuple>,
-    camera: OrbitCamera,
-    scene: BlockViewScene,
-    renderer: SceneRenderer,
-    framebuffer: MultisampleFramebuffer,
-    save_path: PathBuf,
-    append_filename: bool,
-}
-
-impl ImageRenderer {
-    fn new(
-        rx: mpsc::Receiver<DataMeshesTuple>,
-        gl: &Arc<Context>,
-        camera: &OrbitCamera,
-        framebuffer: MultisampleFramebuffer,
-        save_path: PathBuf,
-        append_filename: bool,
-    ) -> Self {
-        let scene = BlockViewScene::default();
-        let renderer = SceneRenderer::new(gl, scene.scene());
-
-        Self {
-            rx,
-            camera: camera.clone(),
-            scene,
-            renderer,
-            framebuffer,
-            save_path,
-            append_filename,
-        }
-    }
-
-    fn update(&mut self) {
-        loop {
-            if let Ok((data, meshes, filename)) = self.rx.try_recv() {
-                self.scene.update(&Some(data), &Some(meshes));
-                self.framebuffer.paint(&mut self.renderer, &self.camera);
-                let image = self.framebuffer.get_image();
-                let _result = if self.append_filename {
-                    image.save(self.save_path.join(replace_extension(&filename, "png")))
-                } else {
-                    image.save(&self.save_path)
-                };
-            } else {
-                return;
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-enum ProgressMessage {
-    Progress(usize),
-    Done,
-}
-
-#[derive(Debug)]
-struct SaveImageProgress {
-    rx: mpsc::Receiver<ProgressMessage>,
-    current: usize,
-    total: usize,
-    done: bool,
-    message: Option<String>,
-}
-
-impl SaveImageProgress {
-    fn new(rx: mpsc::Receiver<ProgressMessage>, total: usize) -> Self {
-        Self {
-            rx,
-            current: 0,
-            total,
-            done: false,
-            message: None,
-        }
-    }
-
-    fn update(&mut self) {
-        if let Ok(mes) = self.rx.try_recv() {
-            match mes {
-                ProgressMessage::Progress(value) => {
-                    self.current = value;
-                }
-                ProgressMessage::Done => {
-                    self.done = true;
-                }
-            }
-        }
-    }
-
-    fn progress(&self) -> f32 {
-        self.current as f32 / self.total as f32
-    }
-
-    fn done(&self) -> bool {
-        self.done
     }
 }
