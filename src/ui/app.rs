@@ -2,7 +2,7 @@ use super::{
     tab::Tab, DefinitionSingleSelect, DefinitionsStore, MainTab, SaveImageTab, SettingsTab, State,
     TabVariants,
 };
-use egui::TopBottomPanel;
+use egui::{Sides, TopBottomPanel};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -91,11 +91,23 @@ impl eframe::App for MainApp {
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+        self.state.start_frame(&self.definitions_store);
+
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                ui.selectable_value(&mut self.tab, TabVariants::Main, "Block data");
-                ui.selectable_value(&mut self.tab, TabVariants::SaveImage, "Save image");
-                ui.selectable_value(&mut self.tab, TabVariants::Settings, "Settings");
+                Sides::new().show(
+                    ui,
+                    |ui| {
+                        ui.selectable_value(&mut self.tab, TabVariants::Main, "Block data");
+                        ui.selectable_value(&mut self.tab, TabVariants::SaveImage, "Save image");
+                        ui.selectable_value(&mut self.tab, TabVariants::Settings, "Settings");
+                    },
+                    |ui| {
+                        if self.state.loading_state().is_some() {
+                            ui.spinner();
+                        }
+                    },
+                )
             });
         });
 
@@ -114,6 +126,6 @@ impl eframe::App for MainApp {
             }
         }
 
-        self.state.update(ctx);
+        self.state.end_frame(ctx);
     }
 }

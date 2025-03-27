@@ -61,6 +61,14 @@ impl SwBlockDefinition {
         &self.path
     }
 
+    pub fn loading_data(&self) -> bool {
+        self.load_data_thread.is_some()
+    }
+
+    pub fn loading_mesh(&self) -> bool {
+        self.load_mesh_thread.is_some()
+    }
+
     pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
         if let Some(rx) = &self.load_data_thread {
             if let Ok(r) = rx.try_recv() {

@@ -3,7 +3,7 @@ pub use app::MainApp;
 mod tab;
 pub use tab::TabVariants;
 mod state;
-pub use state::State;
+pub use state::{LoadingState, State};
 mod definitions_store;
 pub use definitions_store::{AttributeValueContainer, DefinitionsStore, WeakDefinitionPointer};
 mod definition_selector;

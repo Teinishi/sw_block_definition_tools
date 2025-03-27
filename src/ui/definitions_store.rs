@@ -10,6 +10,8 @@ use std::{
     rc::{Rc, Weak},
 };
 
+use super::LoadingState;
+
 pub type DefinitionPointer = Rc<RefCell<SwBlockDefinition>>;
 pub type WeakDefinitionPointer = Weak<RefCell<SwBlockDefinition>>;
 pub type DefinitionsMap = Rc<RefCell<BTreeMap<String, DefinitionPointer>>>;
@@ -28,6 +30,17 @@ impl DefinitionsStore {
 
     pub fn definitions(&self) -> &DefinitionsMap {
         &self.definitions
+    }
+
+    pub fn loading_state(&self) -> Option<LoadingState> {
+        for (filename, definition) in self.definitions.borrow().iter() {
+            if definition.borrow().loading_data() {
+                return Some(LoadingState::Data(filename.clone()));
+            } else if definition.borrow().loading_mesh() {
+                return Some(LoadingState::Mesh(filename.clone()));
+            }
+        }
+        None
     }
 
     pub fn open_rom_directory(&mut self, rom_path: Option<PathBuf>) -> io::Result<()> {
