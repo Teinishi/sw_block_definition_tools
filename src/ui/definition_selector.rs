@@ -91,7 +91,9 @@ impl DefinitionSelect for DefinitionMultiSelect {
     }
 
     fn select_weak(&mut self, definition: &WeakDefinitionPointer) {
-        self.selected.push(definition.clone());
+        if !self.is_selected_weak(definition) {
+            self.selected.push(definition.clone());
+        }
     }
 
     fn unselect(&mut self, definition: &DefinitionPointer) {
