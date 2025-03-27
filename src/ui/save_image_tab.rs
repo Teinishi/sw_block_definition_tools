@@ -434,9 +434,13 @@ impl SaveImageTab {
             let (tx_render, rx_render) = mpsc::channel();
             let progress = SaveImageProgress::new(rx_progress, definitions.len());
             self.save_progress = Some(progress);
+
+            let scene = BlockViewScene::clone_state(&self.scene);
+            let renderer = SceneRenderer::new(gl, scene.scene());
             self.framebuffer_render = Some(ImageRenderer::new(
                 rx_render,
-                gl,
+                scene,
+                renderer,
                 &self.auto_camera,
                 MultisampleFramebuffer::new(gl.clone(), self.width, self.height, 8),
                 save_path,

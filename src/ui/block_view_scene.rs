@@ -96,6 +96,13 @@ pub struct BlockViewScene {
 }
 
 impl BlockViewScene {
+    pub fn clone_state(other: &Self) -> Self {
+        Self {
+            scene: Default::default(),
+            state: other.state.clone(),
+        }
+    }
+
     pub fn state_mut<F: FnOnce(&'_ mut BlockViewState)>(&mut self, writer: F) -> bool {
         let mut changed = self.state.clone();
         writer(&mut changed);

@@ -3,7 +3,6 @@ use crate::{
     gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes},
 };
-use eframe::glow::Context;
 use glam::{Vec3, Vec4};
 use std::{
     path::PathBuf,
@@ -154,15 +153,13 @@ pub struct ImageRenderer {
 impl ImageRenderer {
     pub fn new(
         rx: mpsc::Receiver<RenderMessageTuple>,
-        gl: &Arc<Context>,
+        scene: BlockViewScene,
+        renderer: SceneRenderer,
         auto_camera: &AutoCamera,
         framebuffer: MultisampleFramebuffer,
         save_path: PathBuf,
         append_filename: bool,
     ) -> Self {
-        let scene = BlockViewScene::default();
-        let renderer = SceneRenderer::new(gl, scene.scene());
-
         Self {
             rx,
             auto_camera: auto_camera.clone(),
