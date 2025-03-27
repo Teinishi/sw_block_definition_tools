@@ -11,7 +11,9 @@ pub fn paint_canvas_3d(
     renderer: Arc<egui::mutex::Mutex<SceneRenderer>>,
 ) {
     let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-        renderer.lock().paint(painter.gl(), camera.clone());
+        if let Ok(camera) = camera.lock() {
+            renderer.lock().paint(painter.gl(), &*camera);
+        }
     });
 
     let callback = egui::PaintCallback {

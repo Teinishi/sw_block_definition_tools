@@ -92,6 +92,23 @@ impl SwBlockDefinition {
         }
     }
 
+    pub fn load_data_block(
+        &mut self,
+    ) -> Result<Result<Arc<Definition>, SwBlockDefinitionDataError>, mpsc::RecvError> {
+        if let Some(data) = &self.data {
+            Ok(data.clone())
+        } else {
+            if self.load_data_thread.is_none() {
+                self.spawn_load_data();
+            }
+            let rx = self.load_data_thread.as_ref().unwrap();
+            let data = rx.recv()?.map(Arc::new);
+            self.data = Some(data.clone());
+            self.load_data_thread = None;
+            Ok(data)
+        }
+    }
+
     pub fn data(&self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
         self.data.clone()
     }
@@ -109,6 +126,21 @@ impl SwBlockDefinition {
         } else {
             self.spawn_load_meshes();
             None
+        }
+    }
+
+    pub fn load_meshes_block(&mut self) -> Result<Arc<SwBlockDefinitionMeshes>, mpsc::RecvError> {
+        if let Some(meshes) = &self.meshes {
+            Ok(meshes.clone())
+        } else {
+            if self.load_mesh_thread.is_none() {
+                self.spawn_load_meshes();
+            }
+            let rx = self.load_mesh_thread.as_ref().unwrap();
+            let meshes = Arc::new(rx.recv()?);
+            self.meshes = Some(meshes.clone());
+            self.load_mesh_thread = None;
+            Ok(meshes)
         }
     }
 

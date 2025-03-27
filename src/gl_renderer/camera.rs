@@ -13,13 +13,13 @@ pub trait Camera: Default {
     fn z_offset_unit(&self) -> f32;
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub enum CameraMode {
     Perspective,
     Orthographic,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct OrbitCamera {
     pub center: Vec3,
     pub direction: Vec3,

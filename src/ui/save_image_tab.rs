@@ -2,15 +2,21 @@ use super::{
     definitions_store::DefinitionPointer, paint_canvas_3d, tab::Tab, BlockViewScene,
     DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
 };
-use crate::gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer};
+use crate::{
+    gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer},
+    sw_block_definition::{Definition, SwBlockDefinitionMeshes},
+};
 use eframe::glow::Context;
 use egui::{
-    Align, CentralPanel, DragValue, Grid, Id, Layout, Modal, ProgressBar, Rect, SidePanel, Sides,
-    Slider, UiBuilder,
+    Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, Rect, SidePanel,
+    Sides, Slider, UiBuilder,
 };
 use egui_extras::{Size, StripBuilder};
 use glam::{Vec3, Vec4};
-use std::sync::{mpsc, Arc, Mutex};
+use std::{
+    path::PathBuf,
+    sync::{mpsc, Arc, Mutex},
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -39,6 +45,8 @@ pub struct SaveImageTab {
 
     #[serde(skip)]
     save_progress: Option<SaveImageProgress>,
+    #[serde(skip)]
+    framebuffer_render: Option<ImageRenderer>,
 }
 
 impl Default for SaveImageTab {
@@ -72,6 +80,7 @@ impl Default for SaveImageTab {
             renderer: None,
             mesh_loaded: false,
             save_progress: None,
+            framebuffer_render: None,
         }
     }
 }
@@ -166,6 +175,10 @@ impl Tab for SaveImageTab {
                     });
                 });
         });
+
+        if let Some(renderer) = &mut self.framebuffer_render {
+            renderer.update();
+        }
 
         if let Some(progress) = &mut self.save_progress {
             progress.update();
@@ -466,63 +479,30 @@ impl SaveImageTab {
 
     fn ui_progress_modal(&self, ctx: &eframe::egui::Context) {
         if let Some(progress) = &self.save_progress {
-            Modal::new(Id::new("save_image_progress_modal")).show(ctx, |ui| {
-                ui.set_width(400.0);
+            Modal::new(Id::new("save_image_progress_modal"))
+                .frame(Frame::popup(&ctx.style()).inner_margin(20.0))
+                .show(ctx, |ui| {
+                    ui.set_width(400.0);
+                    ui.style_mut().spacing.item_spacing.y = 16.0;
 
-                ui.heading("Save images");
-                ui.add_space(10.0);
-                ui.add(ProgressBar::new(progress.progress()).show_percentage());
-                ui.add_space(10.0);
-                Sides::new().show(
-                    ui,
-                    |ui| {
-                        if let Some(message) = &progress.message {
-                            ui.label(message);
-                        }
-                    },
-                    |ui| {
-                        ui.label(format!("{} / {}", progress.current, progress.total));
-                    },
-                )
-            });
+                    ui.heading("Save images");
+                    ui.add_space(10.0);
+                    ui.add(ProgressBar::new(progress.progress()).show_percentage());
+                    ui.add_space(10.0);
+                    Sides::new().show(
+                        ui,
+                        |ui| {
+                            if let Some(message) = &progress.message {
+                                ui.label(message);
+                            }
+                        },
+                        |ui| {
+                            ui.label(format!("{} / {}", progress.current, progress.total));
+                        },
+                    )
+                });
         }
     }
-
-    /*fn save_images(&mut self, definitions: &[DefinitionPointer]) {
-        self.save_progress = Some(0.0);
-        let total_count = definitions.len();
-
-        for (i, definition) in definitions.iter().enumerate() {
-            self.update_scene(&Some(definition.clone()));
-            self.save_progress = Some(i as f32 / total_count as f32);
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn save_current_image<
-        W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
-    >(
-        &self,
-        parent: Option<&W>,
-        initial_filename: Option<&str>,
-    ) {
-        use crate::{gl_renderer::MultisampleFramebuffer, ui::file_dialog};
-
-        if let Some((gl, renderer)) = self.gl.as_ref().zip(self.renderer.as_ref()) {
-            let framebuffer = MultisampleFramebuffer::new(gl.clone(), self.width, self.height, 8);
-
-            framebuffer.bind();
-            renderer
-                .lock()
-                .paint(&framebuffer.gl(), self.camera.clone());
-            framebuffer.resolve();
-            let image = framebuffer.get_image();
-
-            if let Some(path) = file_dialog::save_image_dialog(parent, initial_filename) {
-                image.save(path).expect("Failed to save image");
-            }
-        }
-    }*/
 
     #[cfg(not(target_arch = "wasm32"))]
     fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
@@ -533,45 +513,66 @@ impl SaveImageTab {
         use super::file_dialog;
         use std::{cmp::Ordering, sync::mpsc, thread};
 
-        if let Some(_gl) = &self.gl {
+        if let Some(gl) = &self.gl {
             // 保存場所のダイアログ
-            let _save_path = match definitions.len().cmp(&1) {
-                Ordering::Greater => file_dialog::open_folder_dialog(dialog_parent),
+            let (save_path, is_single) = match definitions.len().cmp(&1) {
+                Ordering::Greater => (file_dialog::open_folder_dialog(dialog_parent), false),
                 Ordering::Equal => {
                     let filename = definitions[0]
                         .lock()
                         .ok()
                         .map(|d| replace_extension(&d.filename(), "png"));
-                    file_dialog::save_png_dialog(dialog_parent, filename.as_deref())
+                    (
+                        file_dialog::save_png_dialog(dialog_parent, filename.as_deref()),
+                        true,
+                    )
                 }
                 Ordering::Less => {
                     return;
                 }
             };
+            if save_path.is_none() {
+                return;
+            }
+            let save_path = save_path.unwrap();
 
-            let (tx, rx) = mpsc::channel();
-            let progress = SaveImageProgress::new(rx, definitions.len());
+            let (tx_progress, rx_progress) = mpsc::channel();
+            let (tx_render, rx_render) = mpsc::channel();
+            let progress = SaveImageProgress::new(rx_progress, definitions.len());
             self.save_progress = Some(progress);
-
-            /*let gl_c = gl.clone();
-            let width = self.width;
-            let height = self.height;*/
+            self.framebuffer_render = Some(ImageRenderer::new(
+                rx_render,
+                gl,
+                &self.camera.lock().unwrap(),
+                MultisampleFramebuffer::new(gl.clone(), self.width, self.height, 8),
+                save_path,
+                !is_single,
+            ));
 
             thread::spawn(move || {
-                /*let scene = BlockViewScene::default();
-                let _renderer = SceneRenderer::new(&gl_c, scene.scene());
-                let _framebuffer = MultisampleFramebuffer::new(gl_c, width, height, 8);*/
+                let start_time = std::time::Instant::now();
 
-                for (i, _definition) in definitions.iter().enumerate() {
-                    let _ = tx.send(ProgressMessage::Progress(i));
-                    println!("send {}", i);
+                for (i, definition) in definitions.iter().enumerate() {
+                    let _ = tx_progress.send(ProgressMessage::Progress(i));
 
-                    //let (data, meshes) = definition.borrow_mut().load_data_meshes();
-
-                    // ダミーの待ち時間
-                    thread::sleep(std::time::Duration::from_secs(1));
+                    if let Ok(mut definition) = definition.lock() {
+                        if let Some((data, meshes)) = definition
+                            .load_data_block()
+                            .ok()
+                            .and_then(|d| d.ok())
+                            .zip(definition.load_meshes_block().ok())
+                        {
+                            let _ = tx_render.send((data, meshes, definition.filename()));
+                        }
+                    }
                 }
-                let _ = tx.send(ProgressMessage::Done);
+
+                if start_time.elapsed().as_millis() >= 1000 {
+                    // 1秒以上かかったら少しの間100%と表示する
+                    let _ = tx_progress.send(ProgressMessage::Progress(definitions.len()));
+                    thread::sleep(std::time::Duration::from_secs(2));
+                }
+                let _ = tx_progress.send(ProgressMessage::Done);
             });
         }
     }
@@ -598,15 +599,57 @@ fn replace_extension(filename: &str, new_ext: &str) -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn _paint_on_framebuffer(
+type DataMeshesTuple = (Arc<Definition>, Arc<SwBlockDefinitionMeshes>, String);
+
+struct ImageRenderer {
+    rx: mpsc::Receiver<DataMeshesTuple>,
+    camera: OrbitCamera,
+    scene: BlockViewScene,
+    renderer: SceneRenderer,
     framebuffer: MultisampleFramebuffer,
-    renderer: &mut SceneRenderer,
-    camera: Arc<Mutex<impl Camera>>,
-) -> image::ImageBuffer<image::Rgba<u8>, Vec<u8>> {
-    framebuffer.bind();
-    renderer.paint(&framebuffer.gl(), camera);
-    framebuffer.resolve();
-    framebuffer.get_image()
+    save_path: PathBuf,
+    append_filename: bool,
+}
+
+impl ImageRenderer {
+    fn new(
+        rx: mpsc::Receiver<DataMeshesTuple>,
+        gl: &Arc<Context>,
+        camera: &OrbitCamera,
+        framebuffer: MultisampleFramebuffer,
+        save_path: PathBuf,
+        append_filename: bool,
+    ) -> Self {
+        let scene = BlockViewScene::default();
+        let renderer = SceneRenderer::new(gl, scene.scene());
+
+        Self {
+            rx,
+            camera: camera.clone(),
+            scene,
+            renderer,
+            framebuffer,
+            save_path,
+            append_filename,
+        }
+    }
+
+    fn update(&mut self) {
+        loop {
+            if let Ok((data, meshes, filename)) = self.rx.try_recv() {
+                self.scene.update(&Some(data), &Some(meshes));
+                self.framebuffer.paint(&mut self.renderer, &self.camera);
+                let image = self.framebuffer.get_image();
+                let _result = if self.append_filename {
+                    image.save(self.save_path.join(replace_extension(&filename, "png")))
+                } else {
+                    image.save(&self.save_path)
+                };
+            } else {
+                return;
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

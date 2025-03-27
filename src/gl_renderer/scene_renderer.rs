@@ -77,15 +77,13 @@ impl SceneRenderer {
         }
     }
 
-    pub fn paint(&mut self, gl: &glow::Context, camera: Arc<Mutex<impl Camera>>) {
+    pub fn paint(&mut self, gl: &glow::Context, camera: &impl Camera) {
         use glow::HasContext as _;
 
         let override_color_1 = Vec4::ONE;
         let override_color_2 = Vec4::ONE;
         let override_color_3 = Vec4::ONE;
         let additive_color = Vec4::ONE;
-
-        let camera = camera.lock().unwrap();
 
         let mat_view_proj = camera.mat_view_proj();
         let camera_position = camera.position();

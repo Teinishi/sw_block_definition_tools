@@ -284,8 +284,6 @@ impl BlockViewScene {
     }
 
     pub fn clear(&mut self) {
-        if let Ok(mut scene) = self.scene.lock() {
-            scene.clear();
-        }
+        self.scene.lock().unwrap().clear();
     }
 }

@@ -2,6 +2,8 @@ use eframe::glow::{self, Framebuffer, HasContext};
 use image::ImageBuffer;
 use std::sync::Arc;
 
+use super::{Camera, SceneRenderer};
+
 pub struct MultisampleFramebuffer {
     gl: Arc<glow::Context>,
     width: i32,
@@ -143,6 +145,21 @@ impl MultisampleFramebuffer {
                 glow::NEAREST,
             );
         }
+    }
+
+    pub fn clear(&self) {
+        unsafe {
+            self.gl.clear_color(0.0, 0.0, 0.0, 0.0);
+            self.gl
+                .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+        }
+    }
+
+    pub fn paint(&self, renderer: &mut SceneRenderer, camera: &impl Camera) {
+        self.bind();
+        self.clear();
+        renderer.paint(&self.gl(), camera);
+        self.resolve();
     }
 
     pub fn get_image(&self) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
