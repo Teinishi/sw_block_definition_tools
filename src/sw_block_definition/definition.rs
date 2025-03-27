@@ -151,7 +151,8 @@ impl SwBlockDefinition {
 
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
-                tx.send(load_meshes(&data, rom_path)).unwrap();
+                tx.send(SwBlockDefinitionMeshes::new(&data, rom_path))
+                    .unwrap();
             });
 
             self.load_mesh_thread = Some(rx);
@@ -188,14 +189,8 @@ fn load_data<P: AsRef<Path>>(path: P) -> LoadDataResult {
         Err(SwBlockDefinitionDataError::Xml(mes))
     } else {
         let data = quick_xml::de::from_str(&xml)?;
-        //let meshes = SwBlockDefinitionMeshes::new(&data, rom_path);
         Ok(data)
     }
-}
-
-fn load_meshes<P: AsRef<Path>>(data: &Definition, rom_path: P) -> SwBlockDefinitionMeshes {
-    thread::sleep(std::time::Duration::from_secs(1));
-    SwBlockDefinitionMeshes::new(data, rom_path)
 }
 
 #[derive(Debug, Clone)]
