@@ -1,15 +1,8 @@
-use super::{paint_canvas_3d, BlockViewScene};
-use crate::{
-    gl_renderer::{OrbitCamera, SceneRenderer},
-    sw_block_definition::SwBlockDefinition,
-};
+use super::{definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScene};
+use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
 use glam::Vec3;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
@@ -57,7 +50,7 @@ impl Definition3dPanel {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        selected: Option<Rc<RefCell<SwBlockDefinition>>>,
+        selected: Option<DefinitionPointer>,
         select_changed: bool,
     ) {
         egui::Frame::canvas(ui.style())
@@ -72,11 +65,13 @@ impl Definition3dPanel {
                 }
             });
 
-        let (data, meshes) = if let Some(definition) = selected {
-            definition.borrow_mut().load_data_meshes()
-        } else {
-            (None, None)
-        };
+        let mut data = None;
+        let mut meshes = None;
+        if let Some(definition) = selected {
+            if let Ok(mut definition) = definition.lock() {
+                (data, meshes) = definition.load_data_meshes()
+            }
+        }
 
         let mesh_loaded = meshes.is_some();
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;

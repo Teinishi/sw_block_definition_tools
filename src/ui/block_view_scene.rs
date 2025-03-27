@@ -7,10 +7,7 @@ use crate::{
 };
 use enum_map::EnumMap;
 use glam::Vec3;
-use std::{
-    rc::Rc,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
     r: 0.1,
@@ -111,7 +108,7 @@ impl BlockViewScene {
     pub fn state_ui(
         &mut self,
         ui: &mut egui::Ui,
-        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
+        meshes: &Option<Arc<SwBlockDefinitionMeshes>>,
     ) -> bool {
         let meshes_c = meshes.clone();
         self.state_mut(|state| {
@@ -165,7 +162,7 @@ impl BlockViewScene {
     pub fn update(
         &mut self,
         data: &Option<Arc<Definition>>,
-        meshes: &Option<Rc<SwBlockDefinitionMeshes>>,
+        meshes: &Option<Arc<SwBlockDefinitionMeshes>>,
     ) {
         self.use_scene(|mut scene| {
             scene.clear();
@@ -283,6 +280,12 @@ impl BlockViewScene {
                     }
                 }
             }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        if let Ok(mut scene) = self.scene.lock() {
+            scene.clear();
         }
     }
 }

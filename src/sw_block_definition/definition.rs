@@ -6,7 +6,6 @@ use std::{
     collections::BTreeMap,
     fmt, io,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::{mpsc, Arc},
     thread,
 };
@@ -21,7 +20,7 @@ pub struct SwBlockDefinition {
     #[serde(skip)]
     data: Option<Result<Arc<Definition>, SwBlockDefinitionDataError>>,
     #[serde(skip)]
-    meshes: Option<Rc<SwBlockDefinitionMeshes>>,
+    meshes: Option<Arc<SwBlockDefinitionMeshes>>,
     #[serde(skip)]
     load_data_thread: Option<mpsc::Receiver<LoadDataResult>>,
     #[serde(skip)]
@@ -97,10 +96,10 @@ impl SwBlockDefinition {
         self.data.clone()
     }
 
-    pub fn load_meshes(&mut self) -> Option<Rc<SwBlockDefinitionMeshes>> {
+    pub fn load_meshes(&mut self) -> Option<Arc<SwBlockDefinitionMeshes>> {
         if let Some(rx) = &self.load_mesh_thread {
             if let Ok(meshes) = rx.try_recv() {
-                self.meshes = Some(Rc::new(meshes));
+                self.meshes = Some(Arc::new(meshes));
                 self.load_mesh_thread = None;
             }
         }
@@ -115,7 +114,10 @@ impl SwBlockDefinition {
 
     pub fn load_data_meshes(
         &mut self,
-    ) -> (Option<Arc<Definition>>, Option<Rc<SwBlockDefinitionMeshes>>) {
+    ) -> (
+        Option<Arc<Definition>>,
+        Option<Arc<SwBlockDefinitionMeshes>>,
+    ) {
         (self.load_data().and_then(|d| d.ok()), self.load_meshes())
     }
 

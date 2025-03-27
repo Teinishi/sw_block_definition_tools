@@ -1,19 +1,19 @@
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault, SwBlockDefinition,
 };
-use std::collections::BTreeSet;
-use std::io;
 use std::{
     cell::RefCell,
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
+    io,
     path::PathBuf,
-    rc::{Rc, Weak},
+    rc::Rc,
+    sync::{Arc, Mutex, Weak},
 };
 
 use super::LoadingState;
 
-pub type DefinitionPointer = Rc<RefCell<SwBlockDefinition>>;
-pub type WeakDefinitionPointer = Weak<RefCell<SwBlockDefinition>>;
+pub type DefinitionPointer = Arc<Mutex<SwBlockDefinition>>;
+pub type WeakDefinitionPointer = Weak<Mutex<SwBlockDefinition>>;
 pub type DefinitionsMap = Rc<RefCell<BTreeMap<String, DefinitionPointer>>>;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -34,10 +34,12 @@ impl DefinitionsStore {
 
     pub fn loading_state(&self) -> Option<LoadingState> {
         for (filename, definition) in self.definitions.borrow().iter() {
-            if definition.borrow().loading_data() {
-                return Some(LoadingState::Data(filename.clone()));
-            } else if definition.borrow().loading_mesh() {
-                return Some(LoadingState::Mesh(filename.clone()));
+            if let Ok(definition) = definition.lock() {
+                if definition.loading_data() {
+                    return Some(LoadingState::Data(filename.clone()));
+                } else if definition.loading_mesh() {
+                    return Some(LoadingState::Mesh(filename.clone()));
+                }
             }
         }
         None
@@ -62,7 +64,7 @@ impl DefinitionsStore {
                 .filter(|e| e.is_file() && e.extension().is_some_and(|x| x == "xml"))
             {
                 if let Some(def) = SwBlockDefinition::new(&rom_path, entry_path) {
-                    definitions.insert(def.filename().to_string(), Rc::new(RefCell::new(def)));
+                    definitions.insert(def.filename().to_string(), Arc::new(Mutex::new(def)));
                 }
             }
         }
@@ -73,8 +75,10 @@ impl DefinitionsStore {
     pub fn load_all_definitions(&mut self) -> i32 {
         let mut loading_count = 0;
         for definition in self.definitions.borrow().values() {
-            if definition.borrow_mut().load_data().is_none() {
-                loading_count += 1;
+            if let Ok(mut definition) = definition.lock() {
+                if definition.load_data().is_none() {
+                    loading_count += 1;
+                }
             }
         }
         loading_count
@@ -106,10 +110,10 @@ impl AttributeValueContainer {
         let mut values = Vec::new();
 
         for (filename, definition) in definitions.borrow().iter() {
-            if let Some(Ok(data)) = definition.borrow().data() {
+            if let Some(Ok(data)) = definition.lock().ok().and_then(|d| d.data()) {
                 for value in specifier.get_value_root(&data) {
                     if !hide_defalt || !value.is_default() {
-                        values.push((filename.clone(), Rc::downgrade(definition), value));
+                        values.push((filename.clone(), Arc::downgrade(definition), value));
                     }
                 }
             }

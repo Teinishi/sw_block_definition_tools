@@ -1,5 +1,7 @@
-use super::{DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore};
-use crate::sw_block_definition::SwBlockDefinition;
+use super::{
+    definitions_store::DefinitionPointer, DefinitionMultiSelect, DefinitionSelect,
+    DefinitionSingleSelect, DefinitionsStore,
+};
 use egui::{vec2, Align, Button, Checkbox, Layout, RichText, TextEdit};
 use egui_extras::{Size, StripBuilder};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
@@ -70,7 +72,7 @@ impl DefinitionSelectPanel {
         {
             let no_search = self.search_text.is_empty();
             let binding = definitions_store.definitions().borrow();
-            let items: Vec<(&String, &Rc<RefCell<SwBlockDefinition>>)> = binding
+            let items: Vec<(&String, &DefinitionPointer)> = binding
                 .iter()
                 .filter(|(filename, _)| {
                     no_search || self.search_result.get(*filename) == Some(&true)
@@ -121,7 +123,7 @@ impl DefinitionSelectPanel {
         }
     }
 
-    fn ui_list(&self, ui: &mut egui::Ui, items: &Vec<(&String, &Rc<RefCell<SwBlockDefinition>>)>) {
+    fn ui_list(&self, ui: &mut egui::Ui, items: &Vec<(&String, &DefinitionPointer)>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             StripBuilder::new(ui)
                 .sizes(Size::initial(20.0), items.len())
@@ -139,7 +141,7 @@ impl DefinitionSelectPanel {
         &self,
         builder: StripBuilder<'_>,
         filename: &str,
-        definition: &Rc<RefCell<SwBlockDefinition>>,
+        definition: &DefinitionPointer,
     ) {
         let builder = if self.multi_selector.is_some() {
             builder.size(Size::exact(12.0))
@@ -191,7 +193,7 @@ impl DefinitionSelectPanel {
         self.multi_selector.clone()
     }
 
-    pub fn selected_definition(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
+    pub fn selected_definition(&self) -> Option<DefinitionPointer> {
         self.selector.borrow().selected()
     }
 
@@ -212,7 +214,11 @@ impl DefinitionSelectPanel {
             if self.search_result.contains_key(filename) {
                 continue;
             }
-            if let Some(result) = definition.borrow_mut().search(&self.search_text) {
+            if let Some(result) = definition
+                .lock()
+                .ok()
+                .and_then(|mut d| d.search(&self.search_text))
+            {
                 self.search_result.insert(filename.clone(), result);
             }
         }

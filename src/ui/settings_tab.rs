@@ -1,4 +1,4 @@
-use super::{tab::Tab, DefinitionsStore, State};
+use super::{file_dialog, tab::Tab, DefinitionsStore, State};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -52,7 +52,8 @@ impl Tab for SettingsTab {
                         }
 
                         if ui.button("Select").clicked() {
-                            if let Some(rom_path) = open_rom_folder_dialog(Some(frame)) {
+                            if let Some(rom_path) = file_dialog::open_rom_folder_dialog(Some(frame))
+                            {
                                 self.update_rom_folder(rom_path, state, definitions_store);
                             }
                         }
@@ -76,24 +77,4 @@ impl SettingsTab {
         let _ = definitions_store.open_rom_directory(Some(rom_path.clone()));
         state.rom_path = Some(rom_path);
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn open_rom_folder_dialog<
-    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
->(
-    parent: Option<&W>,
-) -> Option<std::path::PathBuf> {
-    const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
-    use rfd::FileDialog;
-    use std::path::Path;
-
-    let mut dialog = FileDialog::new();
-    if let Some(p) = parent {
-        dialog = dialog.set_parent(p)
-    }
-    if let Ok(program_files) = std::env::var("ProgramFiles(x86)") {
-        dialog = dialog.set_directory(Path::new(&program_files).join(STORMWORKS_DATA_PATH))
-    }
-    dialog.pick_folder()
 }

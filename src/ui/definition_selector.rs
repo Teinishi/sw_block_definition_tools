@@ -1,15 +1,14 @@
 use super::{definitions_store::DefinitionPointer, WeakDefinitionPointer};
-use crate::sw_block_definition::SwBlockDefinition;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 pub trait DefinitionSelect {
     fn is_selected(&self, definition: &DefinitionPointer) -> bool {
-        self.is_selected_weak(&Rc::downgrade(definition))
+        self.is_selected_weak(&Arc::downgrade(definition))
     }
     fn is_selected_weak(&self, definition: &WeakDefinitionPointer) -> bool;
     fn clear(&mut self);
     fn select(&mut self, definition: &DefinitionPointer) {
-        self.select_weak(&Rc::downgrade(definition));
+        self.select_weak(&Arc::downgrade(definition));
     }
     fn select_weak(&mut self, definition: &WeakDefinitionPointer);
     #[allow(dead_code)]
@@ -70,7 +69,7 @@ impl DefinitionSelect for DefinitionSingleSelect {
 }
 
 impl DefinitionSingleSelect {
-    pub fn selected(&self) -> Option<Rc<RefCell<SwBlockDefinition>>> {
+    pub fn selected(&self) -> Option<DefinitionPointer> {
         let selected = self.selected.as_ref()?;
         selected.upgrade()
     }
@@ -96,7 +95,7 @@ impl DefinitionSelect for DefinitionMultiSelect {
     }
 
     fn unselect(&mut self, definition: &DefinitionPointer) {
-        let target = Rc::downgrade(definition);
+        let target = Arc::downgrade(definition);
         self.selected.retain(|s| !s.ptr_eq(&target));
     }
 
@@ -114,12 +113,23 @@ impl DefinitionMultiSelect {
         self.selected.len()
     }
 
+    pub fn selection_weak(&self) -> &Vec<WeakDefinitionPointer> {
+        &self.selected
+    }
+
+    pub fn selection(&self) -> Vec<DefinitionPointer> {
+        self.selected
+            .iter()
+            .filter_map(|ptr| ptr.upgrade())
+            .collect()
+    }
+
     pub fn set_selection_weak(&mut self, selection: impl Iterator<Item = WeakDefinitionPointer>) {
         self.selected = selection.collect();
     }
 
     pub fn set_selection<'a>(&mut self, selection: impl Iterator<Item = &'a DefinitionPointer>) {
-        self.set_selection_weak(selection.map(Rc::downgrade));
+        self.set_selection_weak(selection.map(Arc::downgrade));
     }
 }
 
