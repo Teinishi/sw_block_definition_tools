@@ -1,7 +1,7 @@
 use super::{
     paint_canvas_3d, utils, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
     DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
-    DefinitionsStore, ImageRenderer, SaveImageProgress, State, Tab,
+    DefinitionsStore, ImageRenderer, State, Tab,
 };
 use crate::gl_renderer::SceneRenderer;
 use eframe::glow::Context;
@@ -33,9 +33,7 @@ pub struct SaveImageTab {
     mesh_loaded: bool,
 
     #[serde(skip)]
-    save_progress: Option<SaveImageProgress>,
-    #[serde(skip)]
-    framebuffer_render: Option<ImageRenderer>,
+    image_renderer: Option<ImageRenderer>,
 }
 
 impl Default for SaveImageTab {
@@ -54,8 +52,7 @@ impl Default for SaveImageTab {
             scene: Default::default(),
             renderer: None,
             mesh_loaded: false,
-            save_progress: None,
-            framebuffer_render: None,
+            image_renderer: None,
         }
     }
 }
@@ -124,7 +121,7 @@ impl Tab for SaveImageTab {
 
                                     super::paint_checker_pattern(ui, rect);
 
-                                    if self.save_progress.is_none() {
+                                    if self.image_renderer.is_none() {
                                         if let Some(renderer) = &self.renderer {
                                             paint_canvas_3d(
                                                 ui,
@@ -157,14 +154,10 @@ impl Tab for SaveImageTab {
                 });
         });
 
-        if let Some(renderer) = &mut self.framebuffer_render {
+        if let Some(renderer) = &mut self.image_renderer {
             renderer.update();
-        }
-
-        if let Some(progress) = &mut self.save_progress {
-            progress.update();
-            if progress.done() {
-                self.save_progress = None;
+            if renderer.progress().done() {
+                self.image_renderer = None;
             } else {
                 self.ui_progress_modal(ctx);
                 ctx.request_repaint();
@@ -386,7 +379,7 @@ impl SaveImageTab {
     }
 
     fn ui_progress_modal(&self, ctx: &eframe::egui::Context) {
-        if let Some(progress) = &self.save_progress {
+        if let Some(progress) = self.image_renderer.as_ref().map(|r| r.progress()) {
             Modal::new(Id::new("save_image_progress_modal"))
                 .frame(Frame::popup(&ctx.style()).inner_margin(20.0))
                 .show(ctx, |ui| {
@@ -418,13 +411,9 @@ impl SaveImageTab {
         definitions: Vec<DefinitionPointer>,
         dialog_parent: Option<&W>,
     ) {
-        use crate::{
-            gl_renderer,
-            ui::{ImageRenderer, ProgressMessage},
-        };
-
         use super::file_dialog;
-        use std::{cmp::Ordering, sync::mpsc, thread};
+        use crate::{gl_renderer, ui::ImageRenderer};
+        use std::cmp::Ordering;
 
         if let Some(gl) = &self.gl {
             // 保存場所のダイアログ
@@ -449,15 +438,10 @@ impl SaveImageTab {
             }
             let save_path = save_path.unwrap();
 
-            let (tx_progress, rx_progress) = mpsc::channel();
-            let (tx_render, rx_render) = mpsc::channel();
-            let progress = SaveImageProgress::new(rx_progress, definitions.len());
-            self.save_progress = Some(progress);
-
             let scene = BlockViewScene::clone_state(&self.scene);
             let renderer = SceneRenderer::new(gl, scene.scene());
-            self.framebuffer_render = Some(ImageRenderer::new(
-                rx_render,
+            self.image_renderer = Some(ImageRenderer::new(
+                definitions,
                 scene,
                 renderer,
                 &self.auto_camera,
@@ -470,33 +454,6 @@ impl SaveImageTab {
                 save_path,
                 !is_single,
             ));
-
-            // 読み込みは別スレッドで行うが、描画はメインスレッドで行う
-            thread::spawn(move || {
-                let start_time = std::time::Instant::now();
-
-                for (i, definition) in definitions.iter().enumerate() {
-                    let _ = tx_progress.send(ProgressMessage::Progress(i));
-
-                    if let Ok(mut definition) = definition.lock() {
-                        if let Some((data, meshes)) = definition
-                            .load_data_block()
-                            .ok()
-                            .and_then(|d| d.ok())
-                            .zip(definition.load_meshes_block().ok())
-                        {
-                            let _ = tx_render.send((data, meshes, definition.filename()));
-                        }
-                    }
-                }
-
-                if start_time.elapsed().as_millis() >= 1000 {
-                    // 1秒以上かかったら少しの間100%と表示する
-                    let _ = tx_progress.send(ProgressMessage::Progress(definitions.len()));
-                    thread::sleep(std::time::Duration::from_secs(2));
-                }
-                let _ = tx_progress.send(ProgressMessage::Done);
-            });
         }
     }
 }

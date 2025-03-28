@@ -1,13 +1,10 @@
-use super::{utils::replace_extension, BlockViewScene};
+use super::{utils::replace_extension, BlockViewScene, DefinitionPointer};
 use crate::{
     gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes},
 };
 use glam::{Vec3, Vec4};
-use std::{
-    path::PathBuf,
-    sync::{mpsc, Arc},
-};
+use std::{path::PathBuf, sync::Arc, time};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct AutoCamera {
@@ -145,18 +142,23 @@ impl AutoCamera {
 pub type RenderMessageTuple = (Arc<Definition>, Arc<SwBlockDefinitionMeshes>, String);
 
 pub struct ImageRenderer {
-    rx: mpsc::Receiver<RenderMessageTuple>,
+    definitions: Vec<DefinitionPointer>,
+    i: usize,
     auto_camera: AutoCamera,
     scene: BlockViewScene,
     renderer: SceneRenderer,
     framebuffer: MultisampleFramebuffer,
     save_path: PathBuf,
     append_filename: bool,
+    start_time: time::Instant,
+    finish_time: Option<time::Instant>,
+    logs: Vec<String>,
+    progress: SaveImageProgress,
 }
 
 impl ImageRenderer {
     pub fn new(
-        rx: mpsc::Receiver<RenderMessageTuple>,
+        definitions: Vec<DefinitionPointer>,
         scene: BlockViewScene,
         renderer: SceneRenderer,
         auto_camera: &AutoCamera,
@@ -164,40 +166,92 @@ impl ImageRenderer {
         save_path: PathBuf,
         append_filename: bool,
     ) -> Self {
+        let len = definitions.len();
         Self {
-            rx,
+            definitions,
+            i: 0,
             auto_camera: auto_camera.clone(),
             scene,
             renderer,
             framebuffer,
             save_path,
             append_filename,
+            start_time: time::Instant::now(),
+            finish_time: None,
+            logs: Vec::new(),
+            progress: SaveImageProgress::new(len),
         }
     }
 
     pub fn update(&mut self) {
-        let start_time = std::time::Instant::now();
+        let frame_start_time = std::time::Instant::now();
+
         loop {
-            if let Ok((data, meshes, filename)) = self.rx.try_recv() {
-                self.auto_camera.update(&data);
-                self.scene.update(&Some(data), &Some(meshes));
-                self.framebuffer
-                    .paint(&mut self.renderer, &self.auto_camera.camera);
-                let image = self.framebuffer.get_image();
-                let _result = if self.append_filename {
-                    image.save(self.save_path.join(replace_extension(&filename, "png")))
+            if self.i >= self.definitions.len() {
+                self.progress.current = self.i;
+
+                // 1秒以上かかっていたら、1秒間100%と表示
+                let mut finish_immediate = self.start_time.elapsed().as_secs() < 1;
+                if let Some(finish_time) = self.finish_time {
+                    finish_immediate = finish_immediate || finish_time.elapsed().as_secs() >= 1;
                 } else {
-                    image.save(&self.save_path)
-                };
-            } else {
+                    self.finish_time = Some(time::Instant::now());
+                }
+
+                if finish_immediate {
+                    self.progress.done = true;
+                }
                 return;
             }
+            if let Ok(mut definition) = self.definitions[self.i].lock() {
+                let filename = definition.filename();
+                if let Some(data_r) = definition.load_data() {
+                    match data_r {
+                        Ok(data) => {
+                            if let Some(meshes) = definition.load_meshes() {
+                                self.auto_camera.update(&data);
+                                self.scene.update(&Some(data), &Some(meshes));
 
-            // 1フレームに16ミリ秒以上かけない、でも1フレームに最低1枚は処理する
-            if start_time.elapsed().as_millis() >= 16 {
-                return;
+                                self.framebuffer
+                                    .paint(&mut self.renderer, &self.auto_camera.camera);
+                                let image = self.framebuffer.get_image();
+                                let _result = if self.append_filename {
+                                    image.save(
+                                        self.save_path.join(replace_extension(&filename, "png")),
+                                    )
+                                } else {
+                                    image.save(&self.save_path)
+                                };
+
+                                self.i += 1;
+                                self.progress.current = self.i;
+                            }
+                        }
+                        Err(err) => {
+                            self.logs.push(format!(
+                                "Failed to save image of {} due to {}",
+                                filename, err
+                            ));
+                            self.i += 1;
+                            self.progress.current = self.i;
+                        }
+                    }
+                }
+
+                // 1フレームに200ミリ秒以上かけない、でも1フレームに最低1枚は処理する
+                if frame_start_time.elapsed().as_millis() >= 200 {
+                    break;
+                }
             }
         }
+    }
+
+    pub fn logs(&self) -> &Vec<String> {
+        &self.logs
+    }
+
+    pub fn progress(&self) -> &SaveImageProgress {
+        &self.progress
     }
 }
 
@@ -209,7 +263,6 @@ pub enum ProgressMessage {
 
 #[derive(Debug)]
 pub struct SaveImageProgress {
-    rx: mpsc::Receiver<ProgressMessage>,
     current: usize,
     total: usize,
     done: bool,
@@ -217,26 +270,12 @@ pub struct SaveImageProgress {
 }
 
 impl SaveImageProgress {
-    pub fn new(rx: mpsc::Receiver<ProgressMessage>, total: usize) -> Self {
+    pub fn new(total: usize) -> Self {
         Self {
-            rx,
             current: 0,
             total,
             done: false,
             message: None,
-        }
-    }
-
-    pub fn update(&mut self) {
-        if let Ok(mes) = self.rx.try_recv() {
-            match mes {
-                ProgressMessage::Progress(value) => {
-                    self.current = value;
-                }
-                ProgressMessage::Done => {
-                    self.done = true;
-                }
-            }
         }
     }
 
