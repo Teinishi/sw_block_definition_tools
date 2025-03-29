@@ -150,7 +150,7 @@ impl SceneRenderer {
 
                 if vao_container.config.shader_type.is_additive() {
                     gl.blend_func(glow::SRC_ALPHA, glow::ONE);
-                } else if vao_container.config.shader_type == ShaderType::Glass {
+                } else if vao_container.config.shader_type.is_translucent() {
                     gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
                 } else {
                     gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);

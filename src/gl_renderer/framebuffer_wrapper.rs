@@ -35,7 +35,7 @@ impl BasicRenderer {
                 width,
                 height,
                 0,
-                glow::RGB,
+                glow::RGBA,
                 glow::UNSIGNED_BYTE,
                 glow::PixelUnpackData::Slice(None),
             );
@@ -189,7 +189,7 @@ impl MultisampleRenderer {
                 width,
                 height,
                 0,
-                glow::RGB,
+                glow::RGBA,
                 glow::UNSIGNED_BYTE,
                 glow::PixelUnpackData::Slice(None),
             );
