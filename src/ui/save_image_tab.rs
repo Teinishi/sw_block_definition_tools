@@ -216,6 +216,10 @@ impl SaveImageTab {
             });
             ui.end_row();
 
+            ui.label("MSAA samples");
+            ui.add(DragValue::new(&mut self.msaa_samples).range(0..=32));
+            ui.end_row();
+
             ui.label("Camera type");
             ui.horizontal(|ui| {
                 if ui
@@ -414,7 +418,10 @@ impl SaveImageTab {
         dialog_parent: Option<&W>,
     ) {
         use super::file_dialog;
-        use crate::{gl_renderer, ui::ImageRenderer};
+        use crate::{
+            gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer},
+            ui::ImageRenderer,
+        };
         use std::cmp::Ordering;
 
         if let Some(gl) = &self.gl {
@@ -442,17 +449,28 @@ impl SaveImageTab {
 
             let scene = BlockViewScene::clone_state(&self.scene);
             let renderer = SceneRenderer::new(gl, scene.scene());
+
+            let framebuffer: Box<dyn RenderFramebuffer> = if self.msaa_samples > 0 {
+                Box::new(MultisampleRenderer::new(
+                    gl.clone(),
+                    self.auto_camera.width,
+                    self.auto_camera.height,
+                    self.msaa_samples,
+                ))
+            } else {
+                Box::new(BasicRenderer::new(
+                    gl.clone(),
+                    self.auto_camera.width,
+                    self.auto_camera.height,
+                ))
+            };
+
             self.image_renderer = Some(ImageRenderer::new(
                 definitions,
                 scene,
                 renderer,
                 &self.auto_camera,
-                gl_renderer::MultisampleFramebuffer::new(
-                    gl.clone(),
-                    self.auto_camera.width,
-                    self.auto_camera.height,
-                    self.msaa_samples,
-                ),
+                framebuffer,
                 save_path,
                 !is_single,
             ));

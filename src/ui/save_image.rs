@@ -1,6 +1,6 @@
 use super::{utils::replace_extension, BlockViewScene, DefinitionPointer};
 use crate::{
-    gl_renderer::{Camera, MultisampleFramebuffer, OrbitCamera, SceneRenderer},
+    gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes},
 };
 use glam::{Vec3, Vec4};
@@ -147,7 +147,7 @@ pub struct ImageRenderer {
     auto_camera: AutoCamera,
     scene: BlockViewScene,
     renderer: SceneRenderer,
-    framebuffer: MultisampleFramebuffer,
+    framebuffer: Box<dyn RenderFramebuffer>,
     save_path: PathBuf,
     append_filename: bool,
     start_time: time::Instant,
@@ -162,7 +162,7 @@ impl ImageRenderer {
         scene: BlockViewScene,
         renderer: SceneRenderer,
         auto_camera: &AutoCamera,
-        framebuffer: MultisampleFramebuffer,
+        framebuffer: Box<dyn RenderFramebuffer>,
         save_path: PathBuf,
         append_filename: bool,
     ) -> Self {
@@ -212,8 +212,11 @@ impl ImageRenderer {
                                 self.auto_camera.update(&data);
                                 self.scene.update(&Some(data), &Some(meshes));
 
-                                self.framebuffer
-                                    .paint(&mut self.renderer, &self.auto_camera.camera);
+                                self.framebuffer.before_paint();
+                                self.renderer
+                                    .paint(self.framebuffer.gl(), &self.auto_camera.camera);
+                                self.framebuffer.after_paint();
+
                                 let image = self.framebuffer.get_image();
                                 let _result = if self.append_filename {
                                     image.save(

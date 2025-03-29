@@ -12,5 +12,5 @@ mod camera;
 pub use camera::{Camera, OrbitCamera};
 mod shader_type;
 pub use shader_type::{SceneObjectContent, ShaderAttributeData, ShaderType};
-mod multisample_framebuffer;
-pub use multisample_framebuffer::MultisampleFramebuffer;
+mod framebuffer_wrapper;
+pub use framebuffer_wrapper::{BasicRenderer, MultisampleRenderer, RenderFramebuffer};
