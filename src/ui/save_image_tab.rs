@@ -3,7 +3,8 @@ use super::{
     DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
     DefinitionsStore, ImageRenderer, State, Tab,
 };
-use crate::gl_renderer::SceneRenderer;
+#[allow(unused_imports)]
+use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
     Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel, Sides,
@@ -418,10 +419,7 @@ impl SaveImageTab {
         dialog_parent: Option<&W>,
     ) {
         use super::file_dialog;
-        use crate::{
-            gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer},
-            ui::ImageRenderer,
-        };
+        use crate::ui::ImageRenderer;
         use std::cmp::Ordering;
 
         if let Some(gl) = &self.gl {

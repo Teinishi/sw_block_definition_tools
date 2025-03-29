@@ -19,6 +19,7 @@ pub struct BasicRenderer {
 }
 
 impl BasicRenderer {
+    #[allow(dead_code)]
     pub fn new(gl: Arc<glow::Context>, width: i32, height: i32) -> Self {
         unsafe {
             let framebuffer = gl
@@ -126,6 +127,7 @@ pub struct MultisampleRenderer {
 }
 
 impl MultisampleRenderer {
+    #[allow(dead_code)]
     pub fn new(gl: Arc<glow::Context>, width: i32, height: i32, samples: i32) -> Self {
         assert!(samples > 0);
         unsafe {

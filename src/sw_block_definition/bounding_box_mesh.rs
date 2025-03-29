@@ -23,7 +23,12 @@ impl BoundingBoxObjectBuilder {
         }
     }
 
-    pub fn objects(&self, mesh_color: Color4, line_color: Color4, line_width: f32) -> (SceneObject, SceneObject) {
+    pub fn objects(
+        &self,
+        mesh_color: Color4,
+        line_color: Color4,
+        line_width: f32,
+    ) -> (SceneObject, SceneObject) {
         let min_x = self.corner_min.x;
         let min_y = self.corner_min.y;
         let min_z = self.corner_min.z;
@@ -72,7 +77,7 @@ impl BoundingBoxObjectBuilder {
                     positions,
                     strokes.iter().map(|s| s.as_slice()).collect(),
                     line_color,
-                    line_width
+                    line_width,
                 ),
                 None,
             ),
