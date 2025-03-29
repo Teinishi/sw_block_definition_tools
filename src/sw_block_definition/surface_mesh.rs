@@ -132,6 +132,7 @@ impl SurfaceObjectBuilder {
         &self,
         mesh_color: Color4,
         line_color: Color4,
+        line_width: f32,
     ) -> (Option<SceneObject>, Option<SceneObject>) {
         let vertices = self
             .single_color_vertices
@@ -152,10 +153,9 @@ impl SurfaceObjectBuilder {
             mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
             vertices.map(|positions| {
                 SceneObject::from_line(
-                    Line::single_stroke_lh(positions, line_color, 1.0, true),
+                    Line::single_stroke_lh(positions, line_color, line_width, true),
                     Some(self.transform_matrix),
                 )
-                .always_top()
             }),
         )
     }

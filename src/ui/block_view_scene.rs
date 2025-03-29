@@ -14,51 +14,51 @@ use std::{
 
 const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
     r: 0.1,
-    g: 0.5,
-    b: 0.8,
+    g: 0.35,
+    b: 0.5,
     a: 0.3,
 };
 const BUOYANCY_SURFACE_LINE_COLOR: Color4 = Color4 {
-    r: 0.05,
-    g: 0.25,
-    b: 0.4,
-    a: 0.2,
+    r: 0.2,
+    g: 0.7,
+    b: 1.0,
+    a: 1.0,
 };
 const BOUNDING_BOX_VOXEL_MESH_COLOR: Color4 = Color4 {
-    r: 0.8,
+    r: 0.5,
     g: 0.1,
-    b: 0.2,
+    b: 0.1,
     a: 0.3,
 };
 const BOUNDING_BOX_VOXEL_LINE_COLOR: Color4 = Color4 {
-    r: 0.4,
-    g: 0.05,
-    b: 0.1,
-    a: 0.2,
+    r: 1.0,
+    g: 0.2,
+    b: 0.2,
+    a: 1.0,
 };
 const BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR: Color4 = Color4 {
-    r: 0.8,
-    g: 0.8,
-    b: 0.2,
+    r: 0.4,
+    g: 0.3,
+    b: 0.0,
     a: 0.3,
 };
 const BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR: Color4 = Color4 {
-    r: 0.4,
-    g: 0.4,
-    b: 0.1,
-    a: 0.2,
+    r: 0.8,
+    g: 0.6,
+    b: 0.0,
+    a: 1.0,
 };
 const BOUNDING_BOX_PHYSICS_MESH_COLOR: Color4 = Color4 {
-    r: 0.1,
-    g: 0.8,
-    b: 0.2,
+    r: 0.0,
+    g: 0.4,
+    b: 0.1,
     a: 0.3,
 };
 const BOUNDING_BOX_PHYSICS_LINE_COLOR: Color4 = Color4 {
-    r: 0.05,
-    g: 0.4,
-    b: 0.1,
-    a: 0.2,
+    r: 0.0,
+    g: 0.8,
+    b: 0.2,
+    a: 1.0,
 };
 
 #[derive(Clone, PartialEq, Eq)]
@@ -245,6 +245,7 @@ impl BlockViewScene {
                         .translucent_objects(
                             BUOYANCY_SURFACE_MESH_COLOR,
                             BUOYANCY_SURFACE_LINE_COLOR,
+                            4.0,
                         );
                         if let Some(obj) = mesh_obj {
                             self.add_object(obj.set_z_offset(-1.0));
@@ -261,8 +262,11 @@ impl BlockViewScene {
                     data.voxel_min.last().zip(data.voxel_max.last())
                 {
                     let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
-                            .objects(BOUNDING_BOX_VOXEL_MESH_COLOR, BOUNDING_BOX_VOXEL_LINE_COLOR);
+                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max).objects(
+                            BOUNDING_BOX_VOXEL_MESH_COLOR,
+                            BOUNDING_BOX_VOXEL_LINE_COLOR,
+                            4.0,
+                        );
                     self.add_object(mesh_obj.set_z_offset(-4.0));
                     self.add_object(line_obj.set_z_offset(-5.0));
                 }
@@ -281,6 +285,7 @@ impl BlockViewScene {
                     .objects(
                         BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR,
                         BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR,
+                        4.0,
                     );
                     self.add_object(mesh_obj.set_z_offset(-3.0));
                     self.add_object(line_obj.set_z_offset(-4.0));
@@ -295,6 +300,7 @@ impl BlockViewScene {
                         BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max).objects(
                             BOUNDING_BOX_PHYSICS_MESH_COLOR,
                             BOUNDING_BOX_PHYSICS_LINE_COLOR,
+                            4.0,
                         );
                     self.add_object(mesh_obj.set_z_offset(-2.0));
                     self.add_object(line_obj.set_z_offset(-3.0));
