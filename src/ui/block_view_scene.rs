@@ -7,7 +7,10 @@ use crate::{
 };
 use enum_map::EnumMap;
 use glam::Vec3;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    fmt::Debug,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
     r: 0.1,
@@ -92,6 +95,21 @@ impl Default for BlockViewState {
 #[derive(Default)]
 pub struct BlockViewStateMeshOptions {
     meshes: EnumMap<SwBlockDefinitionMeshKey, bool>,
+}
+
+impl Debug for BlockViewStateMeshOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut is_first = true;
+        write!(f, "BlockViewStateMeshOptions {{")?;
+        for (key, value) in self.meshes {
+            if !is_first {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}: {}", key.xml_name(), value)?;
+            is_first = false;
+        }
+        write!(f, "}}")
+    }
 }
 
 impl BlockViewStateMeshOptions {

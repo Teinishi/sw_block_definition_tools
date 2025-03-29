@@ -336,10 +336,12 @@ impl SaveImageTab {
         }
         if let Some(selector) = self.definition_select_panel.multi_selector() {
             for s in selector.borrow().selection() {
-                if let Some(meshes) = s.lock().ok().and_then(|mut d| d.load_meshes()) {
-                    let options =
-                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
-                    mesh_options.or(&options);
+                if let Ok(mut definition) = s.lock() {
+                    if let (_, Some(meshes)) = definition.load_data_meshes() {
+                        let options =
+                            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                        mesh_options.or(&options);
+                    }
                 }
             }
         }
