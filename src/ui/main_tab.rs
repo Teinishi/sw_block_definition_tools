@@ -51,6 +51,15 @@ impl Tab for MainTab {
         self.definition_3d_panel.destroy(gl);
     }
 
+    fn reset(&mut self) {
+        self.definition_select_panel = Default::default();
+        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.definition_detail_panel = Default::default();
+        self.definition_3d_panel.reset();
+        self.attribute_detail_windows = Vec::new();
+        self.window_id = 0;
+    }
+
     fn update(
         &mut self,
         ctx: &eframe::egui::Context,

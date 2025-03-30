@@ -1,3 +1,4 @@
+use super::LoadingState;
 use crate::sw_block_definition::{
     AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault, SwBlockDefinition,
 };
@@ -9,8 +10,6 @@ use std::{
     rc::Rc,
     sync::{Arc, Mutex, Weak},
 };
-
-use super::LoadingState;
 
 pub type DefinitionPointer = Arc<Mutex<SwBlockDefinition>>;
 pub type WeakDefinitionPointer = Weak<Mutex<SwBlockDefinition>>;

@@ -79,7 +79,14 @@ impl MainApp {
     }
 
     fn reset(&mut self) {
-        *self = Self::default();
+        self.state = Default::default();
+        self.definitions_store = Default::default();
+        self.selector = Default::default();
+        self.tab = Default::default();
+
+        self.main_tab.reset();
+        self.save_image_tab.reset();
+        self.settings_tab.reset();
     }
 }
 

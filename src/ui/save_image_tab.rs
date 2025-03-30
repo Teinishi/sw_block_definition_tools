@@ -78,6 +78,16 @@ impl Tab for SaveImageTab {
         }
     }
 
+    fn reset(&mut self) {
+        self.auto_camera = Default::default();
+        self.msaa_samples = 8;
+        self.definition_select_panel = Default::default();
+        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.scene.clear();
+        self.mesh_loaded = false;
+        self.image_renderer = None;
+    }
+
     #[allow(unused_variables)]
     fn update(
         &mut self,

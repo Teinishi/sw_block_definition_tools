@@ -13,7 +13,7 @@ impl Default for TabVariants {
     }
 }
 
-pub trait Tab {
+pub trait Tab: Default {
     #[allow(unused_variables)]
     fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {}
 
@@ -22,6 +22,11 @@ pub trait Tab {
 
     #[allow(unused_variables)]
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {}
+
+    #[allow(unused_variables)]
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
 
     fn update(
         &mut self,

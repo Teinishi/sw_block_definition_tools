@@ -144,12 +144,9 @@ impl BlockViewScene {
     }
 
     pub fn state_mut<F: FnOnce(&'_ mut BlockViewState)>(&mut self, writer: F) -> bool {
-        let mut changed = self.state.clone();
-        writer(&mut changed);
-
-        let is_changed = changed != self.state;
-        let _ = std::mem::replace(&mut self.state, changed);
-        is_changed
+        let before_change = self.state.clone();
+        writer(&mut self.state);
+        before_change != self.state
     }
 
     pub fn state_ui(&mut self, ui: &mut egui::Ui, mesh_options: BlockViewStateMeshOptions) -> bool {

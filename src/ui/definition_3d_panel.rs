@@ -7,6 +7,15 @@ use egui::vec2;
 use glam::Vec3;
 use std::sync::Arc;
 
+fn default_camera() -> OrbitCamera {
+    OrbitCamera::new(
+        Vec3::ZERO,
+        Vec3::new(1.0, -0.5, 1.0),
+        45f32.to_radians(),
+        1.0,
+    )
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Definition3dPanel {
     #[serde(skip)]
@@ -20,14 +29,7 @@ pub struct Definition3dPanel {
 
 impl Definition3dPanel {
     pub fn new(camera: Option<OrbitCamera>) -> Self {
-        let camera = camera.unwrap_or_else(|| {
-            OrbitCamera::new(
-                Vec3::ZERO,
-                Vec3::new(1.0, -0.5, 1.0),
-                45f32.to_radians(),
-                1.0,
-            )
-        });
+        let camera = camera.unwrap_or_else(default_camera);
 
         Self {
             scene: Default::default(),
@@ -48,6 +50,12 @@ impl Definition3dPanel {
         if let Some(renderer) = &self.renderer {
             renderer.lock().destroy(gl);
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.scene.clear();
+        self.camera = default_camera();
+        self.mesh_loaded = false;
     }
 
     pub fn ui(
@@ -72,7 +80,7 @@ impl Definition3dPanel {
         let mut meshes = None;
         if let Some(definition) = selected {
             if let Ok(mut definition) = definition.lock() {
-                (data, meshes) = definition.load_data_meshes()
+                (data, meshes) = definition.load_data_meshes();
             }
         }
 
