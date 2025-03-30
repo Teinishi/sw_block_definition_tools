@@ -1,5 +1,6 @@
 use super::{AppAction, DefinitionsStore, State, Tab};
 use egui::{CentralPanel, Grid, Slider};
+use std::path::PathBuf;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsTab {
@@ -33,8 +34,6 @@ impl Tab for SettingsTab {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    use super::file_dialog;
-
                     ui.label("rom folder");
                     ui.horizontal(|ui| {
                         let rom_path_buf = state.rom_path.clone().unwrap_or_default();
@@ -48,18 +47,13 @@ impl Tab for SettingsTab {
                             egui::TextEdit::singleline(&mut self.rom_path),
                         );
                         if text_edit.changed() {
-                            self.update_rom_folder(
-                                std::path::PathBuf::from(self.rom_path.clone()),
-                                state,
-                                definitions_store,
-                            );
+                            action = Some(AppAction::UpdateRomFolder(PathBuf::from(
+                                self.rom_path.clone(),
+                            )));
                         }
 
                         if ui.button("Select").clicked() {
-                            if let Some(rom_path) = file_dialog::open_rom_folder_dialog(Some(frame))
-                            {
-                                self.update_rom_folder(rom_path, state, definitions_store);
-                            }
+                            action = Some(AppAction::SelectRomFolder);
                         }
                     });
                     ui.end_row();
@@ -72,19 +66,5 @@ impl Tab for SettingsTab {
         });
 
         action
-    }
-}
-
-impl SettingsTab {
-    #[cfg(not(target_arch = "wasm32"))]
-    fn update_rom_folder(
-        &self,
-        rom_path: std::path::PathBuf,
-        state: &mut State,
-        definitions_store: &mut DefinitionsStore,
-    ) {
-        // TODO: ここでエラー出たら拾って表示
-        let _ = definitions_store.open_rom_directory(Some(rom_path.clone()));
-        state.rom_path = Some(rom_path);
     }
 }

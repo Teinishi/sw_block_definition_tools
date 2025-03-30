@@ -1,8 +1,9 @@
 use super::{
-    tab::Tab, AppAction, AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel,
-    DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
+    tab::Tab, utils::ui_center, AppAction, AttributeDetailWindow, Definition3dPanel,
+    DefinitionDetailPanel, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
+    DefinitionsStore, State,
 };
-use egui::{CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
+use egui::{Button, CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -66,6 +67,21 @@ impl Tab for MainTab {
             );
         }
         self.attribute_detail_windows.retain(|w| w.is_open());
+
+        if state.rom_path.is_none() {
+            let mut action = None;
+
+            CentralPanel::default().show(ctx, |ui| {
+                let size = egui::vec2(200.0, 60.0);
+                ui_center(ui, size, |ui| {
+                    if ui.add_sized(size, Button::new("Open rom folder")).clicked() {
+                        action = Some(AppAction::SelectRomFolder);
+                    }
+                });
+            });
+
+            return action;
+        }
 
         SidePanel::left("left_panel")
             .resizable(true)

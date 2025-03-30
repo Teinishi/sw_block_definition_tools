@@ -3,7 +3,7 @@ use super::{
     TabVariants,
 };
 use egui::{Sides, TopBottomPanel};
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 #[serde(default)]
@@ -137,6 +137,17 @@ impl eframe::App for MainApp {
                 AppAction::Reset => {
                     self.reset();
                 }
+                AppAction::SelectRomFolder => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if let Some(rom_path) = super::file_dialog::open_rom_folder_dialog(Some(frame))
+                    {
+                        update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
+                    }
+                }
+                AppAction::UpdateRomFolder(rom_path) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
+                }
             }
         }
     }
@@ -144,4 +155,17 @@ impl eframe::App for MainApp {
 
 pub enum AppAction {
     Reset,
+    SelectRomFolder,
+    UpdateRomFolder(PathBuf),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn update_rom_folder(
+    rom_path: PathBuf,
+    state: &mut State,
+    definitions_store: &mut DefinitionsStore,
+) {
+    // TODO: ここでエラー出たら拾って表示
+    let _ = definitions_store.open_rom_directory(Some(rom_path.clone()));
+    state.rom_path = Some(rom_path);
 }
