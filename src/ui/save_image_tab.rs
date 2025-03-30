@@ -7,8 +7,8 @@ use super::{
 use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
-    Align, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel, Sides,
-    Slider,
+    Align, Button, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel,
+    Sides, Slider,
 };
 use egui_extras::{Size, StripBuilder};
 use std::sync::Arc;
@@ -376,14 +376,16 @@ impl SaveImageTab {
                 let count = multi_selector.borrow().count();
                 let mut save_definitions = None;
 
+                let size = egui::vec2(ui.available_width(), 60.0);
+
                 if count > 0 {
-                    let button = ui.button(format!("Save {} images", count));
+                    let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
                     if button.clicked() {
                         save_definitions = Some(multi_selector.borrow().selection());
                     }
                 } else if let Some(definition) = self.definition_select_panel.selected_definition()
                 {
-                    let button = ui.button("Save image");
+                    let button = ui.add_sized(size, Button::new("Save image"));
                     if button.clicked() {
                         save_definitions = Some(vec![definition]);
                     }
