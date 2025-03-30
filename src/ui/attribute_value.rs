@@ -43,7 +43,7 @@ fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &String) {
     let is_playing = state
         .playing_audio()
         .as_ref()
-        .is_some_and(|(playing_path, _, _)| playing_path == path);
+        .is_some_and(|playing_audio| playing_audio.path() == path);
 
     let button = ui.add_sized(
         [20.0, 20.0],

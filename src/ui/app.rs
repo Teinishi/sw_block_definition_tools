@@ -77,6 +77,10 @@ impl MainApp {
 
         app
     }
+
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
 }
 
 impl eframe::App for MainApp {
@@ -111,7 +115,7 @@ impl eframe::App for MainApp {
             });
         });
 
-        match self.tab {
+        let action = match self.tab {
             TabVariants::Main => {
                 self.main_tab
                     .update(ctx, frame, &mut self.state, &mut self.definitions_store)
@@ -124,8 +128,20 @@ impl eframe::App for MainApp {
                 self.settings_tab
                     .update(ctx, frame, &mut self.state, &mut self.definitions_store)
             }
-        }
+        };
 
         self.state.end_frame(ctx);
+
+        if let Some(action) = action {
+            match action {
+                AppAction::Reset => {
+                    self.reset();
+                }
+            }
+        }
     }
+}
+
+pub enum AppAction {
+    Reset,
 }

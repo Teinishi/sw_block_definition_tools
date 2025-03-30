@@ -4,15 +4,13 @@ use std::{
     sync::{mpsc, Arc},
 };
 
-type PlayingAudio = (String, Arc<rodio::Sink>, mpsc::Receiver<bool>);
-
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Debug)]
 pub enum LoadingState {
     Data(String),
     Mesh(String),
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct State {
     pub rom_path: Option<PathBuf>,
     pub show_all: bool,
@@ -43,9 +41,9 @@ impl State {
 
     pub fn end_frame(&mut self, ctx: &egui::Context) {
         // 描画フレームごとに1回呼ぶ
-        if let Some((_, _, rx_done)) = &self.playing_audio {
+        if let Some(playing_audio) = &self.playing_audio {
             ctx.request_repaint();
-            if rx_done.try_recv().is_ok() {
+            if playing_audio.rx_done.try_recv().is_ok() {
                 self.set_playing_audio(None);
             }
         }
@@ -60,9 +58,39 @@ impl State {
     }
 
     pub fn set_playing_audio(&mut self, value: Option<PlayingAudio>) {
-        if let Some((_, sink, _)) = &self.playing_audio {
-            sink.stop();
+        if let Some(playing_audio) = &self.playing_audio {
+            playing_audio.sink.stop();
         }
         self.playing_audio = value;
+    }
+}
+
+pub struct PlayingAudio {
+    path: String,
+    sink: Arc<rodio::Sink>,
+    rx_done: mpsc::Receiver<bool>,
+}
+
+impl PartialEq for PlayingAudio {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
+impl PlayingAudio {
+    pub fn new(path: String, sink: Arc<rodio::Sink>, rx_done: mpsc::Receiver<bool>) -> Self {
+        Self {
+            path,
+            sink,
+            rx_done,
+        }
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn stop(&self) {
+        self.sink.stop();
     }
 }

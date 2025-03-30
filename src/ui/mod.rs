@@ -1,9 +1,9 @@
 mod app;
-pub use app::MainApp;
+pub use app::{AppAction, MainApp};
 mod tab;
 pub use tab::{Tab, TabVariants};
 mod state;
-pub use state::{LoadingState, State};
+pub use state::{LoadingState, PlayingAudio, State};
 mod definitions_store;
 pub use definitions_store::{
     AttributeValueContainer, DefinitionPointer, DefinitionsStore, WeakDefinitionPointer,

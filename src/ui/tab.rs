@@ -1,4 +1,4 @@
-use super::{DefinitionSingleSelect, DefinitionsStore, State};
+use super::{AppAction, DefinitionSingleSelect, DefinitionsStore, State};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
 pub enum TabVariants {
@@ -26,8 +26,8 @@ pub trait Tab {
     fn update(
         &mut self,
         ctx: &eframe::egui::Context,
-        _frame: &mut eframe::Frame,
+        frame: &mut eframe::Frame,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
-    );
+    ) -> Option<AppAction>;
 }

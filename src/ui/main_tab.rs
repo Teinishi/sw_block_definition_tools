@@ -1,6 +1,6 @@
 use super::{
-    tab::Tab, AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel, DefinitionSelect,
-    DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
+    tab::Tab, AppAction, AttributeDetailWindow, Definition3dPanel, DefinitionDetailPanel,
+    DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect, DefinitionsStore, State,
 };
 use egui::{CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 
@@ -56,7 +56,7 @@ impl Tab for MainTab {
         _frame: &mut eframe::Frame,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
-    ) {
+    ) -> Option<AppAction> {
         for window in &mut self.attribute_detail_windows {
             window.ui(
                 ctx,
@@ -117,6 +117,8 @@ impl Tab for MainTab {
                 }
             });
         });
+
+        None
     }
 }
 

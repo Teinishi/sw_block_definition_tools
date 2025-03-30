@@ -6,12 +6,12 @@ use std::{
     thread,
 };
 
-use super::State;
+use super::{PlayingAudio, State};
 
 pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioError> {
-    if let Some((playing_path, sink, _)) = state.playing_audio() {
-        if *playing_path == path {
-            sink.stop();
+    if let Some(playing_audio) = state.playing_audio() {
+        if playing_audio.path() == path {
+            playing_audio.stop();
             return Ok(());
         }
     }
@@ -19,7 +19,7 @@ pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioE
     if let Some(rom_path) = &state.rom_path {
         match spawn_audio(rom_path.join(path.clone()), state.audio_volume) {
             Ok((sink, rx_done)) => {
-                state.set_playing_audio(Some((path, sink, rx_done)));
+                state.set_playing_audio(Some(PlayingAudio::new(path, sink, rx_done)));
                 Ok(())
             }
             Err(err) => Err(err),

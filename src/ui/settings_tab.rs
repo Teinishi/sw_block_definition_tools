@@ -1,4 +1,4 @@
-use super::{DefinitionsStore, State, Tab};
+use super::{AppAction, DefinitionsStore, State, Tab};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -14,7 +14,9 @@ impl Tab for SettingsTab {
         frame: &mut eframe::Frame,
         state: &mut State,
         definitions_store: &mut DefinitionsStore,
-    ) {
+    ) -> Option<AppAction> {
+        let mut action = None;
+
         CentralPanel::default().show(ctx, |ui| {
             Grid::new("settins").show(ui, |ui| {
                 ui.label("Theme");
@@ -62,8 +64,14 @@ impl Tab for SettingsTab {
                     });
                     ui.end_row();
                 }
+
+                if ui.button("Reset").clicked() {
+                    action = Some(AppAction::Reset);
+                }
             });
         });
+
+        action
     }
 }
 

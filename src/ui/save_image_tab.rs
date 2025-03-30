@@ -1,5 +1,5 @@
 use super::{
-    paint_canvas_3d, utils, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
+    paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
     DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
     DefinitionsStore, ImageRenderer, State, Tab,
 };
@@ -85,7 +85,7 @@ impl Tab for SaveImageTab {
         frame: &mut eframe::Frame,
         _state: &mut State,
         definitions_store: &mut DefinitionsStore,
-    ) {
+    ) -> Option<AppAction> {
         SidePanel::left("left_panel")
             .resizable(true)
             .default_width(200.0)
@@ -162,7 +162,7 @@ impl Tab for SaveImageTab {
             } else {
                 self.ui_progress_modal(ctx);
                 ctx.request_repaint();
-                return;
+                return None;
             }
         }
 
@@ -182,6 +182,8 @@ impl Tab for SaveImageTab {
         {
             self.update_scene(&definition);
         }
+
+        None
     }
 }
 
