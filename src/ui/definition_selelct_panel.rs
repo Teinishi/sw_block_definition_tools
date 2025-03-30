@@ -95,7 +95,7 @@ impl DefinitionSelectPanel {
                     if checked_any {
                         multi_select
                             .borrow_mut()
-                            .set_selection(definitions_store.definitions().borrow().values());
+                            .set_selection(items.iter().map(|(_, ptr)| *ptr));
                     } else {
                         multi_select.borrow_mut().clear();
                     }
