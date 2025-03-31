@@ -4,7 +4,9 @@ Stormworks のパーツ定義 XML ファイルを見るためのツールです�
 
 ## 使い方
 
-起動したら、画面上部の File -> Open Rom Folder から、`stormworks.exe` と同じフォルダにある `rom` フォルダを選択してください。`rom/data/definitions` 以下のパーツ定義 XML ファイルを一覧表示します。
+起動したら、Open rom folder ボタンから `stormworks.exe` と同じフォルダにある `rom` フォルダを選択してください。`rom/data/definitions` 以下のパーツ定義 XML ファイルを一覧表示します。
+
+画面上部のタブから Save image を選択すると、ブロックの画像を保存することができます。
 
 ## ビルド方法
 
