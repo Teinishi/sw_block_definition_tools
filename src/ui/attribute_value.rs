@@ -101,6 +101,9 @@ fn value_display(
                 label.add(")");
                 label.show(ui);
             }
+            AttributeValue::U64(value) if matches!(attribute_type, AttributeType::Flags) => {
+                ui.monospace(format!("{:10} (0b{:033b})", value, value));
+            }
             _ => {
                 ui.monospace(value.display_string());
             }
