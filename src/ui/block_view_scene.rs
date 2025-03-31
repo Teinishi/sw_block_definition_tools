@@ -95,6 +95,7 @@ impl Default for BlockViewState {
 
 #[derive(Clone, PartialEq)]
 pub struct BlockViewColors {
+    pub surface: Color4,
     pub override_color: bool,
     pub override_1: Color4,
     pub override_2: Color4,
@@ -105,6 +106,7 @@ pub struct BlockViewColors {
 impl Default for BlockViewColors {
     fn default() -> Self {
         Self {
+            surface: Color4::WHITE,
             override_color: true,
             override_1: Color4::WHITE,
             override_2: Color4::WHITE,
@@ -213,46 +215,30 @@ impl BlockViewScene {
         id: egui::Id,
         _mesh_options: &BlockViewStateMeshOptions,
     ) -> bool {
+        fn ui_color_row(ui: &mut egui::Ui, text: &str, color: &mut Color4) {
+            ui.label(text);
+
+            let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
+            ui.color_edit_button_rgb(&mut arr);
+            color.r = arr[0];
+            color.g = arr[1];
+            color.b = arr[2];
+            color.a = 1.0;
+
+            ui.end_row();
+        }
+
         self.color_mut(|colors| {
             Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
+                ui_color_row(ui, "Surface color", &mut colors.surface);
+
                 ui.checkbox(&mut colors.override_color, "Override color");
                 ui.end_row();
 
-                if colors.override_color {
-                    for (show, color, text) in [
-                        (
-                            colors.override_color,
-                            &mut colors.override_1,
-                            "Override color 1",
-                        ),
-                        (
-                            colors.override_color,
-                            &mut colors.override_2,
-                            "Override color 2",
-                        ),
-                        (
-                            colors.override_color,
-                            &mut colors.override_3,
-                            "Override color 3",
-                        ),
-                        (true, &mut colors.additive, "Additive color"),
-                    ] {
-                        if !show {
-                            continue;
-                        }
-
-                        ui.label(text);
-
-                        let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
-                        ui.color_edit_button_rgb(&mut arr);
-                        color.r = arr[0];
-                        color.g = arr[1];
-                        color.b = arr[2];
-                        color.a = 1.0;
-
-                        ui.end_row();
-                    }
-                }
+                ui_color_row(ui, "Override color 1", &mut colors.override_1);
+                ui_color_row(ui, "Override color 2", &mut colors.override_2);
+                ui_color_row(ui, "Override color 3", &mut colors.override_3);
+                ui_color_row(ui, "Additive color", &mut colors.additive);
             });
         })
     }
@@ -308,7 +294,11 @@ impl BlockViewScene {
                         surface.orientation,
                         surface.rotation,
                     )
-                    .basic_objects(self.state.show_surfaces, self.state.show_surface_edges);
+                    .basic_objects(
+                        self.state.show_surfaces,
+                        self.state.show_surface_edges,
+                        self.colors.surface,
+                    );
                     if let Some(obj) = mesh_obj {
                         self.add_object(obj);
                     }

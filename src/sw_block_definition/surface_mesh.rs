@@ -83,6 +83,7 @@ impl SurfaceObjectBuilder {
         &self,
         show_surface: bool,
         show_edge: bool,
+        color: Color4,
     ) -> (Option<SceneObject>, Option<SceneObject>) {
         if !show_surface && !show_edge {
             return (None, None);
@@ -93,7 +94,7 @@ impl SurfaceObjectBuilder {
 
         if let Some(vertices) = &self.single_color_vertices {
             if show_surface {
-                mesh = Some(Mesh::single_face_lh(vertices.clone(), Color4::WHITE));
+                mesh = Some(Mesh::single_face_lh(vertices.clone(), color));
             }
             if show_edge {
                 line = Some(vertices.to_vec());
@@ -107,7 +108,7 @@ impl SurfaceObjectBuilder {
                 }
                 4 | 5 => {
                     if show_surface {
-                        mesh = dot_surface(self.shape, Color4::WHITE)
+                        mesh = dot_surface(self.shape, color);
                     }
                     if show_edge {
                         line = surface_single_color(1);

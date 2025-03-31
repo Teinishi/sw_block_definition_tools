@@ -126,6 +126,18 @@ impl Tab for SaveImageTab {
             }
         }
 
+        let (data, meshes) = definition
+            .as_ref()
+            .and_then(|d| d.lock().ok())
+            .map(|mut d| d.load_data_meshes())
+            .unwrap_or((None, None));
+
+        let mesh_loaded = meshes.is_some();
+        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
+        self.mesh_loaded = mesh_loaded;
+
+        let mut scene_update = false;
+
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
@@ -159,7 +171,7 @@ impl Tab for SaveImageTab {
                                                 rect,
                                                 self.auto_camera.camera.clone(),
                                                 renderer.clone(),
-                                                self.scene.colors()
+                                                self.scene.colors(),
                                             );
                                         }
                                     }
@@ -176,10 +188,15 @@ impl Tab for SaveImageTab {
                                     self.ui_camera_params(ui, Id::new("save_image_camera_params"));
                                 });
                                 strip.cell(|ui| {
-                                    self.ui_scene(ui, &definition, &mesh_options);
+                                    scene_update =
+                                        self.scene.state_ui(ui, &mesh_options) || scene_update;
                                 });
                                 strip.cell(|ui| {
-                                    self.ui_color(ui, Id::new("save_image_colors"), &mesh_options);
+                                    scene_update = self.scene.color_ui(
+                                        ui,
+                                        Id::new("save_image_colors"),
+                                        &mesh_options,
+                                    ) || scene_update;
                                 });
                                 strip.cell(|ui| {
                                     self.ui_buttons(ui, frame);
@@ -188,6 +205,10 @@ impl Tab for SaveImageTab {
                     });
                 });
         });
+
+        if mesh_loaded_now || scene_update {
+            self.scene.update(&data, &meshes);
+        }
 
         if let Some(renderer) = &mut self.image_renderer {
             renderer.update();
@@ -200,12 +221,7 @@ impl Tab for SaveImageTab {
             }
         }
 
-        if let Some(data) = definition
-            .as_ref()
-            .and_then(|d| d.lock().ok())
-            .and_then(|mut d| d.load_data())
-            .and_then(|d| d.ok())
-        {
+        if let Some(data) = data {
             self.auto_camera.update(&data);
         }
 
@@ -355,32 +371,6 @@ impl SaveImageTab {
                 );
             }
         });
-    }
-
-    fn ui_scene(
-        &mut self,
-        ui: &mut egui::Ui,
-        definition: &Option<DefinitionPointer>,
-        mesh_options: &BlockViewStateMeshOptions,
-    ) {
-        let (data, meshes) = definition
-            .as_ref()
-            .and_then(|d| d.lock().ok())
-            .map(|mut d| d.load_data_meshes())
-            .unwrap_or((None, None));
-
-        let mesh_loaded = meshes.is_some();
-        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
-        self.mesh_loaded = mesh_loaded;
-
-        let scene_state_changed = self.scene.state_ui(ui, mesh_options);
-        if mesh_loaded_now || scene_state_changed {
-            self.scene.update(&data, &meshes);
-        }
-    }
-
-    fn ui_color(&mut self, ui: &mut egui::Ui, id: Id, mesh_options: &BlockViewStateMeshOptions) {
-        self.scene.color_ui(ui, id, mesh_options);
     }
 
     #[allow(unused_variables)]

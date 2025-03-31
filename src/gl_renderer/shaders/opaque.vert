@@ -23,17 +23,15 @@ void main()
     vec3 override_color_2_difference = vertex_color_in.rgb - vec3(0.608, 0.494, 0.0);
     vec3 override_color_3_difference = vertex_color_in.rgb - vec3(0.216, 0.494, 0.0);
 
-    vec3 surface_color_difference = vertex_color_in.rgb - vec3(1.0, 1.0, 1.0);
-
-    if(override_color == 1 && (dot(override_color_1_difference, override_color_1_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    if(override_color == 1 && dot(override_color_1_difference, override_color_1_difference) < 0.01)
     {
         vertex_color_out = override_color_1;
     }
-    else if(override_color == 1 && (dot(override_color_2_difference, override_color_2_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    else if(override_color == 1 && dot(override_color_2_difference, override_color_2_difference) < 0.01)
     {
         vertex_color_out = override_color_2;
     }
-    else if(override_color == 1 && (dot(override_color_3_difference, override_color_3_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    else if(override_color == 1 && dot(override_color_3_difference, override_color_3_difference) < 0.01)
     {
         vertex_color_out = override_color_3;
     }
