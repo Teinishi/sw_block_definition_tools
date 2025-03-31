@@ -1,8 +1,8 @@
 use crate::{
     gl_renderer::{Color4, Line, Scene, SceneObject},
     sw_block_definition::{
-        BoundingBoxObjectBuilder, Definition, SurfaceObjectBuilder, SwBlockDefinitionMeshKey,
-        SwBlockDefinitionMeshes,
+        BoundingBoxObjectBuilder, Definition, DefinitionVec3, SurfaceObjectBuilder,
+        SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
     },
 };
 use egui::{DragValue, Grid};
@@ -367,13 +367,33 @@ impl BlockViewScene {
         if let Some(data) = data {
             if let Some(surfaces) = data.surfaces.last() {
                 for surface in &surfaces.surface {
-                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
+                    let position = surface.position.last();
+
+                    let mut obj_builder = SurfaceObjectBuilder::new(
                         surface.shape,
-                        surface.position.last(),
+                        position,
                         surface.orientation,
                         surface.rotation,
-                    )
-                    .basic_objects(
+                    );
+
+                    if let Some(logic_nodes) = data.logic_nodes.last().map(|n| &n.logic_node) {
+                        let vec_default = DefinitionVec3::<i32>::default();
+
+                        let position = position.unwrap_or(&vec_default).as_array(0);
+                        let orientation = surface.orientation.unwrap_or(0);
+
+                        let node = logic_nodes.iter().find(|node| {
+                            node.position.last().unwrap_or(&vec_default).as_array(0) == position
+                                && node.orientation.unwrap_or(0) == orientation
+                        });
+                        match node.and_then(|n| n.node_type) {
+                            Some(2) => obj_builder.power_node(),
+                            Some(3) => obj_builder.fluid_node(),
+                            _ => {}
+                        }
+                    }
+
+                    let (mesh_obj, line_obj) = obj_builder.basic_objects(
                         self.state.show_surfaces,
                         self.state.show_surface_edges,
                         self.colors.surface,

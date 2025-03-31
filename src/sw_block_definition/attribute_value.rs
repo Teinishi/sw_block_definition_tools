@@ -84,6 +84,13 @@ impl<T: Copy + std::convert::Into<AttributeValue>> DefinitionVec3<T> {
             self.z_as_attribute_value(),
         ]
     }
+    pub fn as_array(&self, default: T) -> [T; 3] {
+        [
+            self.x.unwrap_or(default),
+            self.y.unwrap_or(default),
+            self.z.unwrap_or(default),
+        ]
+    }
 }
 impl<T: Copy + Default + PartialEq + Display + Debug> IsDefault for DefinitionVec3<T> {
     fn is_default(&self) -> bool {

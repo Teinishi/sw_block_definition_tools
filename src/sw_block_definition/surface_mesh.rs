@@ -17,7 +17,13 @@ const SURFACE_COLOR_BLACK: Color4 = Color4 {
     a: 1.0,
 };
 
-/*
+const PIPE_COLOR_POWER: Color4 = Color4 {
+    r: 1.0,
+    g: 0.366253,
+    b: 0.0,
+    a: 1.0,
+};
+
 const PIPE_COLOR_FLUID: Color4 = Color4 {
     r: 0.0,
     g: 0.215861,
@@ -25,18 +31,16 @@ const PIPE_COLOR_FLUID: Color4 = Color4 {
     a: 1.0,
 };
 
-const PIPE_COLOR_POWER: Color4 = Color4 {
-    r: 1.0,
-    g: 0.366253,
-    b: 0.0,
-    a: 1.0,
-};
-*/
+enum SurfaceNodeType {
+    Power,
+    Fluid,
+}
 
 pub struct SurfaceObjectBuilder {
     transform_matrix: Mat4,
     shape: i32,
     single_color_vertices: Option<Vec<Vec3>>,
+    node_type: Option<SurfaceNodeType>,
 }
 
 impl SurfaceObjectBuilder {
@@ -76,7 +80,16 @@ impl SurfaceObjectBuilder {
             transform_matrix,
             shape,
             single_color_vertices,
+            node_type: None,
         }
+    }
+
+    pub fn power_node(&mut self) {
+        self.node_type = Some(SurfaceNodeType::Power);
+    }
+
+    pub fn fluid_node(&mut self) {
+        self.node_type = Some(SurfaceNodeType::Fluid);
     }
 
     pub fn basic_objects(
@@ -103,7 +116,14 @@ impl SurfaceObjectBuilder {
             match self.shape {
                 3 => {
                     if show_surface {
-                        mesh = pipe_surface(self.shape, Color4::WHITE);
+                        mesh = pipe_surface(
+                            self.shape,
+                            match self.node_type {
+                                Some(SurfaceNodeType::Power) => PIPE_COLOR_POWER,
+                                Some(SurfaceNodeType::Fluid) => PIPE_COLOR_FLUID,
+                                _ => Color4::WHITE,
+                            },
+                        );
                     }
                 }
                 4 | 5 => {
