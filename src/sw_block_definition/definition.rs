@@ -154,12 +154,13 @@ impl SwBlockDefinition {
     }
 
     pub fn search(&mut self, search_text: &str) -> Option<bool> {
-        if self.filename.contains(search_text) {
+        let search_text = search_text.to_lowercase();
+        if self.filename.to_lowercase().contains(&search_text) {
             return Some(true);
         }
         if let Ok(data) = self.load_data()? {
             for field in [&data.name, &data.tags].into_iter().flatten() {
-                if field.contains(search_text) {
+                if field.to_lowercase().contains(&search_text) {
                     return Some(true);
                 }
             }
