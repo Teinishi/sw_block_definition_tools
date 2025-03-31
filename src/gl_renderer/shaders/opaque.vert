@@ -11,7 +11,7 @@ uniform mat4 mat_world;
 uniform vec4 override_color_1;
 uniform vec4 override_color_2;
 uniform vec4 override_color_3;
-uniform int is_preview;
+uniform int override_color;
 
 void main()
 {
@@ -25,15 +25,15 @@ void main()
 
     vec3 surface_color_difference = vertex_color_in.rgb - vec3(1.0, 1.0, 1.0);
 
-    if(is_preview == 1 && (dot(override_color_1_difference, override_color_1_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    if(override_color == 1 && (dot(override_color_1_difference, override_color_1_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
     {
         vertex_color_out = override_color_1;
     }
-    else if(is_preview == 1 && (dot(override_color_2_difference, override_color_2_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    else if(override_color == 1 && (dot(override_color_2_difference, override_color_2_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
     {
         vertex_color_out = override_color_2;
     }
-    else if(is_preview == 1 && (dot(override_color_3_difference, override_color_3_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
+    else if(override_color == 1 && (dot(override_color_3_difference, override_color_3_difference) < 0.01 || dot(surface_color_difference, surface_color_difference) < 0.01))
     {
         vertex_color_out = override_color_3;
     }

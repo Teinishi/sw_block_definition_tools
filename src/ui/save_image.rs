@@ -213,8 +213,11 @@ impl ImageRenderer {
                                 self.scene.update(&Some(data), &Some(meshes));
 
                                 self.framebuffer.before_paint();
-                                self.renderer
-                                    .paint(self.framebuffer.gl(), &self.auto_camera.camera);
+                                self.renderer.paint(
+                                    self.framebuffer.gl(),
+                                    &self.auto_camera.camera,
+                                    &self.scene.colors(),
+                                );
                                 self.framebuffer.after_paint();
 
                                 let image = self.framebuffer.get_image();

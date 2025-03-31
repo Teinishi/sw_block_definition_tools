@@ -4,14 +4,17 @@ use std::sync::Arc;
 
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 
+use super::BlockViewColors;
+
 pub fn paint_canvas_3d(
     ui: &mut egui::Ui,
     rect: Rect,
     camera: OrbitCamera,
     renderer: Arc<egui::mutex::Mutex<SceneRenderer>>,
+    colors: BlockViewColors,
 ) {
     let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-        renderer.lock().paint(painter.gl(), &camera);
+        renderer.lock().paint(painter.gl(), &camera, &colors);
     });
 
     let callback = egui::PaintCallback {

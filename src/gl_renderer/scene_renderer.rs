@@ -1,3 +1,5 @@
+use crate::ui::BlockViewColors;
+
 use super::{Camera, Scene, ShaderType};
 use eframe::glow::{self, HasContext};
 use enum_map::EnumMap;
@@ -77,13 +79,14 @@ impl SceneRenderer {
         }
     }
 
-    pub fn paint(&mut self, gl: &glow::Context, camera: &impl Camera) {
+    pub fn paint(&mut self, gl: &glow::Context, camera: &impl Camera, colors: &BlockViewColors) {
         use glow::HasContext as _;
 
-        let override_color_1 = Vec4::ONE;
-        let override_color_2 = Vec4::ONE;
-        let override_color_3 = Vec4::ONE;
-        let additive_color = Vec4::ONE;
+        let override_color: i32 = colors.override_color.into();
+        let override_color_1 = colors.override_1.into();
+        let override_color_2 = colors.override_2.into();
+        let override_color_3 = colors.override_3.into();
+        let additive_color = colors.additive.into();
 
         let mat_view_proj = camera.mat_view_proj();
         let camera_position = camera.position();
@@ -171,7 +174,7 @@ impl SceneRenderer {
                 set_uniform_vec4(gl, program, "override_color_1", override_color_1);
                 set_uniform_vec4(gl, program, "override_color_2", override_color_2);
                 set_uniform_vec4(gl, program, "override_color_3", override_color_3);
-                set_uniform_i32(gl, program, "is_preview", 1);
+                set_uniform_i32(gl, program, "override_color", override_color);
 
                 set_uniform_vec3(gl, program, "camera_position", camera_position);
                 set_uniform_vec3(gl, program, "ambient_color_low", AMBIENT_COLOR_LOW);

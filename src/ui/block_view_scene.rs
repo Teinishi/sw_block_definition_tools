@@ -5,6 +5,7 @@ use crate::{
         SwBlockDefinitionMeshes,
     },
 };
+use egui::Grid;
 use enum_map::EnumMap;
 use glam::Vec3;
 use std::{
@@ -61,7 +62,7 @@ const BOUNDING_BOX_PHYSICS_LINE_COLOR: Color4 = Color4 {
     a: 1.0,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
     pub show_surfaces: bool,
@@ -88,6 +89,27 @@ impl Default for BlockViewState {
             show_bounding_box_voxel_physics: false,
             show_bounding_box_physics: false,
             show_mesh,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct BlockViewColors {
+    pub override_color: bool,
+    pub override_1: Color4,
+    pub override_2: Color4,
+    pub override_3: Color4,
+    pub additive: Color4,
+}
+
+impl Default for BlockViewColors {
+    fn default() -> Self {
+        Self {
+            override_color: true,
+            override_1: Color4::WHITE,
+            override_2: Color4::WHITE,
+            override_3: Color4::WHITE,
+            additive: Color4::WHITE,
         }
     }
 }
@@ -133,6 +155,7 @@ impl BlockViewStateMeshOptions {
 pub struct BlockViewScene {
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
+    colors: BlockViewColors,
 }
 
 impl BlockViewScene {
@@ -140,6 +163,7 @@ impl BlockViewScene {
         Self {
             scene: Default::default(),
             state: other.state.clone(),
+            colors: other.colors.clone(),
         }
     }
 
@@ -149,7 +173,17 @@ impl BlockViewScene {
         before_change != self.state
     }
 
-    pub fn state_ui(&mut self, ui: &mut egui::Ui, mesh_options: BlockViewStateMeshOptions) -> bool {
+    pub fn color_mut<F: FnOnce(&'_ mut BlockViewColors)>(&mut self, writer: F) -> bool {
+        let before_change = self.colors.clone();
+        writer(&mut self.colors);
+        before_change != self.colors
+    }
+
+    pub fn state_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        mesh_options: &BlockViewStateMeshOptions,
+    ) -> bool {
         self.state_mut(|state| {
             ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
             ui.checkbox(&mut state.show_surfaces, "Surfaces");
@@ -173,8 +207,62 @@ impl BlockViewScene {
         })
     }
 
+    pub fn color_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        id: egui::Id,
+        _mesh_options: &BlockViewStateMeshOptions,
+    ) -> bool {
+        self.color_mut(|colors| {
+            Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
+                ui.checkbox(&mut colors.override_color, "Override color");
+                ui.end_row();
+
+                if colors.override_color {
+                    for (show, color, text) in [
+                        (
+                            colors.override_color,
+                            &mut colors.override_1,
+                            "Override color 1",
+                        ),
+                        (
+                            colors.override_color,
+                            &mut colors.override_2,
+                            "Override color 2",
+                        ),
+                        (
+                            colors.override_color,
+                            &mut colors.override_3,
+                            "Override color 3",
+                        ),
+                        (true, &mut colors.additive, "Additive color"),
+                    ] {
+                        if !show {
+                            continue;
+                        }
+
+                        ui.label(text);
+
+                        let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
+                        ui.color_edit_button_rgb(&mut arr);
+                        color.r = arr[0];
+                        color.g = arr[1];
+                        color.b = arr[2];
+                        color.a = 1.0;
+
+                        ui.end_row();
+                    }
+                }
+            });
+        })
+    }
+
     pub fn scene(&self) -> Arc<Mutex<Scene>> {
         self.scene.clone()
+    }
+
+    pub fn colors(&self) -> BlockViewColors {
+        self.colors.clone()
     }
 
     fn use_scene<F: FnOnce(MutexGuard<'_, Scene>)>(&mut self, writer: F) {

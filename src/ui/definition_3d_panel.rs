@@ -72,7 +72,7 @@ impl Definition3dPanel {
                 let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
                 self.camera.control(ui, response, true, true, true);
                 if let Some(renderer) = &self.renderer {
-                    paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone());
+                    paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone(), Default::default());
                 }
             });
 
@@ -88,14 +88,12 @@ impl Definition3dPanel {
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
-        let scene_state_changed = self.scene.state_ui(
-            ui,
-            if let Some(meshes) = &meshes {
-                BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref())
-            } else {
-                Default::default()
-            },
-        );
+        let mesh_options = if let Some(meshes) = &meshes {
+            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref())
+        } else {
+            Default::default()
+        };
+        let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
         if mesh_loaded_now || select_changed || scene_state_changed {
             self.scene.update(&data, &meshes);
         }

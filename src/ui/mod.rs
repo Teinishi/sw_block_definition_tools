@@ -31,7 +31,7 @@ pub use settings_tab::SettingsTab;
 mod canvas_3d;
 pub use canvas_3d::{paint_canvas_3d, paint_checker_pattern};
 mod block_view_scene;
-pub use block_view_scene::{BlockViewScene, BlockViewStateMeshOptions};
+pub use block_view_scene::{BlockViewColors, BlockViewScene, BlockViewStateMeshOptions};
 mod attirbute_detail_window;
 pub use attirbute_detail_window::AttributeDetailWindow;
 mod audio;

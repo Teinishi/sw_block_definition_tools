@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+use glam::Vec4;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Color4 {
     pub r: f32,
     pub g: f32,
@@ -44,5 +46,11 @@ impl Color4 {
 
     pub fn as_array(&self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
+    }
+}
+
+impl From<Color4> for Vec4 {
+    fn from(val: Color4) -> Self {
+        Vec4::new(val.r, val.g, val.b, val.a)
     }
 }

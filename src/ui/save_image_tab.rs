@@ -106,6 +106,26 @@ impl Tab for SaveImageTab {
 
         let definition = self.definition_select_panel.selected_definition();
 
+        // 現在の選択に含まれるmeshの列挙
+        let mut mesh_options = BlockViewStateMeshOptions::default();
+        if let Some(definition) = self.definition_select_panel.selected_definition() {
+            if let Some(meshes) = definition.lock().ok().and_then(|mut d| d.load_meshes()) {
+                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                mesh_options.or(&options);
+            }
+        }
+        if let Some(selector) = self.definition_select_panel.multi_selector() {
+            for s in selector.borrow().selection() {
+                if let Ok(mut definition) = s.lock() {
+                    if let (_, Some(meshes)) = definition.load_data_meshes() {
+                        let options =
+                            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                        mesh_options.or(&options);
+                    }
+                }
+            }
+        }
+
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::remainder())
@@ -139,6 +159,7 @@ impl Tab for SaveImageTab {
                                                 rect,
                                                 self.auto_camera.camera.clone(),
                                                 renderer.clone(),
+                                                self.scene.colors()
                                             );
                                         }
                                     }
@@ -148,14 +169,17 @@ impl Tab for SaveImageTab {
 
                     strip.strip(|strip| {
                         strip
-                            .sizes(Size::remainder(), 2)
+                            .sizes(Size::remainder(), 3)
                             .size(Size::initial(120.0))
                             .horizontal(|mut strip| {
                                 strip.cell(|ui| {
                                     self.ui_camera_params(ui, Id::new("save_image_camera_params"));
                                 });
                                 strip.cell(|ui| {
-                                    self.ui_scene(ui, &definition);
+                                    self.ui_scene(ui, &definition, &mesh_options);
+                                });
+                                strip.cell(|ui| {
+                                    self.ui_color(ui, Id::new("save_image_colors"), &mesh_options);
                                 });
                                 strip.cell(|ui| {
                                     self.ui_buttons(ui, frame);
@@ -333,7 +357,12 @@ impl SaveImageTab {
         });
     }
 
-    fn ui_scene(&mut self, ui: &mut egui::Ui, definition: &Option<DefinitionPointer>) {
+    fn ui_scene(
+        &mut self,
+        ui: &mut egui::Ui,
+        definition: &Option<DefinitionPointer>,
+        mesh_options: &BlockViewStateMeshOptions,
+    ) {
         let (data, meshes) = definition
             .as_ref()
             .and_then(|d| d.lock().ok())
@@ -344,29 +373,14 @@ impl SaveImageTab {
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
-        let mut mesh_options = BlockViewStateMeshOptions::default();
-        if let Some(definition) = self.definition_select_panel.selected_definition() {
-            if let Some(meshes) = definition.lock().ok().and_then(|mut d| d.load_meshes()) {
-                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
-                mesh_options.or(&options);
-            }
-        }
-        if let Some(selector) = self.definition_select_panel.multi_selector() {
-            for s in selector.borrow().selection() {
-                if let Ok(mut definition) = s.lock() {
-                    if let (_, Some(meshes)) = definition.load_data_meshes() {
-                        let options =
-                            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
-                        mesh_options.or(&options);
-                    }
-                }
-            }
-        }
-
         let scene_state_changed = self.scene.state_ui(ui, mesh_options);
         if mesh_loaded_now || scene_state_changed {
             self.scene.update(&data, &meshes);
         }
+    }
+
+    fn ui_color(&mut self, ui: &mut egui::Ui, id: Id, mesh_options: &BlockViewStateMeshOptions) {
+        self.scene.color_ui(ui, id, mesh_options);
     }
 
     #[allow(unused_variables)]
