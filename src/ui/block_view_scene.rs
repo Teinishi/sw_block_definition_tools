@@ -5,7 +5,7 @@ use crate::{
         SwBlockDefinitionMeshes,
     },
 };
-use egui::Grid;
+use egui::{DragValue, Grid};
 use enum_map::EnumMap;
 use glam::Vec3;
 use std::{
@@ -62,7 +62,7 @@ const BOUNDING_BOX_PHYSICS_LINE_COLOR: Color4 = Color4 {
     a: 1.0,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
     pub show_surfaces: bool,
@@ -93,17 +93,21 @@ impl Default for BlockViewState {
     }
 }
 
-#[derive(Clone, PartialEq)]
-pub struct BlockViewColors {
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+pub struct BlockViewAppearance {
     pub surface: Color4,
     pub override_color: bool,
     pub override_1: Color4,
     pub override_2: Color4,
     pub override_3: Color4,
     pub additive: Color4,
+    pub buoyancy_surface: (Color4, Color4, f32),
+    pub bounding_box_voxel: (Color4, Color4, f32),
+    pub bounding_box_voxel_physics: (Color4, Color4, f32),
+    pub bounding_box_physics: (Color4, Color4, f32),
 }
 
-impl Default for BlockViewColors {
+impl Default for BlockViewAppearance {
     fn default() -> Self {
         Self {
             surface: Color4::WHITE,
@@ -112,6 +116,26 @@ impl Default for BlockViewColors {
             override_2: Color4::WHITE,
             override_3: Color4::WHITE,
             additive: Color4::WHITE,
+            buoyancy_surface: (
+                BUOYANCY_SURFACE_MESH_COLOR,
+                BUOYANCY_SURFACE_LINE_COLOR,
+                4.0,
+            ),
+            bounding_box_voxel: (
+                BOUNDING_BOX_VOXEL_MESH_COLOR,
+                BOUNDING_BOX_VOXEL_LINE_COLOR,
+                4.0,
+            ),
+            bounding_box_voxel_physics: (
+                BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR,
+                BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR,
+                4.0,
+            ),
+            bounding_box_physics: (
+                BOUNDING_BOX_PHYSICS_MESH_COLOR,
+                BOUNDING_BOX_PHYSICS_LINE_COLOR,
+                4.0,
+            ),
         }
     }
 }
@@ -153,11 +177,12 @@ impl BlockViewStateMeshOptions {
     }
 }
 
-#[derive(Default)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct BlockViewScene {
+    #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
-    colors: BlockViewColors,
+    colors: BlockViewAppearance,
 }
 
 impl BlockViewScene {
@@ -175,7 +200,7 @@ impl BlockViewScene {
         before_change != self.state
     }
 
-    pub fn color_mut<F: FnOnce(&'_ mut BlockViewColors)>(&mut self, writer: F) -> bool {
+    pub fn color_mut<F: FnOnce(&'_ mut BlockViewAppearance)>(&mut self, writer: F) -> bool {
         let before_change = self.colors.clone();
         writer(&mut self.colors);
         before_change != self.colors
@@ -215,30 +240,84 @@ impl BlockViewScene {
         id: egui::Id,
         _mesh_options: &BlockViewStateMeshOptions,
     ) -> bool {
-        fn ui_color_row(ui: &mut egui::Ui, text: &str, color: &mut Color4) {
-            ui.label(text);
-
+        fn ui_color_picker_rgb(ui: &mut egui::Ui, color: &mut Color4) {
             let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
             ui.color_edit_button_rgb(&mut arr);
             color.r = arr[0];
             color.g = arr[1];
             color.b = arr[2];
             color.a = 1.0;
-
-            ui.end_row();
         }
+
+        fn ui_color_picker_rgba(ui: &mut egui::Ui, color: &mut Color4) {
+            let mut arr = color.as_array();
+            ui.color_edit_button_rgba_unmultiplied(&mut arr);
+            color.r = arr[0];
+            color.g = arr[1];
+            color.b = arr[2];
+            color.a = arr[3];
+        }
+
+        let state = self.state.clone();
 
         self.color_mut(|colors| {
             Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
-                ui_color_row(ui, "Surface color", &mut colors.surface);
+                ui.label("Surface color");
+                ui_color_picker_rgb(ui, &mut colors.surface);
+                ui.end_row();
 
                 ui.checkbox(&mut colors.override_color, "Override color");
                 ui.end_row();
 
-                ui_color_row(ui, "Override color 1", &mut colors.override_1);
-                ui_color_row(ui, "Override color 2", &mut colors.override_2);
-                ui_color_row(ui, "Override color 3", &mut colors.override_3);
-                ui_color_row(ui, "Additive color", &mut colors.additive);
+                if colors.override_color {
+                    ui.label("Override color 1");
+                    ui_color_picker_rgb(ui, &mut colors.override_1);
+                    ui.end_row();
+
+                    ui.label("Override color 2");
+                    ui_color_picker_rgb(ui, &mut colors.override_2);
+                    ui.end_row();
+
+                    ui.label("Override color 3");
+                    ui_color_picker_rgb(ui, &mut colors.override_3);
+                    ui.end_row();
+                }
+
+                ui.label("Additive color");
+                ui_color_picker_rgb(ui, &mut colors.additive);
+                ui.end_row();
+
+                for (show, text, colors) in [
+                    (
+                        state.show_buoyancy_surfaces,
+                        "Buoyancy surfaces",
+                        &mut colors.buoyancy_surface,
+                    ),
+                    (
+                        state.show_bounding_box_voxel,
+                        "Bounding box (voxel)",
+                        &mut colors.bounding_box_voxel,
+                    ),
+                    (
+                        state.show_bounding_box_voxel_physics,
+                        "Bounding box (voxel physics)",
+                        &mut colors.bounding_box_voxel_physics,
+                    ),
+                    (
+                        state.show_bounding_box_physics,
+                        "Bounding box (physics)",
+                        &mut colors.bounding_box_physics,
+                    ),
+                ] {
+                    if !show {
+                        continue;
+                    }
+                    ui.label(text);
+                    ui_color_picker_rgba(ui, &mut colors.0);
+                    ui_color_picker_rgba(ui, &mut colors.1);
+                    ui.add(DragValue::new(&mut colors.2).range(0.0..=10.0).speed(0.1));
+                    ui.end_row();
+                }
             });
         })
     }
@@ -247,7 +326,7 @@ impl BlockViewScene {
         self.scene.clone()
     }
 
-    pub fn colors(&self) -> BlockViewColors {
+    pub fn colors(&self) -> BlockViewAppearance {
         self.colors.clone()
     }
 
@@ -310,6 +389,7 @@ impl BlockViewScene {
 
             if self.state.show_buoyancy_surfaces {
                 if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
+                    let (mesh_color, line_color, line_width) = self.colors.buoyancy_surface;
                     for surface in &buoyancy_surfaces.surface {
                         let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
                             surface.shape,
@@ -317,11 +397,7 @@ impl BlockViewScene {
                             surface.orientation,
                             surface.rotation,
                         )
-                        .translucent_objects(
-                            BUOYANCY_SURFACE_MESH_COLOR,
-                            BUOYANCY_SURFACE_LINE_COLOR,
-                            4.0,
-                        );
+                        .translucent_objects(mesh_color, line_color, line_width);
                         if let Some(obj) = mesh_obj {
                             self.add_object(obj.set_z_offset(-1.0));
                         }
@@ -336,14 +412,14 @@ impl BlockViewScene {
                 if let Some((voxel_min, voxel_max)) =
                     data.voxel_min.last().zip(data.voxel_max.last())
                 {
+                    let (mesh_color, line_color, line_width) = self.colors.bounding_box_voxel;
                     let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max).objects(
-                            BOUNDING_BOX_VOXEL_MESH_COLOR,
-                            BOUNDING_BOX_VOXEL_LINE_COLOR,
-                            4.0,
-                        );
+                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
+                            .objects(mesh_color, line_color, line_width);
                     self.add_object(mesh_obj.set_z_offset(-4.0));
-                    self.add_object(line_obj.set_z_offset(-5.0));
+                    if let Some(line_obj) = line_obj {
+                        self.add_object(line_obj.set_z_offset(-5.0));
+                    }
                 }
             }
 
@@ -353,17 +429,17 @@ impl BlockViewScene {
                     .last()
                     .zip(data.voxel_physics_max.last())
                 {
+                    let (mesh_color, line_color, line_width) =
+                        self.colors.bounding_box_voxel_physics;
                     let (mesh_obj, line_obj) = BoundingBoxObjectBuilder::from_voxel(
                         *voxel_physics_min,
                         *voxel_physics_max,
                     )
-                    .objects(
-                        BOUNDING_BOX_VOXEL_PHYSICS_MESH_COLOR,
-                        BOUNDING_BOX_VOXEL_PHYSICS_LINE_COLOR,
-                        4.0,
-                    );
+                    .objects(mesh_color, line_color, line_width);
                     self.add_object(mesh_obj.set_z_offset(-3.0));
-                    self.add_object(line_obj.set_z_offset(-4.0));
+                    if let Some(line_obj) = line_obj {
+                        self.add_object(line_obj.set_z_offset(-4.0));
+                    }
                 }
             }
 
@@ -371,14 +447,14 @@ impl BlockViewScene {
                 if let Some((bb_physics_min, bb_physics_max)) =
                     data.bb_physics_min.last().zip(data.bb_physics_max.last())
                 {
+                    let (mesh_color, line_color, line_width) = self.colors.bounding_box_physics;
                     let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max).objects(
-                            BOUNDING_BOX_PHYSICS_MESH_COLOR,
-                            BOUNDING_BOX_PHYSICS_LINE_COLOR,
-                            4.0,
-                        );
+                        BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
+                            .objects(mesh_color, line_color, line_width);
                     self.add_object(mesh_obj.set_z_offset(-2.0));
-                    self.add_object(line_obj.set_z_offset(-3.0));
+                    if let Some(line_obj) = line_obj {
+                        self.add_object(line_obj.set_z_offset(-3.0));
+                    }
                 }
             }
         }

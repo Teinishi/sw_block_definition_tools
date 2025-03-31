@@ -1,4 +1,4 @@
-use crate::ui::BlockViewColors;
+use crate::ui::BlockViewAppearance;
 
 use super::{Camera, Scene, ShaderType};
 use eframe::glow::{self, HasContext};
@@ -79,7 +79,12 @@ impl SceneRenderer {
         }
     }
 
-    pub fn paint(&mut self, gl: &glow::Context, camera: &impl Camera, colors: &BlockViewColors) {
+    pub fn paint(
+        &mut self,
+        gl: &glow::Context,
+        camera: &impl Camera,
+        colors: &BlockViewAppearance,
+    ) {
         use glow::HasContext as _;
 
         let override_color: i32 = colors.override_color.into();

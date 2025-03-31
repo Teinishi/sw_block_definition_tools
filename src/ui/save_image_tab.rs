@@ -26,7 +26,6 @@ pub struct SaveImageTab {
 
     #[serde(skip)]
     gl: Option<Arc<Context>>,
-    #[serde(skip)]
     scene: BlockViewScene,
     #[serde(skip)]
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,

@@ -152,12 +152,16 @@ impl SurfaceObjectBuilder {
 
         (
             mesh.map(|mesh| SceneObject::from_mesh(mesh, Some(self.transform_matrix))),
-            vertices.map(|positions| {
-                SceneObject::from_line(
-                    Line::single_stroke_lh(positions, line_color, line_width, true),
-                    Some(self.transform_matrix),
-                )
-            }),
+            (line_width > 0.0)
+                .then(|| {
+                    vertices.map(|positions| {
+                        SceneObject::from_line(
+                            Line::single_stroke_lh(positions, line_color, line_width, true),
+                            Some(self.transform_matrix),
+                        )
+                    })
+                })
+                .flatten(),
         )
     }
 }

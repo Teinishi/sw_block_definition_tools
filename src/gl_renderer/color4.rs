@@ -1,6 +1,6 @@
 use glam::Vec4;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct Color4 {
     pub r: f32,
     pub g: f32,
