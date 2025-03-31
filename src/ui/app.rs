@@ -151,6 +151,7 @@ impl eframe::App for MainApp {
                         update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
                     }
                 }
+                #[allow(unused_variables)]
                 AppAction::UpdateRomFolder(rom_path) => {
                     #[cfg(not(target_arch = "wasm32"))]
                     update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);

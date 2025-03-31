@@ -72,7 +72,13 @@ impl Definition3dPanel {
                 let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
                 self.camera.control(ui, response, true, true, true);
                 if let Some(renderer) = &self.renderer {
-                    paint_canvas_3d(ui, rect, self.camera.clone(), renderer.clone(), Default::default());
+                    paint_canvas_3d(
+                        ui,
+                        rect,
+                        self.camera.clone(),
+                        renderer.clone(),
+                        Default::default(),
+                    );
                 }
             });
 

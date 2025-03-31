@@ -1,6 +1,5 @@
 use super::{AppAction, DefinitionsStore, State, Tab};
 use egui::{CentralPanel, Grid, Slider};
-use std::path::PathBuf;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsTab {
@@ -47,7 +46,7 @@ impl Tab for SettingsTab {
                             egui::TextEdit::singleline(&mut self.rom_path),
                         );
                         if text_edit.changed() {
-                            action = Some(AppAction::UpdateRomFolder(PathBuf::from(
+                            action = Some(AppAction::UpdateRomFolder(std::path::PathBuf::from(
                                 self.rom_path.clone(),
                             )));
                         }
