@@ -8,35 +8,35 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 pub struct DefinitionSelectPanel {
     search_text: String,
+    search_result: BTreeMap<String, bool>,
     selector: Rc<RefCell<DefinitionSingleSelect>>,
     selector_observer_id: u32,
     multi_selector: Option<Rc<RefCell<DefinitionMultiSelect>>>,
-    search_result: BTreeMap<String, bool>,
-    pub auto_select: bool,
-}
-
-impl Default for DefinitionSelectPanel {
-    fn default() -> Self {
-        let mut selector = DefinitionSingleSelect::default();
-        let observer_id = selector.register_observer();
-
-        Self {
-            search_text: Default::default(),
-            selector: Rc::new(RefCell::new(selector)),
-            selector_observer_id: observer_id,
-            multi_selector: None,
-            search_result: Default::default(),
-            auto_select: false,
-        }
-    }
+    auto_select: bool,
 }
 
 impl DefinitionSelectPanel {
-    pub fn multi_select() -> Self {
+    pub fn single_select() -> Self {
+        let mut selector = DefinitionSingleSelect::default();
+        let selector_observer_id = selector.register_observer();
+
         Self {
-            multi_selector: Some(Rc::new(RefCell::new(DefinitionMultiSelect::default()))),
+            search_text: String::new(),
+            search_result: BTreeMap::new(),
+            selector: Rc::new(RefCell::new(selector)),
+            selector_observer_id,
+            multi_selector: None,
+            auto_select: false,
+        }
+    }
+
+    pub fn multi_select() -> Self {
+        let multi_selector = DefinitionMultiSelect::default();
+
+        Self {
+            multi_selector: Some(Rc::new(RefCell::new(multi_selector))),
             auto_select: true,
-            ..Default::default()
+            ..Self::single_select()
         }
     }
 
@@ -45,29 +45,41 @@ impl DefinitionSelectPanel {
         self.selector = selector;
     }
 
+    pub fn register_observer(&mut self) -> u32 {
+        self.selector.borrow_mut().register_observer()
+    }
+
+    pub fn selector(&self) -> Rc<RefCell<DefinitionSingleSelect>> {
+        self.selector.clone()
+    }
+
+    pub fn selected_definition(&self) -> Option<DefinitionPointer> {
+        self.selector.borrow().selected()
+    }
+
+    pub fn check_update(&mut self, observer_id: u32) -> Option<bool> {
+        self.selector.borrow_mut().check_update(observer_id)
+    }
+
+    fn update_search(&mut self, definitions_store: &mut DefinitionsStore) {
+        for (filename, definition) in definitions_store.definitions().borrow().iter() {
+            if self.search_result.contains_key(filename) {
+                continue;
+            }
+            if let Some(result) = definition
+                .lock()
+                .ok()
+                .and_then(|mut d| d.search(&self.search_text))
+            {
+                self.search_result.insert(filename.clone(), result);
+            }
+        }
+    }
+
     pub fn ui(&mut self, ui: &mut egui::Ui, definitions_store: &mut DefinitionsStore) {
         ui.add_space(6.0);
 
-        ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), 20.0),
-            Layout::right_to_left(Align::Center),
-            |ui| {
-                if ui
-                    .add_sized(vec2(20.0, 20.0), Button::new("\u{274C}"))
-                    .clicked()
-                {
-                    self.search_text.clear();
-                }
-
-                let search = ui.add_sized(
-                    egui::vec2(ui.available_width(), 20.0),
-                    TextEdit::singleline(&mut self.search_text).hint_text("Search"),
-                );
-                if search.changed() {
-                    self.reset_search();
-                }
-            },
-        );
+        self.ui_search(ui);
 
         {
             let no_search = self.search_text.is_empty();
@@ -79,28 +91,7 @@ impl DefinitionSelectPanel {
                 })
                 .collect();
 
-            if let Some(multi_select) = &self.multi_selector {
-                let count = multi_select.borrow().count();
-                let mut checked_any = count > 0;
-                let checked_all = count >= items.len();
-                let indeterminate = checked_any != checked_all;
-
-                if ui
-                    .add(
-                        Checkbox::new(&mut checked_any, format!("{} selected", count))
-                            .indeterminate(indeterminate),
-                    )
-                    .changed()
-                {
-                    if checked_any {
-                        multi_select
-                            .borrow_mut()
-                            .set_selection(items.iter().map(|(_, ptr)| *ptr));
-                    } else {
-                        multi_select.borrow_mut().clear();
-                    }
-                }
-            }
+            self.ui_select_all(ui, &items);
 
             ui.add_space(6.0);
 
@@ -118,6 +109,58 @@ impl DefinitionSelectPanel {
             if self.auto_select && multi_selector.borrow().count() > 0 && select_updated {
                 if let Some(selected) = self.selector.borrow().selected() {
                     multi_selector.borrow_mut().select(&selected);
+                }
+            }
+        }
+    }
+
+    fn ui_search(&mut self, ui: &mut egui::Ui) {
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), 20.0),
+            Layout::right_to_left(Align::Center),
+            |ui| {
+                if ui
+                    .add_sized(vec2(20.0, 20.0), Button::new("\u{274C}"))
+                    .clicked()
+                {
+                    self.search_text.clear();
+                }
+
+                let search = ui.add_sized(
+                    egui::vec2(ui.available_width(), 20.0),
+                    TextEdit::singleline(&mut self.search_text).hint_text("Search"),
+                );
+                if search.changed() {
+                    self.search_result.clear();
+                }
+            },
+        );
+    }
+
+    fn ui_select_all(&self, ui: &mut egui::Ui, items: &[(&String, &DefinitionPointer)]) {
+        if let Some(multi_select) = &self.multi_selector {
+            let count = multi_select.borrow().count();
+            let mut checked_any = count > 0;
+            let checked_all = count >= items.len();
+            let indeterminate = if items.is_empty() {
+                false
+            } else {
+                checked_any != checked_all
+            };
+
+            if ui
+                .add(
+                    Checkbox::new(&mut checked_any, format!("{} selected", count))
+                        .indeterminate(indeterminate),
+                )
+                .changed()
+            {
+                if checked_any {
+                    multi_select
+                        .borrow_mut()
+                        .set_selection(items.iter().map(|(_, ptr)| *ptr));
+                } else {
+                    multi_select.borrow_mut().clear();
                 }
             }
         }
@@ -184,43 +227,46 @@ impl DefinitionSelectPanel {
                 });
             });
     }
+}
 
-    pub fn selector(&self) -> Rc<RefCell<DefinitionSingleSelect>> {
-        self.selector.clone()
+pub struct DefinitionMultiSelectPanel {
+    panel: DefinitionSelectPanel,
+}
+
+impl Default for DefinitionMultiSelectPanel {
+    fn default() -> Self {
+        Self {
+            panel: DefinitionSelectPanel::multi_select(),
+        }
     }
+}
 
-    pub fn multi_selector(&self) -> Option<Rc<RefCell<DefinitionMultiSelect>>> {
-        self.multi_selector.clone()
-    }
-
-    pub fn selected_definition(&self) -> Option<DefinitionPointer> {
-        self.selector.borrow().selected()
+impl DefinitionMultiSelectPanel {
+    pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
+        self.panel.use_selector(selector);
     }
 
     pub fn register_observer(&mut self) -> u32 {
-        self.selector.borrow_mut().register_observer()
+        self.panel.register_observer()
+    }
+
+    pub fn selector(&self) -> Rc<RefCell<DefinitionSingleSelect>> {
+        self.panel.selector()
+    }
+
+    pub fn multi_selector(&self) -> Rc<RefCell<DefinitionMultiSelect>> {
+        self.panel.multi_selector.as_ref().unwrap().clone()
+    }
+
+    pub fn selected_definition(&self) -> Option<DefinitionPointer> {
+        self.panel.selected_definition()
     }
 
     pub fn check_update(&mut self, observer_id: u32) -> Option<bool> {
-        self.selector.borrow_mut().check_update(observer_id)
+        self.panel.check_update(observer_id)
     }
 
-    fn reset_search(&mut self) {
-        self.search_result.clear();
-    }
-
-    fn update_search(&mut self, definitions_store: &mut DefinitionsStore) {
-        for (filename, definition) in definitions_store.definitions().borrow().iter() {
-            if self.search_result.contains_key(filename) {
-                continue;
-            }
-            if let Some(result) = definition
-                .lock()
-                .ok()
-                .and_then(|mut d| d.search(&self.search_text))
-            {
-                self.search_result.insert(filename.clone(), result);
-            }
-        }
+    pub fn ui(&mut self, ui: &mut egui::Ui, definitions_store: &mut DefinitionsStore) {
+        self.panel.ui(ui, definitions_store);
     }
 }

@@ -13,7 +13,7 @@ pub use definition_selector::{DefinitionMultiSelect, DefinitionSelect, Definitio
 mod attribute_value;
 pub use attribute_value::ui_attribute_value;
 mod definition_selelct_panel;
-pub use definition_selelct_panel::DefinitionSelectPanel;
+pub use definition_selelct_panel::{DefinitionMultiSelectPanel, DefinitionSelectPanel};
 mod definition_detail_panel;
 pub use definition_detail_panel::DefinitionDetailPanel;
 mod definition_3d_panel;

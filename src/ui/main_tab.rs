@@ -21,7 +21,7 @@ pub struct MainTab {
 
 impl Default for MainTab {
     fn default() -> Self {
-        let mut definition_select_panel = DefinitionSelectPanel::default();
+        let mut definition_select_panel = DefinitionSelectPanel::single_select();
         let selector_observer_id = definition_select_panel.register_observer();
         let definition_3d_panel = Definition3dPanel::new(None);
 
@@ -38,6 +38,15 @@ impl Default for MainTab {
 }
 
 impl Tab for MainTab {
+    fn reset(&mut self) {
+        self.definition_select_panel = DefinitionSelectPanel::single_select();
+        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.definition_detail_panel = Default::default();
+        self.definition_3d_panel.reset();
+        self.attribute_detail_windows = Vec::new();
+        self.window_id = 0;
+    }
+
     fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
         self.definition_3d_panel.creation_context(cc);
     }
@@ -49,15 +58,6 @@ impl Tab for MainTab {
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
         self.definition_3d_panel.destroy(gl);
-    }
-
-    fn reset(&mut self) {
-        self.definition_select_panel = Default::default();
-        self.selector_observer_id = self.definition_select_panel.register_observer();
-        self.definition_detail_panel = Default::default();
-        self.definition_3d_panel.reset();
-        self.attribute_detail_windows = Vec::new();
-        self.window_id = 0;
     }
 
     fn update(

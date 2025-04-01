@@ -1,6 +1,6 @@
 use super::{
     paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
-    DefinitionPointer, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
+    DefinitionPointer, DefinitionSelect, DefinitionMultiSelectPanel, DefinitionSingleSelect,
     DefinitionsStore, ImageRenderer, State, Tab,
 };
 #[allow(unused_imports)]
@@ -20,7 +20,7 @@ pub struct SaveImageTab {
     msaa_samples: i32,
 
     #[serde(skip)]
-    definition_select_panel: DefinitionSelectPanel,
+    definition_select_panel: DefinitionMultiSelectPanel,
     #[serde(skip)]
     selector_observer_id: u32,
 
@@ -40,7 +40,7 @@ impl Default for SaveImageTab {
     fn default() -> Self {
         let auto_camera = AutoCamera::default();
 
-        let mut definition_select_panel = DefinitionSelectPanel::multi_select();
+        let mut definition_select_panel = DefinitionMultiSelectPanel::default();
         let selector_observer_id = definition_select_panel.register_observer();
 
         Self {
@@ -58,6 +58,16 @@ impl Default for SaveImageTab {
 }
 
 impl Tab for SaveImageTab {
+    fn reset(&mut self) {
+        self.auto_camera = Default::default();
+        self.msaa_samples = 8;
+        self.definition_select_panel = DefinitionMultiSelectPanel::default();
+        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.scene.clear();
+        self.mesh_loaded = false;
+        self.image_renderer = None;
+    }
+
     fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
@@ -75,16 +85,6 @@ impl Tab for SaveImageTab {
         if let Some(renderer) = &self.renderer {
             renderer.lock().destroy(gl);
         }
-    }
-
-    fn reset(&mut self) {
-        self.auto_camera = Default::default();
-        self.msaa_samples = 8;
-        self.definition_select_panel = Default::default();
-        self.selector_observer_id = self.definition_select_panel.register_observer();
-        self.scene.clear();
-        self.mesh_loaded = false;
-        self.image_renderer = None;
     }
 
     #[allow(unused_variables)]
@@ -113,14 +113,17 @@ impl Tab for SaveImageTab {
                 mesh_options.or(&options);
             }
         }
-        if let Some(selector) = self.definition_select_panel.multi_selector() {
-            for s in selector.borrow().selection() {
-                if let Ok(mut definition) = s.lock() {
-                    if let (_, Some(meshes)) = definition.load_data_meshes() {
-                        let options =
-                            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
-                        mesh_options.or(&options);
-                    }
+        for s in self
+            .definition_select_panel
+            .multi_selector()
+            .borrow()
+            .selection()
+        {
+            if let Ok(mut definition) = s.lock() {
+                if let (_, Some(meshes)) = definition.load_data_meshes() {
+                    let options =
+                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                    mesh_options.or(&options);
                 }
             }
         }
@@ -375,29 +378,27 @@ impl SaveImageTab {
     #[allow(unused_variables)]
     fn ui_buttons(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-            if let Some(multi_selector) = self.definition_select_panel.multi_selector() {
-                let count = multi_selector.borrow().count();
-                let mut save_definitions = None;
+            let multi_selector = self.definition_select_panel.multi_selector();
+            let count = multi_selector.borrow().count();
+            let mut save_definitions = None;
 
-                let size = egui::vec2(ui.available_width(), 60.0);
+            let size = egui::vec2(ui.available_width(), 60.0);
 
-                if count > 0 {
-                    let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
-                    if button.clicked() {
-                        save_definitions = Some(multi_selector.borrow().selection());
-                    }
-                } else if let Some(definition) = self.definition_select_panel.selected_definition()
-                {
-                    let button = ui.add_sized(size, Button::new("Save image"));
-                    if button.clicked() {
-                        save_definitions = Some(vec![definition]);
-                    }
+            if count > 0 {
+                let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
+                if button.clicked() {
+                    save_definitions = Some(multi_selector.borrow().selection());
                 }
-
-                if let Some(definitions) = save_definitions {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    self.save_image(definitions, Some(frame));
+            } else if let Some(definition) = self.definition_select_panel.selected_definition() {
+                let button = ui.add_sized(size, Button::new("Save image"));
+                if button.clicked() {
+                    save_definitions = Some(vec![definition]);
                 }
+            }
+
+            if let Some(definitions) = save_definitions {
+                #[cfg(not(target_arch = "wasm32"))]
+                self.save_image(definitions, Some(frame));
             }
         });
     }
