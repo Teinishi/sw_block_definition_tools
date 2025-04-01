@@ -103,7 +103,7 @@ impl Camera for OrbitCamera {
     fn z_offset_unit(&self) -> f32 {
         match self.mode {
             CameraMode::Perspective => 0.00001,
-            CameraMode::Orthographic => 0.0000005,
+            CameraMode::Orthographic => 0.0000002,
         }
     }
 }
