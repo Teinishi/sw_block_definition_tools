@@ -63,7 +63,7 @@ impl Tab for SaveImageTab {
         self.msaa_samples = 8;
         self.definition_select_panel = DefinitionMultiSelectPanel::default();
         self.selector_observer_id = self.definition_select_panel.register_observer();
-        self.scene.clear();
+        self.scene.reset();
         self.mesh_loaded = false;
         self.image_renderer = None;
     }

@@ -186,6 +186,16 @@ pub struct BlockViewScene {
 }
 
 impl BlockViewScene {
+    pub fn reset(&mut self) {
+        self.clear();
+        self.state = Default::default();
+        self.colors = Default::default();
+    }
+
+    pub fn clear(&mut self) {
+        self.scene.lock().unwrap().clear();
+    }
+
     pub fn clone_state(other: &Self) -> Self {
         Self {
             scene: Default::default(),
@@ -491,9 +501,5 @@ impl BlockViewScene {
                 }
             }
         }
-    }
-
-    pub fn clear(&mut self) {
-        self.scene.lock().unwrap().clear();
     }
 }
