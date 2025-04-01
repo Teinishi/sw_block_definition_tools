@@ -334,13 +334,7 @@ impl SaveImageTab {
             let mut distance = camera.direction.length();
             if !self.auto_camera.is_auto {
                 ui.label("Look at");
-                let mut z = -camera.center.z;
-                ui.horizontal(|ui| {
-                    ui.add(DragValue::new(&mut camera.center.x).speed(0.01));
-                    ui.add(DragValue::new(&mut camera.center.y).speed(0.01));
-                    ui.add(DragValue::new(&mut z).speed(0.01));
-                });
-                camera.center.z = -z;
+                utils::ui_dragvalue_vec_z_inv(ui, &mut camera.center, 0.01);
                 ui.end_row();
 
                 ui.label("Distance");

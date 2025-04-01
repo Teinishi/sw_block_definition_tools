@@ -1,4 +1,5 @@
-use egui::{Rect, UiBuilder};
+use egui::{Button, DragValue, Rect, UiBuilder};
+use glam::Vec3;
 
 pub fn replace_extension(filename: &str, new_ext: &str) -> String {
     let mut path = std::path::Path::new(filename).to_owned();
@@ -19,6 +20,23 @@ pub fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
 pub fn ui_center(ui: &mut egui::Ui, size: egui::Vec2, add_contents: impl FnOnce(&mut egui::Ui)) {
     let rect = Rect::from_center_size(ui.available_rect_before_wrap().center(), size);
     ui.allocate_new_ui(UiBuilder::new().max_rect(rect), add_contents);
+}
+
+pub fn ui_dragvalue_vec_z_inv(ui: &mut egui::Ui, vec: &mut Vec3, speed: f32) {
+    let mut z = if vec.z == 0.0 { 0.0 } else { -vec.z };
+    ui.horizontal(|ui| {
+        ui.add(DragValue::new(&mut vec.x).speed(speed));
+        ui.add(DragValue::new(&mut vec.y).speed(speed));
+        if ui.add(DragValue::new(&mut z).speed(speed)).changed() {
+            vec.z = -z;
+        }
+        if ui
+            .add_sized(egui::vec2(20.0, 20.0), Button::new("\u{27F2}"))
+            .clicked()
+        {
+            *vec = Vec3::ZERO;
+        }
+    });
 }
 
 pub fn count_true<'a, I>(iter: I) -> usize

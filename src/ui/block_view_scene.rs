@@ -7,11 +7,13 @@ use crate::{
 };
 use egui::{DragValue, Grid};
 use enum_map::EnumMap;
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use std::{
     fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
+
+use super::utils::ui_dragvalue_vec_z_inv;
 
 const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
     r: 0.1,
@@ -72,6 +74,7 @@ pub struct BlockViewState {
     pub show_bounding_box_voxel_physics: bool,
     pub show_bounding_box_physics: bool,
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    pub mesh_offset: EnumMap<SwBlockDefinitionMeshKey, Vec3>,
 }
 
 impl Default for BlockViewState {
@@ -80,6 +83,7 @@ impl Default for BlockViewState {
         for (key, _) in show_mesh {
             show_mesh[key] = true;
         }
+
         Self {
             show_xyz_axes: true,
             show_surfaces: true,
@@ -89,6 +93,7 @@ impl Default for BlockViewState {
             show_bounding_box_voxel_physics: false,
             show_bounding_box_physics: false,
             show_mesh,
+            mesh_offset: EnumMap::default(),
         }
     }
 }
@@ -239,6 +244,12 @@ impl BlockViewScene {
             for (key, show_option) in mesh_options.meshes {
                 if show_option {
                     ui.checkbox(&mut state.show_mesh[key.clone()], key.ui_name());
+                    if state.show_mesh[key.clone()] {
+                        ui.horizontal(|ui| {
+                            ui.add_space(20.0);
+                            ui_dragvalue_vec_z_inv(ui, &mut state.mesh_offset[key.clone()], 0.01);
+                        });
+                    }
                 }
             }
         })
@@ -496,7 +507,10 @@ impl BlockViewScene {
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     for m in mesh.as_meshes() {
-                        self.add_object(SceneObject::from_mesh(m, None));
+                        self.add_object(SceneObject::from_mesh(
+                            m,
+                            Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
+                        ));
                     }
                 }
             }
