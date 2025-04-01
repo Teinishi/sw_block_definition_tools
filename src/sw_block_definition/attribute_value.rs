@@ -67,6 +67,15 @@ pub struct DefinitionVec3<T> {
     #[serde(rename = "@z")]
     pub z: Option<T>,
 }
+impl<T: Copy> DefinitionVec3<T> {
+    pub fn as_tuple(&self, default: T) -> (T, T, T) {
+        (
+            self.x.unwrap_or(default),
+            self.y.unwrap_or(default),
+            self.z.unwrap_or(default),
+        )
+    }
+}
 impl<T: Copy + std::convert::Into<AttributeValue>> DefinitionVec3<T> {
     pub fn x_as_attribute_value(&self) -> Option<AttributeValue> {
         self.x.map(|x| x.into())

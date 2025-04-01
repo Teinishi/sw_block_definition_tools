@@ -1,7 +1,7 @@
 use super::{utils::replace_extension, BlockViewScene, DefinitionPointer};
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
-    sw_block_definition::{Definition, SwBlockDefinitionMeshes},
+    sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel},
 };
 use glam::{Vec3, Vec4};
 use std::{path::PathBuf, sync::Arc, time};
@@ -65,10 +65,33 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let voxel_min: Option<Vec3> = data.voxel_min.last().map(|v| (*v).into());
-            let voxel_max: Option<Vec3> = data.voxel_max.last().map(|v| (*v).into());
-            let corner_min: Vec3 = (voxel_min.unwrap_or_default() - 0.5 * Vec3::ONE) * 0.25;
-            let corner_max: Vec3 = (voxel_max.unwrap_or_default() + 0.5 * Vec3::ONE) * 0.25;
+            let voxels: Vec<&Voxel> = data
+                .voxels
+                .last()
+                .map(|v| v.voxel.iter().collect())
+                .unwrap_or_default();
+            let (voxel_min, voxel_max) =
+                voxels
+                    .iter()
+                    .fold(((0, 0, 0), (0, 0, 0)), |(min, max), voxel| {
+                        let pos = voxel
+                            .position
+                            .last()
+                            .map(|p| p.as_tuple(0))
+                            .unwrap_or((0, 0, 0));
+                        (
+                            (min.0.min(pos.0), min.1.min(pos.1), min.2.min(pos.2)),
+                            (max.0.max(pos.0), max.1.max(pos.1), max.2.max(pos.2)),
+                        )
+                    });
+            let corner_min: Vec3 =
+                (Vec3::new(voxel_min.0 as f32, voxel_min.1 as f32, voxel_min.2 as f32)
+                    - 0.5 * Vec3::ONE)
+                    * 0.25;
+            let corner_max: Vec3 =
+                (Vec3::new(voxel_max.0 as f32, voxel_max.1 as f32, voxel_max.2 as f32)
+                    + 0.5 * Vec3::ONE)
+                    * 0.25;
             let center = (corner_min + corner_max) * 0.5;
 
             let min_x = corner_min.x;
