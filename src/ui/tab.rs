@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::{AppAction, DefinitionSingleSelect, DefinitionsStore, State};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
@@ -18,7 +20,10 @@ pub trait Tab: Default {
     fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {}
 
     #[allow(unused_variables)]
-    fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {}
+    fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {}
+
+    #[allow(unused_variables)]
+    fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {}
 
     #[allow(unused_variables)]
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {}

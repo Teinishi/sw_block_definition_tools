@@ -1,6 +1,6 @@
 use super::{
     paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
-    DefinitionPointer, DefinitionSelect, DefinitionMultiSelectPanel, DefinitionSingleSelect,
+    DefinitionMultiSelectPanel, DefinitionPointer, DefinitionSelect, DefinitionSingleSelect,
     DefinitionsStore, ImageRenderer, State, Tab,
 };
 #[allow(unused_imports)]
@@ -11,7 +11,7 @@ use egui::{
     Sides, Slider,
 };
 use egui_extras::{Size, StripBuilder};
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -79,6 +79,10 @@ impl Tab for SaveImageTab {
     fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {
         self.selector_observer_id = selector.borrow_mut().register_observer();
         self.definition_select_panel.use_selector(selector);
+    }
+
+    fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
+        self.definition_select_panel.use_search_text(search_text);
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {

@@ -7,12 +7,18 @@ use egui_extras::{Size, StripBuilder};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 pub struct DefinitionSelectPanel {
-    search_text: String,
+    search_text: Rc<RefCell<String>>,
     search_result: BTreeMap<String, bool>,
     selector: Rc<RefCell<DefinitionSingleSelect>>,
     selector_observer_id: u32,
     multi_selector: Option<Rc<RefCell<DefinitionMultiSelect>>>,
     auto_select: bool,
+}
+
+impl Default for DefinitionSelectPanel {
+    fn default() -> Self {
+        Self::single_select()
+    }
 }
 
 impl DefinitionSelectPanel {
@@ -21,7 +27,7 @@ impl DefinitionSelectPanel {
         let selector_observer_id = selector.register_observer();
 
         Self {
-            search_text: String::new(),
+            search_text: Default::default(),
             search_result: BTreeMap::new(),
             selector: Rc::new(RefCell::new(selector)),
             selector_observer_id,
@@ -38,6 +44,10 @@ impl DefinitionSelectPanel {
             auto_select: true,
             ..Self::single_select()
         }
+    }
+
+    pub fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
+        self.search_text = search_text;
     }
 
     pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
@@ -69,7 +79,7 @@ impl DefinitionSelectPanel {
             if let Some(result) = definition
                 .lock()
                 .ok()
-                .and_then(|mut d| d.search(&self.search_text))
+                .and_then(|mut d| d.search(&self.search_text.borrow()))
             {
                 self.search_result.insert(filename.clone(), result);
             }
@@ -82,7 +92,7 @@ impl DefinitionSelectPanel {
         self.ui_search(ui);
 
         {
-            let no_search = self.search_text.is_empty();
+            let no_search = self.search_text.borrow().is_empty();
             let binding = definitions_store.definitions().borrow();
             let items: Vec<(&String, &DefinitionPointer)> = binding
                 .iter()
@@ -123,12 +133,12 @@ impl DefinitionSelectPanel {
                     .add_sized(vec2(20.0, 20.0), Button::new("\u{274C}"))
                     .clicked()
                 {
-                    self.search_text.clear();
+                    self.search_text.borrow_mut().clear();
                 }
 
                 let search = ui.add_sized(
                     egui::vec2(ui.available_width(), 20.0),
-                    TextEdit::singleline(&mut self.search_text).hint_text("Search"),
+                    TextEdit::singleline(&mut *self.search_text.borrow_mut()).hint_text("Search"),
                 );
                 if search.changed() {
                     self.search_result.clear();
@@ -244,6 +254,10 @@ impl Default for DefinitionMultiSelectPanel {
 impl DefinitionMultiSelectPanel {
     pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
         self.panel.use_selector(selector);
+    }
+
+    pub fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
+        self.panel.use_search_text(search_text);
     }
 
     pub fn register_observer(&mut self) -> u32 {
