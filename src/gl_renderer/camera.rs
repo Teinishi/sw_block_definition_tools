@@ -20,19 +20,28 @@ pub enum CameraMode {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(default)]
 pub struct OrbitCamera {
     pub center: Vec3,
     pub direction: Vec3,
     pub up: Vec3,
     mode: CameraMode,
     pub fov_y: f32,
+    #[serde(skip)]
     pub aspect_ratio: f32,
+    #[serde(skip)]
     pub near_clip: f32,
+    #[serde(skip)]
     pub far_clip: f32,
+    #[serde(skip)]
     pub rotate_speed: f32,
+    #[serde(skip)]
     pub pan_speed: f32,
+    #[serde(skip)]
     pub zoom_speed: f32,
+    #[serde(skip)]
     pub rotate_pointer_button: PointerButton,
+    #[serde(skip)]
     pub pan_pointer_button: PointerButton,
 }
 
@@ -48,7 +57,7 @@ impl Default for OrbitCamera {
             near_clip: 0.025,
             far_clip: 20100.0,
             rotate_speed: 0.005,
-            pan_speed: 0.001,
+            pan_speed: 0.4,
             zoom_speed: 0.1,
             rotate_pointer_button: PointerButton::Secondary,
             pan_pointer_button: PointerButton::Middle,
@@ -186,7 +195,13 @@ impl OrbitCamera {
         }
 
         if pan && response.dragged_by(self.pan_pointer_button) {
-            let motion = self.pan_speed * self.direction.length() * response.drag_motion();
+            let f = match self.mode {
+                CameraMode::Perspective => 1.0,
+                CameraMode::Orthographic => 0.125,
+            };
+            let size = response.rect.height().min(response.rect.width());
+            let motion =
+                self.direction.length() * self.pan_speed * response.drag_motion() / size * f;
             self.center += -motion.x * self.right_vec() + motion.y * self.up;
         }
 
