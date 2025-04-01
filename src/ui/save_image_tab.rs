@@ -7,7 +7,7 @@ use super::{
 use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
-    Align, Button, CentralPanel, DragValue, Frame, Grid, Id, Layout, Modal, ProgressBar, SidePanel,
+    Button, CentralPanel, DragValue, Frame, Grid, Id, Modal, ProgressBar, ScrollArea, SidePanel,
     Sides, Slider,
 };
 use egui_extras::{Size, StripBuilder};
@@ -144,72 +144,79 @@ impl Tab for SaveImageTab {
 
         let mut scene_update = false;
 
-        CentralPanel::default().show(ctx, |ui| {
-            StripBuilder::new(ui)
-                .size(Size::remainder())
-                .size(Size::initial(240.0))
-                .vertical(|mut strip| {
-                    strip.cell(|ui| {
-                        let canvas_size = utils::fit_size_aspect(
-                            ui.available_size(),
-                            self.auto_camera.aspect_ratio(),
-                        );
+        SidePanel::right("save_image_right_panel")
+            .resizable(true)
+            .default_width(300.0)
+            .width_range(80.0..=500.0)
+            .show(ctx, |ui| {
+                StripBuilder::new(ui)
+                    .size(Size::remainder())
+                    .size(Size::exact(68.0))
+                    .vertical(|mut strip| {
+                        strip.cell(|ui| {
+                            ScrollArea::both().show(ui, |ui| {
+                                ui.add_space(4.0);
 
-                        utils::ui_center(ui, canvas_size, |ui| {
-                            egui::Frame::canvas(ui.style())
-                                .inner_margin(0.0)
-                                .show(ui, |ui| {
-                                    let (rect, response) = ui.allocate_exact_size(
-                                        egui::vec2(
-                                            (canvas_size.x - 2.0).max(1.0),
-                                            (canvas_size.y - 2.0).max(1.0),
-                                        ),
-                                        egui::Sense::drag(),
-                                    );
-                                    self.auto_camera.control(ui, response);
+                                self.ui_camera_params(ui, Id::new("save_image_camera_params"));
 
-                                    super::paint_checker_pattern(ui, rect);
+                                ui.add_space(4.0);
+                                ui.separator();
+                                ui.add_space(4.0);
 
-                                    if self.image_renderer.is_none() {
-                                        if let Some(renderer) = &self.renderer {
-                                            paint_canvas_3d(
-                                                ui,
-                                                rect,
-                                                self.auto_camera.camera.clone(),
-                                                renderer.clone(),
-                                                self.scene.colors(),
-                                            );
-                                        }
-                                    }
-                                });
+                                scene_update =
+                                    self.scene.state_ui(ui, &mesh_options) || scene_update;
+
+                                ui.add_space(4.0);
+                                ui.separator();
+                                ui.add_space(4.0);
+
+                                scene_update = self.scene.color_ui(
+                                    ui,
+                                    Id::new("save_image_colors"),
+                                    &mesh_options,
+                                ) || scene_update;
+                            });
+                        });
+
+                        strip.cell(|ui| {
+                            ui.add_space(4.0);
+                            self.ui_button(ui, frame);
                         });
                     });
+            });
 
-                    strip.strip(|strip| {
-                        strip
-                            .sizes(Size::remainder(), 3)
-                            .size(Size::initial(120.0))
-                            .horizontal(|mut strip| {
-                                strip.cell(|ui| {
-                                    self.ui_camera_params(ui, Id::new("save_image_camera_params"));
-                                });
-                                strip.cell(|ui| {
-                                    scene_update =
-                                        self.scene.state_ui(ui, &mesh_options) || scene_update;
-                                });
-                                strip.cell(|ui| {
-                                    scene_update = self.scene.color_ui(
-                                        ui,
-                                        Id::new("save_image_colors"),
-                                        &mesh_options,
-                                    ) || scene_update;
-                                });
-                                strip.cell(|ui| {
-                                    self.ui_buttons(ui, frame);
-                                });
-                            });
+        CentralPanel::default().show(ctx, |ui| {
+            let canvas_size =
+                utils::fit_size_aspect(ui.available_size(), self.auto_camera.aspect_ratio());
+
+            utils::ui_center(ui, canvas_size, |ui| {
+                egui::Frame::canvas(ui.style())
+                    .inner_margin(0.0)
+                    .show(ui, |ui| {
+                        let (rect, response) = ui.allocate_exact_size(
+                            egui::vec2(
+                                (canvas_size.x - 2.0).max(1.0),
+                                (canvas_size.y - 2.0).max(1.0),
+                            ),
+                            egui::Sense::drag(),
+                        );
+                        self.auto_camera.control(ui, response);
+
+                        super::paint_checker_pattern(ui, rect);
+
+                        if self.image_renderer.is_none() {
+                            if let Some(renderer) = &self.renderer {
+                                paint_canvas_3d(
+                                    ui,
+                                    rect,
+                                    self.auto_camera.camera.clone(),
+                                    renderer.clone(),
+                                    self.scene.colors(),
+                                );
+                            }
+                        }
                     });
-                });
+            });
         });
 
         if mesh_loaded_now || scene_update {
@@ -380,31 +387,29 @@ impl SaveImageTab {
     }
 
     #[allow(unused_variables)]
-    fn ui_buttons(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-            let multi_selector = self.definition_select_panel.multi_selector();
-            let count = multi_selector.borrow().count();
-            let mut save_definitions = None;
+    fn ui_button(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let multi_selector = self.definition_select_panel.multi_selector();
+        let count = multi_selector.borrow().count();
+        let mut save_definitions = None;
 
-            let size = egui::vec2(ui.available_width(), 60.0);
+        let size = egui::vec2(ui.available_width(), 60.0);
 
-            if count > 0 {
-                let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
-                if button.clicked() {
-                    save_definitions = Some(multi_selector.borrow().selection());
-                }
-            } else if let Some(definition) = self.definition_select_panel.selected_definition() {
-                let button = ui.add_sized(size, Button::new("Save image"));
-                if button.clicked() {
-                    save_definitions = Some(vec![definition]);
-                }
+        if count > 0 {
+            let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
+            if button.clicked() {
+                save_definitions = Some(multi_selector.borrow().selection());
             }
-
-            if let Some(definitions) = save_definitions {
-                #[cfg(not(target_arch = "wasm32"))]
-                self.save_image(definitions, Some(frame));
+        } else if let Some(definition) = self.definition_select_panel.selected_definition() {
+            let button = ui.add_sized(size, Button::new("Save image"));
+            if button.clicked() {
+                save_definitions = Some(vec![definition]);
             }
-        });
+        }
+
+        if let Some(definitions) = save_definitions {
+            #[cfg(not(target_arch = "wasm32"))]
+            self.save_image(definitions, Some(frame));
+        }
     }
 
     fn ui_progress_modal(&self, ctx: &eframe::egui::Context) {
