@@ -1,6 +1,6 @@
 use super::{
-    tab::Tab, DefinitionSingleSelect, DefinitionsStore, MainTab, SaveImageTab, SettingsTab, State,
-    TabVariants,
+    tab::Tab, DefinitionSearch, DefinitionSingleSelect, DefinitionsStore, MainTab, SaveImageTab,
+    SettingsTab, State, TabVariants,
 };
 use egui::{Sides, TopBottomPanel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
@@ -10,7 +10,7 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc};
 pub struct MainApp {
     state: State,
     definitions_store: DefinitionsStore,
-    search_text: Rc<RefCell<String>>,
+    search: Rc<RefCell<DefinitionSearch>>,
     #[serde(skip)]
     selector: Rc<RefCell<DefinitionSingleSelect>>,
     tab: TabVariants,
@@ -71,13 +71,13 @@ impl MainApp {
 
         app.main_tab.creation_context(cc);
         app.main_tab.use_selector(app.selector.clone());
-        app.main_tab.use_search_text(app.search_text.clone());
+        app.main_tab.use_search(app.search.clone());
         app.save_image_tab.creation_context(cc);
         app.save_image_tab.use_selector(app.selector.clone());
-        app.save_image_tab.use_search_text(app.search_text.clone());
+        app.save_image_tab.use_search(app.search.clone());
         app.settings_tab.creation_context(cc);
         app.settings_tab.use_selector(app.selector.clone());
-        app.settings_tab.use_search_text(app.search_text.clone());
+        app.settings_tab.use_search(app.search.clone());
 
         app
     }

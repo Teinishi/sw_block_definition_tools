@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::{AppAction, DefinitionSingleSelect, DefinitionsStore, State};
+use super::{AppAction, DefinitionSearch, DefinitionSingleSelect, DefinitionsStore, State};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
 pub enum TabVariants {
@@ -23,7 +23,7 @@ pub trait Tab: Default {
     fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {}
 
     #[allow(unused_variables)]
-    fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {}
+    fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {}
 
     #[allow(unused_variables)]
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {}

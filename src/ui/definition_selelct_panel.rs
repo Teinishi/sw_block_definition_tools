@@ -1,14 +1,13 @@
 use super::{
-    definitions_store::DefinitionPointer, DefinitionMultiSelect, DefinitionSelect,
-    DefinitionSingleSelect, DefinitionsStore,
+    definitions_store::DefinitionPointer, DefinitionMultiSelect, DefinitionSearch,
+    DefinitionSelect, DefinitionSingleSelect, DefinitionsStore,
 };
-use egui::{vec2, Align, Button, Checkbox, Layout, RichText, TextEdit};
+use egui::{Checkbox, Layout, RichText};
 use egui_extras::{Size, StripBuilder};
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 pub struct DefinitionSelectPanel {
-    search_text: Rc<RefCell<String>>,
-    search_result: BTreeMap<String, bool>,
+    search: Rc<RefCell<DefinitionSearch>>,
     selector: Rc<RefCell<DefinitionSingleSelect>>,
     selector_observer_id: u32,
     multi_selector: Option<Rc<RefCell<DefinitionMultiSelect>>>,
@@ -27,8 +26,7 @@ impl DefinitionSelectPanel {
         let selector_observer_id = selector.register_observer();
 
         Self {
-            search_text: Default::default(),
-            search_result: BTreeMap::new(),
+            search: Default::default(),
             selector: Rc::new(RefCell::new(selector)),
             selector_observer_id,
             multi_selector: None,
@@ -46,8 +44,8 @@ impl DefinitionSelectPanel {
         }
     }
 
-    pub fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
-        self.search_text = search_text;
+    pub fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {
+        self.search = search;
     }
 
     pub fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {
@@ -71,44 +69,19 @@ impl DefinitionSelectPanel {
         self.selector.borrow_mut().check_update(observer_id)
     }
 
-    fn update_search(&mut self, definitions_store: &mut DefinitionsStore) {
-        for (filename, definition) in definitions_store.definitions().borrow().iter() {
-            if self.search_result.contains_key(filename) {
-                continue;
-            }
-            if let Some(result) = definition
-                .lock()
-                .ok()
-                .and_then(|mut d| d.search(&self.search_text.borrow()))
-            {
-                self.search_result.insert(filename.clone(), result);
-            }
-        }
-    }
-
     pub fn ui(&mut self, ui: &mut egui::Ui, definitions_store: &mut DefinitionsStore) {
         ui.add_space(6.0);
 
-        self.ui_search(ui);
+        self.search.borrow_mut().ui(ui);
 
         {
-            let no_search = self.search_text.borrow().is_empty();
-            let binding = definitions_store.definitions().borrow();
-            let items: Vec<(&String, &DefinitionPointer)> = binding
-                .iter()
-                .filter(|(filename, _)| {
-                    no_search || self.search_result.get(*filename) == Some(&true)
-                })
-                .collect();
-
+            let items = self.search.borrow().get_result(definitions_store);
             self.ui_select_all(ui, &items);
-
             ui.add_space(6.0);
-
             self.ui_list(ui, &items);
         }
 
-        self.update_search(definitions_store);
+        self.search.borrow_mut().update_search(definitions_store);
 
         let select_updated = self
             .selector
@@ -124,30 +97,7 @@ impl DefinitionSelectPanel {
         }
     }
 
-    fn ui_search(&mut self, ui: &mut egui::Ui) {
-        ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), 20.0),
-            Layout::right_to_left(Align::Center),
-            |ui| {
-                if ui
-                    .add_sized(vec2(20.0, 20.0), Button::new("\u{274C}"))
-                    .clicked()
-                {
-                    self.search_text.borrow_mut().clear();
-                }
-
-                let search = ui.add_sized(
-                    egui::vec2(ui.available_width(), 20.0),
-                    TextEdit::singleline(&mut *self.search_text.borrow_mut()).hint_text("Search"),
-                );
-                if search.changed() {
-                    self.search_result.clear();
-                }
-            },
-        );
-    }
-
-    fn ui_select_all(&self, ui: &mut egui::Ui, items: &[(&String, &DefinitionPointer)]) {
+    fn ui_select_all(&self, ui: &mut egui::Ui, items: &[(String, DefinitionPointer)]) {
         if let Some(multi_select) = &self.multi_selector {
             let count = multi_select.borrow().count();
             let mut checked_any = count > 0;
@@ -168,7 +118,7 @@ impl DefinitionSelectPanel {
                 if checked_any {
                     multi_select
                         .borrow_mut()
-                        .set_selection(items.iter().map(|(_, ptr)| *ptr));
+                        .set_selection(items.iter().map(|(_, ptr)| ptr));
                 } else {
                     multi_select.borrow_mut().clear();
                 }
@@ -176,7 +126,7 @@ impl DefinitionSelectPanel {
         }
     }
 
-    fn ui_list(&self, ui: &mut egui::Ui, items: &Vec<(&String, &DefinitionPointer)>) {
+    fn ui_list(&self, ui: &mut egui::Ui, items: &[(String, DefinitionPointer)]) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             StripBuilder::new(ui)
                 .sizes(Size::initial(20.0), items.len())
@@ -256,8 +206,8 @@ impl DefinitionMultiSelectPanel {
         self.panel.use_selector(selector);
     }
 
-    pub fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
-        self.panel.use_search_text(search_text);
+    pub fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {
+        self.panel.use_search(search);
     }
 
     pub fn register_observer(&mut self) -> u32 {

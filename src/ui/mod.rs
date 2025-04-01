@@ -12,6 +12,8 @@ mod definition_selector;
 pub use definition_selector::{DefinitionMultiSelect, DefinitionSelect, DefinitionSingleSelect};
 mod attribute_value;
 pub use attribute_value::ui_attribute_value;
+mod definition_search;
+pub use definition_search::DefinitionSearch;
 mod definition_selelct_panel;
 pub use definition_selelct_panel::{DefinitionMultiSelectPanel, DefinitionSelectPanel};
 mod definition_detail_panel;

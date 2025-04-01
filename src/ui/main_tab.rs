@@ -1,7 +1,7 @@
 use super::{
     tab::Tab, utils::ui_center, AppAction, AttributeDetailWindow, Definition3dPanel,
-    DefinitionDetailPanel, DefinitionSelect, DefinitionSelectPanel, DefinitionSingleSelect,
-    DefinitionsStore, State,
+    DefinitionDetailPanel, DefinitionSearch, DefinitionSelect, DefinitionSelectPanel,
+    DefinitionSingleSelect, DefinitionsStore, State,
 };
 use egui::{Button, CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
 use std::{cell::RefCell, rc::Rc};
@@ -48,8 +48,8 @@ impl Tab for MainTab {
         self.definition_select_panel.use_selector(selector);
     }
 
-    fn use_search_text(&mut self, search_text: Rc<RefCell<String>>) {
-        self.definition_select_panel.use_search_text(search_text);
+    fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {
+        self.definition_select_panel.use_search(search);
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
