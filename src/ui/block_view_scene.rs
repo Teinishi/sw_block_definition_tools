@@ -13,7 +13,6 @@ use egui::{DragValue, Grid};
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3};
 use std::{
-    collections::BTreeSet,
     fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
@@ -407,7 +406,7 @@ impl BlockViewScene {
             definition,
             definitions_store,
             Mat4::IDENTITY,
-            BTreeSet::new(),
+            self.state.show_child_body,
         )
     }
 
@@ -416,14 +415,9 @@ impl BlockViewScene {
         definition: &DefinitionPointer,
         definitions_store: &mut DefinitionsStore,
         transform: Mat4,
-        mut trace: BTreeSet<String>,
+        show_child: bool,
     ) -> bool {
         let (data, meshes) = if let Ok(mut definition) = definition.lock() {
-            let filename = definition.filename();
-            if trace.contains(&filename) {
-                return true;
-            }
-            trace.insert(filename);
             definition.load_data_meshes()
         } else {
             (None, None)
@@ -564,9 +558,7 @@ impl BlockViewScene {
                 }
             }
 
-            if let Some((child, child_location)) = self
-                .state
-                .show_child_body
+            if let Some((child, child_location)) = show_child
                 .then(|| {
                     data.child_name
                         .as_ref()
@@ -583,7 +575,7 @@ impl BlockViewScene {
                     &child,
                     definitions_store,
                     Mat4::from_translation(translation).mul_mat4(&transform),
-                    trace,
+                    false,
                 );
                 done = done && child_done;
             }
