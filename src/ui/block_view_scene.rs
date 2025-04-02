@@ -141,7 +141,7 @@ impl BlockViewState {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct BlockViewAppearance {
     pub surface: Color4,
     pub override_color: bool,
@@ -361,8 +361,12 @@ impl BlockViewScene {
         self.scene.clone()
     }
 
-    pub fn appearance(&self) -> BlockViewAppearance {
-        self.appearance.clone()
+    pub fn state(&self) -> &BlockViewState {
+        &self.state
+    }
+
+    pub fn appearance(&self) -> &BlockViewAppearance {
+        &self.appearance
     }
 
     fn use_scene<F: FnOnce(MutexGuard<'_, Scene>)>(&mut self, writer: F) {

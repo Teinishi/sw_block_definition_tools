@@ -1,7 +1,7 @@
 use super::{
     paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
     DefinitionMultiSelectPanel, DefinitionPointer, DefinitionSearch, DefinitionSelect,
-    DefinitionSingleSelect, DefinitionsStore, ImageRenderer, State, Tab,
+    DefinitionSingleSelect, DefinitionsStore, ImageRenderer, SaveImageConfig, State, Tab,
 };
 #[allow(unused_imports)]
 use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
@@ -174,6 +174,15 @@ impl Tab for SaveImageTab {
                                 scene_update =
                                     self.scene.appearance_ui(ui, Id::new("save_image_colors"))
                                         || scene_update;
+
+                                ui.add_space(4.0);
+                                ui.separator();
+                                ui.add_space(4.0);
+
+                                if ui.button("Save config").clicked() {
+                                    #[cfg(not(target_arch = "wasm32"))]
+                                    self.save_config();
+                                }
                             });
                         });
 
@@ -435,6 +444,19 @@ impl SaveImageTab {
                         },
                     )
                 });
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_config(&self) {
+        use std::{fs::File, io::Write};
+
+        let config = SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
+        if let Ok(json) = serde_json::to_string(&config) {
+            // TODO: ダイアログで保存場所を聞く
+            if let Ok(mut file) = File::create("./save_image_config.json") {
+                let _ = file.write_all(json.as_bytes());
+            }
         }
     }
 

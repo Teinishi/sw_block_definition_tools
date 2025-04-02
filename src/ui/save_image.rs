@@ -1,4 +1,7 @@
-use super::{utils::replace_extension, BlockViewScene, DefinitionPointer, DefinitionsStore};
+use super::{
+    block_view_scene::BlockViewState, utils::replace_extension, BlockViewAppearance,
+    BlockViewScene, DefinitionPointer, DefinitionsStore,
+};
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel},
@@ -6,7 +9,7 @@ use crate::{
 use glam::{Vec3, Vec4};
 use std::{path::PathBuf, sync::Arc, time};
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct AutoCamera {
     pub camera: OrbitCamera,
     pub width: i32,
@@ -255,7 +258,7 @@ impl ImageRenderer {
                     self.renderer.paint(
                         self.framebuffer.gl(),
                         &self.auto_camera.camera,
-                        &self.scene.appearance(),
+                        self.scene.appearance(),
                     );
                     self.framebuffer.after_paint();
 
@@ -329,5 +332,22 @@ impl SaveImageProgress {
 
     pub fn message(&self) -> &Option<String> {
         &self.message
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct SaveImageConfig {
+    image: AutoCamera,
+    state: BlockViewState,
+    appearance: BlockViewAppearance,
+}
+
+impl SaveImageConfig {
+    pub fn new(auto_camera: AutoCamera, scene: &BlockViewScene) -> Self {
+        Self {
+            image: auto_camera,
+            state: scene.state().clone(),
+            appearance: scene.appearance().clone(),
+        }
     }
 }

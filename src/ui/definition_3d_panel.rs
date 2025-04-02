@@ -81,7 +81,7 @@ impl Definition3dPanel {
                         rect,
                         self.camera.clone(),
                         renderer.clone(),
-                        Default::default(),
+                        &Default::default(),
                     );
                 }
             });

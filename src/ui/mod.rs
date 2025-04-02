@@ -24,7 +24,8 @@ mod main_tab;
 pub use main_tab::MainTab;
 mod save_image;
 pub use save_image::{
-    AutoCamera, ImageRenderer, ProgressMessage, RenderMessageTuple, SaveImageProgress,
+    AutoCamera, ImageRenderer, ProgressMessage, RenderMessageTuple, SaveImageConfig,
+    SaveImageProgress,
 };
 mod save_image_tab;
 pub use save_image_tab::SaveImageTab;

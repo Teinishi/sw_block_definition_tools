@@ -11,10 +11,11 @@ pub fn paint_canvas_3d(
     rect: Rect,
     camera: OrbitCamera,
     renderer: Arc<egui::mutex::Mutex<SceneRenderer>>,
-    colors: BlockViewAppearance,
+    appearance: &BlockViewAppearance,
 ) {
+    let appearance_c = appearance.clone();
     let cb = egui_glow::CallbackFn::new(move |_info, painter| {
-        renderer.lock().paint(painter.gl(), &camera, &colors);
+        renderer.lock().paint(painter.gl(), &camera, &appearance_c);
     });
 
     let callback = egui::PaintCallback {
