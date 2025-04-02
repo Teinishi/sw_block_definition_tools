@@ -13,6 +13,7 @@ use egui::{DragValue, Grid};
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3};
 use std::{
+    collections::BTreeSet,
     fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
@@ -398,18 +399,25 @@ impl BlockViewScene {
             }
         }
 
-        self.add_block_objects(definition, definitions_store)
+        self.add_block_objects(definition, definitions_store, BTreeSet::new())
     }
 
     fn add_block_objects(
         &mut self,
         definition: &DefinitionPointer,
         definitions_store: &mut DefinitionsStore,
+        mut trace: BTreeSet<String>,
     ) -> bool {
-        let (data, meshes) = definition
-            .lock()
-            .map(|mut d| d.load_data_meshes())
-            .unwrap_or((None, None));
+        let (data, meshes) = if let Ok(mut definition) = definition.lock() {
+            let filename = definition.filename();
+            if trace.contains(&filename) {
+                return true;
+            }
+            trace.insert(filename);
+            definition.load_data_meshes()
+        } else {
+            (None, None)
+        };
 
         let mut done = data.is_some() && meshes.is_some();
 
@@ -553,7 +561,7 @@ impl BlockViewScene {
                 })
                 .flatten()
             {
-                done = self.add_block_objects(&child, definitions_store) && done;
+                done = self.add_block_objects(&child, definitions_store, trace) && done;
             }
         }
 
