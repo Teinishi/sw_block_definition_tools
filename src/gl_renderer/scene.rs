@@ -73,6 +73,11 @@ impl SceneObject {
         &self.transform_matrix
     }
 
+    pub fn apply_transform(mut self, transform: &Mat4) -> Self {
+        self.transform_matrix = transform.mul_mat4(&self.transform_matrix);
+        self
+    }
+
     pub fn gl_config(&self) -> GlConfig {
         self.content.gl_config()
     }

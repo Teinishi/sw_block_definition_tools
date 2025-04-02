@@ -399,13 +399,19 @@ impl BlockViewScene {
             }
         }
 
-        self.add_block_objects(definition, definitions_store, BTreeSet::new())
+        self.add_block_objects(
+            definition,
+            definitions_store,
+            Mat4::IDENTITY,
+            BTreeSet::new(),
+        )
     }
 
     fn add_block_objects(
         &mut self,
         definition: &DefinitionPointer,
         definitions_store: &mut DefinitionsStore,
+        transform: Mat4,
         mut trace: BTreeSet<String>,
     ) -> bool {
         let (data, meshes) = if let Ok(mut definition) = definition.lock() {
@@ -428,10 +434,13 @@ impl BlockViewScene {
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     for m in mesh.as_meshes() {
-                        self.add_object(SceneObject::from_mesh(
-                            m,
-                            Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
-                        ));
+                        self.add_object(
+                            SceneObject::from_mesh(
+                                m,
+                                Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
+                            )
+                            .apply_transform(&transform),
+                        );
                     }
                 }
             }
@@ -472,10 +481,10 @@ impl BlockViewScene {
                         self.appearance.surface,
                     );
                     if let Some(obj) = mesh_obj {
-                        self.add_object(obj);
+                        self.add_object(obj.apply_transform(&transform));
                     }
                     if let Some(obj) = line_obj {
-                        self.add_object(obj.set_z_offset(-1.0));
+                        self.add_object(obj.apply_transform(&transform).set_z_offset(-1.0));
                     }
                 }
             }
@@ -492,10 +501,10 @@ impl BlockViewScene {
                         )
                         .translucent_objects(mesh_color, line_color, line_width);
                         if let Some(obj) = mesh_obj {
-                            self.add_object(obj.set_z_offset(-1.0));
+                            self.add_object(obj.apply_transform(&transform).set_z_offset(-1.0));
                         }
                         if let Some(obj) = line_obj {
-                            self.add_object(obj.set_z_offset(-2.0));
+                            self.add_object(obj.apply_transform(&transform).set_z_offset(-2.0));
                         }
                     }
                 }
@@ -509,9 +518,9 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
                             .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.set_z_offset(-4.0));
+                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-4.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.set_z_offset(-5.0));
+                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-5.0));
                     }
                 }
             }
@@ -529,9 +538,9 @@ impl BlockViewScene {
                         *voxel_physics_max,
                     )
                     .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.set_z_offset(-3.0));
+                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-3.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.set_z_offset(-4.0));
+                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-4.0));
                     }
                 }
             }
@@ -544,24 +553,35 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
                             .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.set_z_offset(-2.0));
+                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-2.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.set_z_offset(-3.0));
+                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-3.0));
                     }
                 }
             }
 
-            if let Some(child) = self
+            if let Some((child, child_location)) = self
                 .state
                 .show_child_body
                 .then(|| {
                     data.child_name
                         .as_ref()
                         .and_then(|name| definitions_store.get(name))
+                        .map(|d| (d, data.as_ref().voxel_location_child.last()))
                 })
                 .flatten()
             {
-                done = self.add_block_objects(&child, definitions_store, trace) && done;
+                let translation = child_location
+                    .map(|v| std::convert::Into::<Vec3>::into(*v))
+                    .unwrap_or_default()
+                    * 0.25;
+                let child_done = self.add_block_objects(
+                    &child,
+                    definitions_store,
+                    Mat4::from_translation(translation).mul_mat4(&transform),
+                    trace,
+                );
+                done = done && child_done;
             }
         }
 
