@@ -271,48 +271,6 @@ impl ImageRenderer {
                 }
             }
 
-            /*if let Ok(mut definition) = self.definitions[self.i].lock() {
-                let filename = definition.filename();
-                if let Some(data_r) = definition.load_data() {
-                    match data_r {
-                        Ok(data) => {
-                            if definition.meshes_loaded() {
-                                self.auto_camera.update(&data);
-                                self.scene.update(definition, definitions_store);
-
-                                self.framebuffer.before_paint();
-                                self.renderer.paint(
-                                    self.framebuffer.gl(),
-                                    &self.auto_camera.camera,
-                                    &self.scene.appearance(),
-                                );
-                                self.framebuffer.after_paint();
-
-                                let image = self.framebuffer.get_image();
-                                let _result = if self.append_filename {
-                                    image.save(
-                                        self.save_path.join(replace_extension(&filename, "png")),
-                                    )
-                                } else {
-                                    image.save(&self.save_path)
-                                };
-
-                                self.i += 1;
-                                self.progress.current = self.i;
-                            }
-                        }
-                        Err(err) => {
-                            self.logs.push(format!(
-                                "Failed to save image of {} due to {}",
-                                filename, err
-                            ));
-                            self.i += 1;
-                            self.progress.current = self.i;
-                        }
-                    }
-                }
-            }*/
-
             // 1フレームに200ミリ秒以上かけない、でも1フレームに最低1枚は処理する
             if frame_start_time.elapsed().as_millis() >= 200 {
                 break;

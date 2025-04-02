@@ -20,8 +20,6 @@ eframe = { version = "0.31", default-features = false, features = [
     "wayland",       # To support Linux (and CI)
 ] }
 log = "0.4"
-
-# You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive", "rc"] }
 rfd = "0.15.2"
 raw-window-handle = "0.6.2"
