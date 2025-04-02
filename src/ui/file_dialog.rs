@@ -51,6 +51,18 @@ pub fn save_png_dialog<
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+pub fn save_json_dialog<
+    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
+>(
+    parent: Option<&W>,
+    filename: Option<&str>,
+) -> Option<std::path::PathBuf> {
+    dialog(parent, None, filename)
+        .add_filter("JSON", &["json"])
+        .save_file()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn open_folder_dialog<
     W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
 >(

@@ -181,7 +181,7 @@ impl Tab for SaveImageTab {
 
                                 if ui.button("Save config").clicked() {
                                     #[cfg(not(target_arch = "wasm32"))]
-                                    self.save_config();
+                                    self.save_config(Some(&frame));
                                 }
                             });
                         });
@@ -449,14 +449,19 @@ impl SaveImageTab {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_config(&self) {
+    fn save_config<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
+        &self,
+        dialog_parent: Option<&W>,
+    ) {
+        use super::file_dialog;
         use std::{fs::File, io::Write};
 
         let config = SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
         if let Ok(json) = serde_json::to_string(&config) {
-            // TODO: ダイアログで保存場所を聞く
-            if let Ok(mut file) = File::create("./save_image_config.json") {
-                let _ = file.write_all(json.as_bytes());
+            if let Some(path) = file_dialog::save_json_dialog(dialog_parent, Some("config.json")) {
+                if let Ok(mut file) = File::create(path) {
+                    let _ = file.write_all(json.as_bytes());
+                }
             }
         }
     }
