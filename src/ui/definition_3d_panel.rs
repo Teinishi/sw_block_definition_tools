@@ -25,6 +25,8 @@ pub struct Definition3dPanel {
     renderer: Option<Arc<egui::mutex::Mutex<SceneRenderer>>>,
     #[serde(skip)]
     mesh_loaded: bool,
+    #[serde(skip)]
+    scene_update_done: bool,
 }
 
 impl Definition3dPanel {
@@ -36,6 +38,7 @@ impl Definition3dPanel {
             camera,
             renderer: None,
             mesh_loaded: false,
+            scene_update_done: false,
         }
     }
 
@@ -101,9 +104,9 @@ impl Definition3dPanel {
             Default::default()
         };
         let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
-        if mesh_loaded_now || select_changed || scene_state_changed {
+        if !self.scene_update_done || mesh_loaded_now || select_changed || scene_state_changed {
             if let Some(definition) = &selected {
-                self.scene.update(definition, definitions_store);
+                self.scene_update_done = self.scene.update(definition, definitions_store);
             }
         }
     }
