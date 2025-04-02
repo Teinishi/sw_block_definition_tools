@@ -34,6 +34,9 @@ pub struct SaveImageTab {
 
     #[serde(skip)]
     image_renderer: Option<ImageRenderer>,
+
+    #[serde(skip)]
+    scene_update_done: bool,
 }
 
 impl Default for SaveImageTab {
@@ -53,6 +56,7 @@ impl Default for SaveImageTab {
             renderer: None,
             mesh_loaded: false,
             image_renderer: None,
+            scene_update_done: false,
         }
     }
 }
@@ -227,9 +231,9 @@ impl Tab for SaveImageTab {
             });
         });
 
-        if mesh_loaded_now || scene_update {
+        if !self.scene_update_done || mesh_loaded_now || scene_update {
             if let Some(definition) = &definition {
-                self.scene.update(definition, definitions_store);
+                self.scene_update_done = self.scene.update(definition, definitions_store);
             }
         }
 
