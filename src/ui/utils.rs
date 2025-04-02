@@ -1,6 +1,8 @@
 use egui::{Button, DragValue, Rect, UiBuilder};
 use glam::Vec3;
 
+use crate::gl_renderer::Color4;
+
 pub fn replace_extension(filename: &str, new_ext: &str) -> String {
     let mut path = std::path::Path::new(filename).to_owned();
     path.set_extension(new_ext);
@@ -37,6 +39,24 @@ pub fn ui_dragvalue_vec_z_inv(ui: &mut egui::Ui, vec: &mut Vec3, speed: f32) {
             *vec = Vec3::ZERO;
         }
     });
+}
+
+pub fn ui_color_picker_rgb(ui: &mut egui::Ui, color: &mut Color4) {
+    let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
+    ui.color_edit_button_rgb(&mut arr);
+    color.r = arr[0];
+    color.g = arr[1];
+    color.b = arr[2];
+    color.a = 1.0;
+}
+
+pub fn ui_color_picker_rgba(ui: &mut egui::Ui, color: &mut Color4) {
+    let mut arr = color.as_array();
+    ui.color_edit_button_rgba_unmultiplied(&mut arr);
+    color.r = arr[0];
+    color.g = arr[1];
+    color.b = arr[2];
+    color.a = arr[3];
 }
 
 pub fn count_true<'a, I>(iter: I) -> usize

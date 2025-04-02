@@ -239,7 +239,7 @@ impl ImageRenderer {
                                 self.renderer.paint(
                                     self.framebuffer.gl(),
                                     &self.auto_camera.camera,
-                                    &self.scene.colors(),
+                                    &self.scene.appearance(),
                                 );
                                 self.framebuffer.after_paint();
 

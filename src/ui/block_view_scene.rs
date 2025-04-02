@@ -1,3 +1,4 @@
+use super::utils::{ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv};
 use crate::{
     gl_renderer::{Color4, Line, Scene, SceneObject},
     sw_block_definition::{
@@ -12,8 +13,6 @@ use std::{
     fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
-
-use super::utils::ui_dragvalue_vec_z_inv;
 
 const BUOYANCY_SURFACE_MESH_COLOR: Color4 = Color4 {
     r: 0.1,
@@ -75,6 +74,7 @@ pub struct BlockViewState {
     pub show_bounding_box_physics: bool,
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     pub mesh_offset: EnumMap<SwBlockDefinitionMeshKey, Vec3>,
+    pub show_child_body: bool,
 }
 
 impl Default for BlockViewState {
@@ -94,7 +94,46 @@ impl Default for BlockViewState {
             show_bounding_box_physics: false,
             show_mesh,
             mesh_offset: EnumMap::default(),
+            show_child_body: true,
         }
+    }
+}
+
+impl BlockViewState {
+    pub fn ui(&mut self, ui: &mut egui::Ui, mesh_options: &BlockViewStateMeshOptions) -> bool {
+        let before_change = self.clone();
+
+        ui.checkbox(&mut self.show_xyz_axes, "XYZ axes");
+        ui.checkbox(&mut self.show_surfaces, "Surfaces");
+        ui.checkbox(&mut self.show_surface_edges, "Surface edge lines");
+        ui.checkbox(&mut self.show_buoyancy_surfaces, "Buoyancy surfaces");
+        ui.checkbox(&mut self.show_bounding_box_voxel, "Bounding box (voxel)");
+        ui.checkbox(
+            &mut self.show_bounding_box_voxel_physics,
+            "Bounding box (voxel physics)",
+        );
+        ui.checkbox(
+            &mut self.show_bounding_box_physics,
+            "Bounding box (physics)",
+        );
+
+        for (key, show_option) in mesh_options.meshes {
+            if show_option {
+                ui.checkbox(&mut self.show_mesh[key.clone()], key.ui_name());
+                if self.show_mesh[key.clone()] {
+                    ui.horizontal(|ui| {
+                        ui.add_space(20.0);
+                        ui_dragvalue_vec_z_inv(ui, &mut self.mesh_offset[key.clone()], 0.01);
+                    });
+                }
+            }
+        }
+
+        if mesh_options.child {
+            ui.checkbox(&mut self.show_child_body, "Child body");
+        }
+
+        Self::ne(self, &before_change)
     }
 }
 
@@ -145,9 +184,81 @@ impl Default for BlockViewAppearance {
     }
 }
 
+impl BlockViewAppearance {
+    fn ui(&mut self, ui: &mut egui::Ui, id: egui::Id, state: &BlockViewState) -> bool {
+        let before_change = self.clone();
+
+        Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
+            ui.label("Surface color");
+            ui_color_picker_rgb(ui, &mut self.surface);
+            ui.end_row();
+
+            ui.checkbox(&mut self.override_color, "Override color");
+            ui.end_row();
+
+            if self.override_color {
+                ui.label("Override color 1");
+                ui_color_picker_rgb(ui, &mut self.override_1);
+                ui.end_row();
+
+                ui.label("Override color 2");
+                ui_color_picker_rgb(ui, &mut self.override_2);
+                ui.end_row();
+
+                ui.label("Override color 3");
+                ui_color_picker_rgb(ui, &mut self.override_3);
+                ui.end_row();
+            }
+
+            ui.label("Additive color");
+            ui_color_picker_rgb(ui, &mut self.additive);
+            ui.end_row();
+
+            for (show, text, appearance) in [
+                (
+                    state.show_buoyancy_surfaces,
+                    "Buoyancy surfaces",
+                    &mut self.buoyancy_surface,
+                ),
+                (
+                    state.show_bounding_box_voxel,
+                    "Bounding box (voxel)",
+                    &mut self.bounding_box_voxel,
+                ),
+                (
+                    state.show_bounding_box_voxel_physics,
+                    "Bounding box (voxel physics)",
+                    &mut self.bounding_box_voxel_physics,
+                ),
+                (
+                    state.show_bounding_box_physics,
+                    "Bounding box (physics)",
+                    &mut self.bounding_box_physics,
+                ),
+            ] {
+                if !show {
+                    continue;
+                }
+                ui.label(text);
+                ui_color_picker_rgba(ui, &mut appearance.0);
+                ui_color_picker_rgba(ui, &mut appearance.1);
+                ui.add(
+                    DragValue::new(&mut appearance.2)
+                        .range(0.0..=10.0)
+                        .speed(0.1),
+                );
+                ui.end_row();
+            }
+        });
+
+        Self::ne(self, &before_change)
+    }
+}
+
 #[derive(Default)]
 pub struct BlockViewStateMeshOptions {
     meshes: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    child: bool,
 }
 
 impl Debug for BlockViewStateMeshOptions {
@@ -161,24 +272,39 @@ impl Debug for BlockViewStateMeshOptions {
             write!(f, "{}: {}", key.xml_name(), value)?;
             is_first = false;
         }
+
+        if !is_first {
+            write!(f, ", ")?;
+        }
+        write!(f, "child: {}", self.child)?;
+
         write!(f, "}}")
     }
 }
 
 impl BlockViewStateMeshOptions {
-    pub fn from_definition_meshes(definition_meshes: &SwBlockDefinitionMeshes) -> Self {
+    pub fn from_definition_meshes(
+        definition_meshes: &SwBlockDefinitionMeshes,
+        data: &Option<Arc<Definition>>,
+    ) -> Self {
+        let child = data
+            .as_ref()
+            .map(|d| d.child_name.as_ref().is_some_and(|n| !n.is_empty()))
+            .unwrap_or(false);
+
         let mut meshes: EnumMap<SwBlockDefinitionMeshKey, bool> = Default::default();
         for (key, value) in meshes.iter_mut() {
             *value = definition_meshes.get_mesh(&key).is_some();
         }
 
-        Self { meshes }
+        Self { meshes, child }
     }
 
     pub fn or(&mut self, other: &Self) {
         for (key, value) in self.meshes.iter_mut() {
             *value = *value || other.meshes[key];
         }
+        self.child = self.child || other.child
     }
 }
 
@@ -187,14 +313,14 @@ pub struct BlockViewScene {
     #[serde(skip)]
     scene: Arc<Mutex<Scene>>,
     state: BlockViewState,
-    colors: BlockViewAppearance,
+    appearance: BlockViewAppearance,
 }
 
 impl BlockViewScene {
     pub fn reset(&mut self) {
         self.clear();
         self.state = Default::default();
-        self.colors = Default::default();
+        self.appearance = Default::default();
     }
 
     pub fn clear(&mut self) {
@@ -205,20 +331,14 @@ impl BlockViewScene {
         Self {
             scene: Default::default(),
             state: other.state.clone(),
-            colors: other.colors.clone(),
+            appearance: other.appearance.clone(),
         }
     }
 
-    pub fn state_mut<F: FnOnce(&'_ mut BlockViewState)>(&mut self, writer: F) -> bool {
-        let before_change = self.state.clone();
-        writer(&mut self.state);
-        before_change != self.state
-    }
-
     pub fn color_mut<F: FnOnce(&'_ mut BlockViewAppearance)>(&mut self, writer: F) -> bool {
-        let before_change = self.colors.clone();
-        writer(&mut self.colors);
-        before_change != self.colors
+        let before_change = self.appearance.clone();
+        writer(&mut self.appearance);
+        before_change != self.appearance
     }
 
     pub fn state_ui(
@@ -226,129 +346,19 @@ impl BlockViewScene {
         ui: &mut egui::Ui,
         mesh_options: &BlockViewStateMeshOptions,
     ) -> bool {
-        self.state_mut(|state| {
-            ui.checkbox(&mut state.show_xyz_axes, "XYZ axes");
-            ui.checkbox(&mut state.show_surfaces, "Surfaces");
-            ui.checkbox(&mut state.show_surface_edges, "Surface edge lines");
-            ui.checkbox(&mut state.show_buoyancy_surfaces, "Buoyancy surfaces");
-            ui.checkbox(&mut state.show_bounding_box_voxel, "Bounding box (voxel)");
-            ui.checkbox(
-                &mut state.show_bounding_box_voxel_physics,
-                "Bounding box (voxel physics)",
-            );
-            ui.checkbox(
-                &mut state.show_bounding_box_physics,
-                "Bounding box (physics)",
-            );
-
-            for (key, show_option) in mesh_options.meshes {
-                if show_option {
-                    ui.checkbox(&mut state.show_mesh[key.clone()], key.ui_name());
-                    if state.show_mesh[key.clone()] {
-                        ui.horizontal(|ui| {
-                            ui.add_space(20.0);
-                            ui_dragvalue_vec_z_inv(ui, &mut state.mesh_offset[key.clone()], 0.01);
-                        });
-                    }
-                }
-            }
-        })
+        self.state.ui(ui, mesh_options)
     }
 
-    pub fn color_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        id: egui::Id,
-        _mesh_options: &BlockViewStateMeshOptions,
-    ) -> bool {
-        fn ui_color_picker_rgb(ui: &mut egui::Ui, color: &mut Color4) {
-            let mut arr: [f32; 3] = color.as_array()[..3].try_into().unwrap();
-            ui.color_edit_button_rgb(&mut arr);
-            color.r = arr[0];
-            color.g = arr[1];
-            color.b = arr[2];
-            color.a = 1.0;
-        }
-
-        fn ui_color_picker_rgba(ui: &mut egui::Ui, color: &mut Color4) {
-            let mut arr = color.as_array();
-            ui.color_edit_button_rgba_unmultiplied(&mut arr);
-            color.r = arr[0];
-            color.g = arr[1];
-            color.b = arr[2];
-            color.a = arr[3];
-        }
-
-        let state = self.state.clone();
-
-        self.color_mut(|colors| {
-            Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
-                ui.label("Surface color");
-                ui_color_picker_rgb(ui, &mut colors.surface);
-                ui.end_row();
-
-                ui.checkbox(&mut colors.override_color, "Override color");
-                ui.end_row();
-
-                if colors.override_color {
-                    ui.label("Override color 1");
-                    ui_color_picker_rgb(ui, &mut colors.override_1);
-                    ui.end_row();
-
-                    ui.label("Override color 2");
-                    ui_color_picker_rgb(ui, &mut colors.override_2);
-                    ui.end_row();
-
-                    ui.label("Override color 3");
-                    ui_color_picker_rgb(ui, &mut colors.override_3);
-                    ui.end_row();
-                }
-
-                ui.label("Additive color");
-                ui_color_picker_rgb(ui, &mut colors.additive);
-                ui.end_row();
-
-                for (show, text, colors) in [
-                    (
-                        state.show_buoyancy_surfaces,
-                        "Buoyancy surfaces",
-                        &mut colors.buoyancy_surface,
-                    ),
-                    (
-                        state.show_bounding_box_voxel,
-                        "Bounding box (voxel)",
-                        &mut colors.bounding_box_voxel,
-                    ),
-                    (
-                        state.show_bounding_box_voxel_physics,
-                        "Bounding box (voxel physics)",
-                        &mut colors.bounding_box_voxel_physics,
-                    ),
-                    (
-                        state.show_bounding_box_physics,
-                        "Bounding box (physics)",
-                        &mut colors.bounding_box_physics,
-                    ),
-                ] {
-                    if !show {
-                        continue;
-                    }
-                    ui.label(text);
-                    ui_color_picker_rgba(ui, &mut colors.0);
-                    ui_color_picker_rgba(ui, &mut colors.1);
-                    ui.add(DragValue::new(&mut colors.2).range(0.0..=10.0).speed(0.1));
-                    ui.end_row();
-                }
-            });
-        })
+    pub fn appearance_ui(&mut self, ui: &mut egui::Ui, id: egui::Id) -> bool {
+        self.appearance.ui(ui, id, &self.state)
     }
 
     pub fn scene(&self) -> Arc<Mutex<Scene>> {
         self.scene.clone()
     }
 
-    pub fn colors(&self) -> BlockViewAppearance {
-        self.colors.clone()
+    pub fn appearance(&self) -> BlockViewAppearance {
+        self.appearance.clone()
     }
 
     fn use_scene<F: FnOnce(MutexGuard<'_, Scene>)>(&mut self, writer: F) {
@@ -417,7 +427,7 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) = obj_builder.basic_objects(
                         self.state.show_surfaces,
                         self.state.show_surface_edges,
-                        self.colors.surface,
+                        self.appearance.surface,
                     );
                     if let Some(obj) = mesh_obj {
                         self.add_object(obj);
@@ -430,7 +440,7 @@ impl BlockViewScene {
 
             if self.state.show_buoyancy_surfaces {
                 if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
-                    let (mesh_color, line_color, line_width) = self.colors.buoyancy_surface;
+                    let (mesh_color, line_color, line_width) = self.appearance.buoyancy_surface;
                     for surface in &buoyancy_surfaces.surface {
                         let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
                             surface.shape,
@@ -453,7 +463,7 @@ impl BlockViewScene {
                 if let Some((voxel_min, voxel_max)) =
                     data.voxel_min.last().zip(data.voxel_max.last())
                 {
-                    let (mesh_color, line_color, line_width) = self.colors.bounding_box_voxel;
+                    let (mesh_color, line_color, line_width) = self.appearance.bounding_box_voxel;
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
                             .objects(mesh_color, line_color, line_width);
@@ -471,7 +481,7 @@ impl BlockViewScene {
                     .zip(data.voxel_physics_max.last())
                 {
                     let (mesh_color, line_color, line_width) =
-                        self.colors.bounding_box_voxel_physics;
+                        self.appearance.bounding_box_voxel_physics;
                     let (mesh_obj, line_obj) = BoundingBoxObjectBuilder::from_voxel(
                         *voxel_physics_min,
                         *voxel_physics_max,
@@ -488,7 +498,7 @@ impl BlockViewScene {
                 if let Some((bb_physics_min, bb_physics_max)) =
                     data.bb_physics_min.last().zip(data.bb_physics_max.last())
                 {
-                    let (mesh_color, line_color, line_width) = self.colors.bounding_box_physics;
+                    let (mesh_color, line_color, line_width) = self.appearance.bounding_box_physics;
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
                             .objects(mesh_color, line_color, line_width);

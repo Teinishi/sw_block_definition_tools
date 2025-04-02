@@ -112,8 +112,11 @@ impl Tab for SaveImageTab {
         // 現在の選択に含まれるmeshの列挙
         let mut mesh_options = BlockViewStateMeshOptions::default();
         if let Some(definition) = self.definition_select_panel.selected_definition() {
-            if let Some(meshes) = definition.lock().ok().and_then(|mut d| d.load_meshes()) {
-                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+            if let Some((data, Some(meshes))) =
+                definition.lock().ok().map(|mut d| d.load_data_meshes())
+            {
+                let options =
+                    BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
                 mesh_options.or(&options);
             }
         }
@@ -124,9 +127,9 @@ impl Tab for SaveImageTab {
             .selection()
         {
             if let Ok(mut definition) = s.lock() {
-                if let (_, Some(meshes)) = definition.load_data_meshes() {
+                if let (data, Some(meshes)) = definition.load_data_meshes() {
                     let options =
-                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref());
+                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
                     mesh_options.or(&options);
                 }
             }
@@ -170,11 +173,9 @@ impl Tab for SaveImageTab {
                                 ui.separator();
                                 ui.add_space(4.0);
 
-                                scene_update = self.scene.color_ui(
-                                    ui,
-                                    Id::new("save_image_colors"),
-                                    &mesh_options,
-                                ) || scene_update;
+                                scene_update =
+                                    self.scene.appearance_ui(ui, Id::new("save_image_colors"))
+                                        || scene_update;
                             });
                         });
 
@@ -211,7 +212,7 @@ impl Tab for SaveImageTab {
                                     rect,
                                     self.auto_camera.camera.clone(),
                                     renderer.clone(),
-                                    self.scene.colors(),
+                                    self.scene.appearance(),
                                 );
                             }
                         }
