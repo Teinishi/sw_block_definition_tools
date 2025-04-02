@@ -1,4 +1,4 @@
-use super::{utils::replace_extension, BlockViewScene, DefinitionPointer};
+use super::{utils::replace_extension, BlockViewScene, DefinitionPointer, DefinitionsStore};
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel},
@@ -206,7 +206,7 @@ impl ImageRenderer {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, definitions_store: &mut DefinitionsStore) {
         let frame_start_time = std::time::Instant::now();
 
         loop {
@@ -226,14 +226,59 @@ impl ImageRenderer {
                 }
                 return;
             }
-            if let Ok(mut definition) = self.definitions[self.i].lock() {
+
+            let definition = &self.definitions[self.i];
+            let data = if let Ok(mut definition) = definition.lock() {
+                let filename = definition.filename();
+                match definition.load_data() {
+                    Some(Ok(data)) => Some((data, filename)),
+                    Some(Err(err)) => {
+                        self.logs.push(format!(
+                            "Failed to save image of {} due to {}",
+                            filename, err
+                        ));
+                        self.i += 1;
+                        self.progress.current = self.i;
+                        continue;
+                    }
+                    None => None,
+                }
+            } else {
+                None
+            };
+
+            if let Some((data, filename)) = data {
+                if self.scene.update(definition, definitions_store) {
+                    self.auto_camera.update(&data);
+
+                    self.framebuffer.before_paint();
+                    self.renderer.paint(
+                        self.framebuffer.gl(),
+                        &self.auto_camera.camera,
+                        &self.scene.appearance(),
+                    );
+                    self.framebuffer.after_paint();
+
+                    let image = self.framebuffer.get_image();
+                    let _result = if self.append_filename {
+                        image.save(self.save_path.join(replace_extension(&filename, "png")))
+                    } else {
+                        image.save(&self.save_path)
+                    };
+
+                    self.i += 1;
+                    self.progress.current = self.i;
+                }
+            }
+
+            /*if let Ok(mut definition) = self.definitions[self.i].lock() {
                 let filename = definition.filename();
                 if let Some(data_r) = definition.load_data() {
                     match data_r {
                         Ok(data) => {
-                            if let Some(meshes) = definition.load_meshes() {
+                            if definition.meshes_loaded() {
                                 self.auto_camera.update(&data);
-                                self.scene.update(&Some(data), &Some(meshes));
+                                self.scene.update(definition, definitions_store);
 
                                 self.framebuffer.before_paint();
                                 self.renderer.paint(
@@ -266,11 +311,11 @@ impl ImageRenderer {
                         }
                     }
                 }
+            }*/
 
-                // 1フレームに200ミリ秒以上かけない、でも1フレームに最低1枚は処理する
-                if frame_start_time.elapsed().as_millis() >= 200 {
-                    break;
-                }
+            // 1フレームに200ミリ秒以上かけない、でも1フレームに最低1枚は処理する
+            if frame_start_time.elapsed().as_millis() >= 200 {
+                break;
             }
         }
     }

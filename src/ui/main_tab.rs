@@ -114,6 +114,7 @@ impl Tab for MainTab {
                     ui.add_space(4.0);
                     self.definition_3d_panel.ui(
                         ui,
+                        definitions_store,
                         self.definition_select_panel.selected_definition(),
                         self.definition_select_panel
                             .check_update(self.selector_observer_id)

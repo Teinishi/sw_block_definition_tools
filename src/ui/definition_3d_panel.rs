@@ -1,6 +1,6 @@
 use super::{
     definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScene,
-    BlockViewStateMeshOptions,
+    BlockViewStateMeshOptions, DefinitionsStore,
 };
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::vec2;
@@ -61,6 +61,7 @@ impl Definition3dPanel {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        definitions_store: &mut DefinitionsStore,
         selected: Option<DefinitionPointer>,
         select_changed: bool,
     ) {
@@ -84,7 +85,7 @@ impl Definition3dPanel {
 
         let mut data = None;
         let mut meshes = None;
-        if let Some(definition) = selected {
+        if let Some(definition) = &selected {
             if let Ok(mut definition) = definition.lock() {
                 (data, meshes) = definition.load_data_meshes();
             }
@@ -101,7 +102,9 @@ impl Definition3dPanel {
         };
         let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
         if mesh_loaded_now || select_changed || scene_state_changed {
-            self.scene.update(&data, &meshes);
+            if let Some(definition) = &selected {
+                self.scene.update(definition, definitions_store);
+            }
         }
     }
 }

@@ -60,12 +60,16 @@ impl SwBlockDefinition {
         &self.path
     }
 
-    pub fn loading_data(&self) -> bool {
+    pub fn data_loading(&self) -> bool {
         self.load_data_thread.is_some()
     }
 
-    pub fn loading_mesh(&self) -> bool {
+    pub fn meshes_loading(&self) -> bool {
         self.load_mesh_thread.is_some()
+    }
+
+    pub fn meshes_loaded(&self) -> bool {
+        self.meshes.is_some()
     }
 
     pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {

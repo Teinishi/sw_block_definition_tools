@@ -1,4 +1,7 @@
-use super::utils::{ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv};
+use super::{
+    utils::{ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv},
+    DefinitionPointer, DefinitionsStore,
+};
 use crate::{
     gl_renderer::{Color4, Line, Scene, SceneObject},
     sw_block_definition::{
@@ -375,9 +378,9 @@ impl BlockViewScene {
 
     pub fn update(
         &mut self,
-        data: &Option<Arc<Definition>>,
-        meshes: &Option<Arc<SwBlockDefinitionMeshes>>,
-    ) {
+        definition: &DefinitionPointer,
+        definitions_store: &mut DefinitionsStore,
+    ) -> bool {
         self.use_scene(|mut scene| {
             scene.clear();
         });
@@ -392,6 +395,37 @@ impl BlockViewScene {
                     Line::single_stroke_lh(vec![Vec3::ZERO, 100.0 * direction], color, 2.0, false),
                     None,
                 ));
+            }
+        }
+
+        self.add_block_objects(definition, definitions_store)
+    }
+
+    fn add_block_objects(
+        &mut self,
+        definition: &DefinitionPointer,
+        definitions_store: &mut DefinitionsStore,
+    ) -> bool {
+        let (data, meshes) = definition
+            .lock()
+            .map(|mut d| d.load_data_meshes())
+            .unwrap_or((None, None));
+
+        let mut done = data.is_some() && meshes.is_some();
+
+        if let Some(meshes) = meshes {
+            for (key, show) in self.state.show_mesh {
+                if !show {
+                    continue;
+                }
+                if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
+                    for m in mesh.as_meshes() {
+                        self.add_object(SceneObject::from_mesh(
+                            m,
+                            Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
+                        ));
+                    }
+                }
             }
         }
 
@@ -508,22 +542,21 @@ impl BlockViewScene {
                     }
                 }
             }
-        }
 
-        if let Some(meshes) = meshes {
-            for (key, show) in self.state.show_mesh {
-                if !show {
-                    continue;
-                }
-                if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
-                    for m in mesh.as_meshes() {
-                        self.add_object(SceneObject::from_mesh(
-                            m,
-                            Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
-                        ));
-                    }
-                }
+            if let Some(child) = self
+                .state
+                .show_child_body
+                .then(|| {
+                    data.child_name
+                        .as_ref()
+                        .and_then(|name| definitions_store.get(name))
+                })
+                .flatten()
+            {
+                done = self.add_block_objects(&child, definitions_store) && done;
             }
         }
+
+        done
     }
 }

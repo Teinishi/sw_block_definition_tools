@@ -31,12 +31,19 @@ impl DefinitionsStore {
         &self.definitions
     }
 
+    pub fn get(&self, name: &str) -> Option<DefinitionPointer> {
+        self.definitions
+            .borrow()
+            .get(&format!("{}.xml", name))
+            .cloned()
+    }
+
     pub fn loading_state(&self) -> Option<LoadingState> {
         for (filename, definition) in self.definitions.borrow().iter() {
             if let Ok(definition) = definition.lock() {
-                if definition.loading_data() {
+                if definition.data_loading() {
                     return Some(LoadingState::Data(filename.clone()));
-                } else if definition.loading_mesh() {
+                } else if definition.meshes_loading() {
                     return Some(LoadingState::Mesh(filename.clone()));
                 }
             }

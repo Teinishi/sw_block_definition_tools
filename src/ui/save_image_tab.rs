@@ -135,13 +135,11 @@ impl Tab for SaveImageTab {
             }
         }
 
-        let (data, meshes) = definition
+        let mesh_loaded = definition
             .as_ref()
             .and_then(|d| d.lock().ok())
-            .map(|mut d| d.load_data_meshes())
-            .unwrap_or((None, None));
-
-        let mesh_loaded = meshes.is_some();
+            .map(|d| d.meshes_loaded())
+            .unwrap_or(false);
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
@@ -221,11 +219,13 @@ impl Tab for SaveImageTab {
         });
 
         if mesh_loaded_now || scene_update {
-            self.scene.update(&data, &meshes);
+            if let Some(definition) = &definition {
+                self.scene.update(definition, definitions_store);
+            }
         }
 
         if let Some(renderer) = &mut self.image_renderer {
-            renderer.update();
+            renderer.update(definitions_store);
             if renderer.progress().done() {
                 self.image_renderer = None;
             } else {
@@ -235,7 +235,12 @@ impl Tab for SaveImageTab {
             }
         }
 
-        if let Some(data) = data {
+        if let Some(data) = definition
+            .as_ref()
+            .and_then(|d| d.lock().ok())
+            .and_then(|mut d| d.load_data())
+            .and_then(|d| d.ok())
+        {
             self.auto_camera.update(&data);
         }
 
@@ -244,7 +249,7 @@ impl Tab for SaveImageTab {
             .check_update(self.selector_observer_id)
             .unwrap_or(false)
         {
-            self.update_scene(&definition);
+            self.update_scene(&definition, definitions_store);
         }
 
         None
@@ -252,14 +257,13 @@ impl Tab for SaveImageTab {
 }
 
 impl SaveImageTab {
-    fn update_scene(&mut self, definition: &Option<DefinitionPointer>) {
+    fn update_scene(
+        &mut self,
+        definition: &Option<DefinitionPointer>,
+        definitions_store: &mut DefinitionsStore,
+    ) {
         if let Some(definition) = definition {
-            let (data, meshes) = definition
-                .lock()
-                .ok()
-                .map(|mut d| d.load_data_meshes())
-                .unwrap_or((None, None));
-            self.scene.update(&data, &meshes);
+            self.scene.update(definition, definitions_store);
         } else {
             self.scene.clear();
         }
