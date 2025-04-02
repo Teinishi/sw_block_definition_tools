@@ -1,7 +1,7 @@
 use super::{
     paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
     DefinitionMultiSelectPanel, DefinitionPointer, DefinitionSearch, DefinitionSelect,
-    DefinitionSingleSelect, DefinitionsStore, ImageRenderer, SaveImageConfig, State, Tab,
+    DefinitionSingleSelect, DefinitionsStore, ImageRenderer, State, Tab,
 };
 #[allow(unused_imports)]
 use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
@@ -460,7 +460,7 @@ impl SaveImageTab {
         use super::file_dialog;
         use std::{fs::File, io::Write};
 
-        let config = SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
+        let config = super::SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
         if let Ok(json) = serde_json::to_string(&config) {
             if let Some(path) = file_dialog::save_json_dialog(dialog_parent, Some("config.json")) {
                 if let Ok(mut file) = File::create(path) {
