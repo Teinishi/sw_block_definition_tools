@@ -234,7 +234,7 @@ impl Tab for SaveImageTab {
         }
 
         if let Some(renderer) = &mut self.image_renderer {
-            renderer.update(definitions_store);
+            renderer.update(definitions_store, self.scene.state());
             if renderer.progress().done() {
                 self.image_renderer = None;
             } else {
@@ -250,7 +250,8 @@ impl Tab for SaveImageTab {
             .and_then(|mut d| d.load_data())
             .and_then(|d| d.ok())
         {
-            self.auto_camera.update(&data);
+            self.auto_camera
+                .update(&data, definitions_store, self.scene.state());
         }
 
         if self

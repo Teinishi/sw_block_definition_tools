@@ -4,10 +4,110 @@ use super::{
 };
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
-    sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel},
+    sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel, VoxelLocationChild},
 };
 use glam::{Vec3, Vec4};
 use std::{path::PathBuf, sync::Arc, time};
+
+#[derive(Default)]
+struct VoxelPosition {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+impl From<&Voxel> for VoxelPosition {
+    fn from(value: &Voxel) -> Self {
+        let (x, y, z) = value
+            .position
+            .last()
+            .map(|p| p.as_tuple(0))
+            .unwrap_or((0, 0, 0));
+        Self { x, y, z }
+    }
+}
+
+impl From<&VoxelLocationChild> for VoxelPosition {
+    fn from(value: &VoxelLocationChild) -> Self {
+        Self {
+            x: value.x.unwrap_or(0),
+            y: value.y.unwrap_or(0),
+            z: value.z.unwrap_or(0),
+        }
+    }
+}
+
+impl VoxelPosition {
+    fn min(&self, other: &Self) -> Self {
+        Self {
+            x: self.x.min(other.x),
+            y: self.x.min(other.y),
+            z: self.x.min(other.z),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        Self {
+            x: self.x.max(other.x),
+            y: self.x.max(other.y),
+            z: self.x.max(other.z),
+        }
+    }
+
+    fn add(&self, other: &Self) -> Self {
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+
+    fn to_vec3(&self) -> Vec3 {
+        Vec3::new(self.x as f32, self.y as f32, self.z as f32)
+    }
+
+    fn get_bounding_box(
+        data: &Definition,
+        definitions_store: &mut DefinitionsStore,
+        include_child: bool,
+    ) -> (Self, Self) {
+        let mut min = Self::default();
+        let mut max = Self::default();
+
+        if let Some(voxels) = data.voxels.last() {
+            for voxel in &voxels.voxel {
+                let voxel_position = voxel.into();
+                min = min.min(&voxel_position);
+                max = max.max(&voxel_position);
+            }
+        }
+
+        if let Some(child) = include_child
+            .then(|| {
+                data.child_name
+                    .as_ref()
+                    .and_then(|name| definitions_store.get(name))
+            })
+            .flatten()
+        {
+            if let Ok(mut child) = child.lock() {
+                if let Some(Ok(child)) = child.load_data() {
+                    let child_position = data
+                        .voxel_location_child
+                        .last()
+                        .map(Self::from)
+                        .unwrap_or_default();
+                    let (child_min, child_max) =
+                        Self::get_bounding_box(&child, definitions_store, include_child);
+                    min = min.min(&child_min.add(&child_position));
+                    max = max.max(&child_max.add(&child_position));
+                }
+            }
+        }
+
+        (min, max)
+    }
+}
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct AutoCamera {
@@ -52,7 +152,12 @@ impl AutoCamera {
         self.width as f32 / self.height as f32
     }
 
-    pub fn update(&mut self, data: &Definition) {
+    pub fn update(
+        &mut self,
+        data: &Definition,
+        definitions_store: &mut DefinitionsStore,
+        state: &BlockViewState,
+    ) {
         let width = self.width as f32;
         let height = self.height as f32;
         let aspect_ratio = self.aspect_ratio();
@@ -68,33 +173,10 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let voxels: Vec<&Voxel> = data
-                .voxels
-                .last()
-                .map(|v| v.voxel.iter().collect())
-                .unwrap_or_default();
             let (voxel_min, voxel_max) =
-                voxels
-                    .iter()
-                    .fold(((0, 0, 0), (0, 0, 0)), |(min, max), voxel| {
-                        let pos = voxel
-                            .position
-                            .last()
-                            .map(|p| p.as_tuple(0))
-                            .unwrap_or((0, 0, 0));
-                        (
-                            (min.0.min(pos.0), min.1.min(pos.1), min.2.min(pos.2)),
-                            (max.0.max(pos.0), max.1.max(pos.1), max.2.max(pos.2)),
-                        )
-                    });
-            let corner_min: Vec3 =
-                (Vec3::new(voxel_min.0 as f32, voxel_min.1 as f32, voxel_min.2 as f32)
-                    - 0.5 * Vec3::ONE)
-                    * 0.25;
-            let corner_max: Vec3 =
-                (Vec3::new(voxel_max.0 as f32, voxel_max.1 as f32, voxel_max.2 as f32)
-                    + 0.5 * Vec3::ONE)
-                    * 0.25;
+                VoxelPosition::get_bounding_box(data, definitions_store, state.show_child_body);
+            let corner_min = (voxel_min.to_vec3() - Vec3::ONE * 0.5) * 0.25;
+            let corner_max = (voxel_max.to_vec3() + Vec3::ONE * 0.5) * 0.25;
             let center = (corner_min + corner_max) * 0.5;
 
             let min_x = corner_min.x;
@@ -209,7 +291,7 @@ impl ImageRenderer {
         }
     }
 
-    pub fn update(&mut self, definitions_store: &mut DefinitionsStore) {
+    pub fn update(&mut self, definitions_store: &mut DefinitionsStore, state: &BlockViewState) {
         let frame_start_time = std::time::Instant::now();
 
         loop {
@@ -252,7 +334,7 @@ impl ImageRenderer {
 
             if let Some((data, filename)) = data {
                 if self.scene.update(definition, definitions_store) {
-                    self.auto_camera.update(&data);
+                    self.auto_camera.update(&data, definitions_store, state);
 
                     self.framebuffer.before_paint();
                     self.renderer.paint(
