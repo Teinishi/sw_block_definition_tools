@@ -1,15 +1,15 @@
 use super::{
-    block_view_scene::BlockViewState, utils::replace_extension, BlockViewAppearance,
-    BlockViewScene, DefinitionPointer, DefinitionsStore,
+    utils::replace_extension, BlockViewAppearance, BlockViewScene, BlockViewState,
+    DefinitionPointer, DefinitionsStore,
 };
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
     sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel, VoxelLocationChild},
 };
-use glam::{Vec3, Vec4};
-use std::{path::PathBuf, sync::Arc, time};
+use glam::Vec3;
+use std::{collections::HashSet, path::PathBuf, sync::Arc, time};
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 struct VoxelPosition {
     x: i32,
     y: i32,
@@ -41,16 +41,16 @@ impl VoxelPosition {
     fn min(&self, other: &Self) -> Self {
         Self {
             x: self.x.min(other.x),
-            y: self.x.min(other.y),
-            z: self.x.min(other.z),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
         }
     }
 
     fn max(&self, other: &Self) -> Self {
         Self {
             x: self.x.max(other.x),
-            y: self.x.max(other.y),
-            z: self.x.max(other.z),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
         }
     }
 
@@ -62,25 +62,40 @@ impl VoxelPosition {
         }
     }
 
-    fn to_vec3(&self) -> Vec3 {
-        Vec3::new(self.x as f32, self.y as f32, self.z as f32)
+    fn corner_min(&self) -> VoxelCorner {
+        VoxelCorner::new(self.x, self.y, self.z)
     }
 
-    fn get_bounding_box(
+    fn corner_max(&self) -> VoxelCorner {
+        VoxelCorner::new(self.x + 1, self.y + 1, self.z + 1)
+    }
+
+    fn corners(&self) -> [VoxelCorner; 8] {
+        let x = self.x;
+        let y = self.y;
+        let z = self.z;
+        [
+            VoxelCorner::new(x, y, z),
+            VoxelCorner::new(x, y, z + 1),
+            VoxelCorner::new(x, y + 1, z),
+            VoxelCorner::new(x, y + 1, z + 1),
+            VoxelCorner::new(x + 1, y, z),
+            VoxelCorner::new(x + 1, y, z + 1),
+            VoxelCorner::new(x + 1, y + 1, z),
+            VoxelCorner::new(x + 1, y + 1, z + 1),
+        ]
+    }
+
+    fn get_voxels(
         data: &Definition,
         definitions_store: &mut DefinitionsStore,
         include_child: bool,
-    ) -> (Self, Self) {
-        let mut min = Self::default();
-        let mut max = Self::default();
-
-        if let Some(voxels) = data.voxels.last() {
-            for voxel in &voxels.voxel {
-                let voxel_position = voxel.into();
-                min = min.min(&voxel_position);
-                max = max.max(&voxel_position);
-            }
-        }
+    ) -> Vec<Self> {
+        let mut voxels = if let Some(voxels) = data.voxels.last() {
+            voxels.voxel.iter().map(Self::from).collect()
+        } else {
+            Vec::new()
+        };
 
         if let Some(child) = include_child
             .then(|| {
@@ -91,21 +106,73 @@ impl VoxelPosition {
             .flatten()
         {
             if let Ok(mut child) = child.lock() {
-                if let Some(Ok(child)) = child.load_data() {
+                if let Some(Ok(child_data)) = child.load_data() {
                     let child_position = data
                         .voxel_location_child
                         .last()
                         .map(Self::from)
                         .unwrap_or_default();
-                    let (child_min, child_max) =
-                        Self::get_bounding_box(&child, definitions_store, include_child);
-                    min = min.min(&child_min.add(&child_position));
-                    max = max.max(&child_max.add(&child_position));
+                    voxels.extend(
+                        Self::get_voxels(&child_data, definitions_store, false)
+                            .iter()
+                            .map(|v| v.add(&child_position)),
+                    );
                 }
             }
         }
 
-        (min, max)
+        voxels
+    }
+
+    fn get_bounds(voxels: &[Self]) -> (Self, Self) {
+        voxels
+            .iter()
+            .fold((Self::default(), Self::default()), |(min, max), voxel| {
+                (min.min(voxel), max.max(voxel))
+            })
+    }
+}
+
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
+struct VoxelCorner {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+impl VoxelCorner {
+    fn new(x: i32, y: i32, z: i32) -> Self {
+        Self { x, y, z }
+    }
+
+    fn to_vec3(&self) -> Vec3 {
+        Vec3::new(self.x as f32, self.y as f32, self.z as f32)
+    }
+
+    fn world_pos_lh(&self) -> Vec3 {
+        let vec = 0.25 * (self.to_vec3() - 0.5 * Vec3::ONE);
+        Vec3::new(vec.x, vec.y, -vec.z)
+    }
+
+    fn get_outer_corners(voxels: HashSet<VoxelPosition>) -> HashSet<Self> {
+        // ボクセルの頂点のうち外側のものを抽出
+        // 実際は余計なものも含んでいそうだが、問題にならないのでスルーしている
+        let mut corners = HashSet::new();
+        let mut removed = HashSet::new();
+
+        for voxel in &voxels {
+            for corner in voxel.corners() {
+                if !removed.contains(&corner) {
+                    if corners.remove(&corner) {
+                        removed.insert(corner);
+                    } else {
+                        corners.insert(corner);
+                    }
+                }
+            }
+        }
+
+        corners
     }
 }
 
@@ -173,30 +240,17 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let (voxel_min, voxel_max) =
-                VoxelPosition::get_bounding_box(data, definitions_store, state.show_child_body);
-            let corner_min = (voxel_min.to_vec3() - Vec3::ONE * 0.5) * 0.25;
-            let corner_max = (voxel_max.to_vec3() + Vec3::ONE * 0.5) * 0.25;
+            let voxels = VoxelPosition::get_voxels(data, definitions_store, state.show_child_body);
+            let (voxel_min, voxel_max) = VoxelPosition::get_bounds(&voxels);
+            let corner_min = voxel_min.corner_min().world_pos_lh();
+            let corner_max = voxel_max.corner_max().world_pos_lh();
             let center = (corner_min + corner_max) * 0.5;
 
-            let min_x = corner_min.x;
-            let min_y = corner_min.y;
-            let min_z = corner_min.z;
-            let max_x = corner_max.x;
-            let max_y = corner_max.y;
-            let max_z = corner_max.z;
-            let corners = [
-                Vec3::new(min_x, min_y, min_z),
-                Vec3::new(min_x, max_y, min_z),
-                Vec3::new(min_x, max_y, max_z),
-                Vec3::new(min_x, min_y, max_z),
-                Vec3::new(max_x, min_y, min_z),
-                Vec3::new(max_x, max_y, min_z),
-                Vec3::new(max_x, max_y, max_z),
-                Vec3::new(max_x, min_y, max_z),
-            ];
+            let corners =
+                VoxelCorner::get_outer_corners(HashSet::from_iter(voxels.iter().cloned()));
 
-            camera.center = Vec3::new(center.x, center.y, -center.z);
+            // 中心をバウンディングボックスの中心にしているが、角度により片側に偏って見えてしまうので、できれば直す
+            camera.center = center;
 
             let s = if self.is_orthographic {
                 // 平行投影
@@ -209,7 +263,7 @@ impl AutoCamera {
                         f32::NEG_INFINITY,
                     ),
                     |(min_x, min_y, max_x, max_y), c| {
-                        let s = mat_vp.mul_vec4(Vec4::new(c.x, c.y, -c.z, 1.0));
+                        let s = mat_vp.mul_vec4(c.world_pos_lh().extend(1.0));
                         (
                             min_x.min(s.x),
                             min_y.min(s.y),
@@ -226,15 +280,13 @@ impl AutoCamera {
                 sx.max(sy)
             } else {
                 // 透視投影
-                // 中心をバウンディングボックスの中心にしているが、角度により片側に偏って見えてしまうので、できれば直す
                 let view = camera.mat_view();
                 let tan = (self.fov_y / 2.0).tan();
                 let tan_x = (width - 2.0 * self.margin) / width * tan * aspect_ratio;
                 let tan_y = (height - 2.0 * self.margin) / height * tan;
                 let len = camera.direction.length();
                 corners.iter().fold(0.0, |s: f32, corner| {
-                    let view_point =
-                        view.transform_point3(Vec3::new(corner.x, corner.y, -corner.z));
+                    let view_point = view.transform_point3(corner.world_pos_lh());
                     let dx = (view_point.x.abs() / tan_x) - (-view_point.z);
                     let dy = (view_point.y.abs() / tan_y) - (-view_point.z);
                     let sx = (len + dx) / len;
