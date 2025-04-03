@@ -179,13 +179,13 @@ impl Tab for SaveImageTab {
                                     self.scene.appearance_ui(ui, Id::new("save_image_colors"))
                                         || scene_update;
 
-                                ui.add_space(4.0);
-                                ui.separator();
-                                ui.add_space(4.0);
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    ui.add_space(4.0);
+                                    ui.separator();
+                                    ui.add_space(4.0);
 
-                                if ui.button("Save config").clicked() {
-                                    #[cfg(not(target_arch = "wasm32"))]
-                                    self.save_config(Some(&frame));
+                                    scene_update = self.ui_config_file(ui, frame) || scene_update;
                                 }
                             });
                         });
@@ -399,6 +399,34 @@ impl SaveImageTab {
         });
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ui_config_file(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) -> bool {
+        let mut scene_update = false;
+        StripBuilder::new(ui)
+            .sizes(Size::remainder(), 2)
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    let button = ui.add_sized(
+                        egui::vec2(ui.available_width(), 20.0),
+                        Button::new("Load config"),
+                    );
+                    if button.clicked() {
+                        scene_update = self.load_config(Some(&frame));
+                    }
+                });
+                strip.cell(|ui| {
+                    let button = ui.add_sized(
+                        egui::vec2(ui.available_width(), 20.0),
+                        Button::new("Save config"),
+                    );
+                    if button.clicked() {
+                        self.save_config(Some(&frame));
+                    }
+                });
+            });
+        scene_update
+    }
+
     #[allow(unused_variables)]
     fn ui_button(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let multi_selector = self.definition_select_panel.multi_selector();
@@ -453,17 +481,39 @@ impl SaveImageTab {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
+    fn load_config<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
+        &mut self,
+        dialog_parent: Option<&W>,
+    ) -> bool {
+        use super::file_dialog;
+        use crate::ui::SaveImageConfig;
+        use std::io::BufReader;
+
+        if let Some(path) = file_dialog::load_json_dialog(dialog_parent, Some("config.json")) {
+            if let Ok(file) = std::fs::File::open(path) {
+                let config: serde_json::Result<SaveImageConfig> =
+                    serde_json::from_reader(BufReader::new(file));
+                if let Ok(config) = config {
+                    config.apply(&mut self.auto_camera, &mut self.scene);
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     fn save_config<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
         &self,
         dialog_parent: Option<&W>,
     ) {
         use super::file_dialog;
-        use std::{fs::File, io::Write};
+        use std::io::Write;
 
         let config = super::SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
         if let Ok(json) = serde_json::to_string(&config) {
             if let Some(path) = file_dialog::save_json_dialog(dialog_parent, Some("config.json")) {
-                if let Ok(mut file) = File::create(path) {
+                if let Ok(mut file) = std::fs::File::create(path) {
                     let _ = file.write_all(json.as_bytes());
                 }
             }

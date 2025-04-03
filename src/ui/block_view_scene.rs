@@ -364,8 +364,16 @@ impl BlockViewScene {
         &self.state
     }
 
+    pub fn set_state(&mut self, state: BlockViewState) {
+        self.state = state;
+    }
+
     pub fn appearance(&self) -> &BlockViewAppearance {
         &self.appearance
+    }
+
+    pub fn set_appearance(&mut self, appearance: BlockViewAppearance) {
+        self.appearance = appearance;
     }
 
     fn use_scene<F: FnOnce(MutexGuard<'_, Scene>)>(&mut self, writer: F) {

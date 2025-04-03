@@ -484,4 +484,10 @@ impl SaveImageConfig {
             appearance: scene.appearance().clone(),
         }
     }
+
+    pub fn apply(self, auto_camera: &mut AutoCamera, scene: &mut BlockViewScene) {
+        *auto_camera = self.image;
+        scene.set_state(self.state);
+        scene.set_appearance(self.appearance);
+    }
 }
