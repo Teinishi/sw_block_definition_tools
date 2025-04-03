@@ -360,6 +360,7 @@ impl SaveImageTab {
                 direction_changed |= ui
                     .add(
                         Slider::new(&mut distance, 0.1..=100.0)
+                            .drag_value_speed(0.1)
                             .logarithmic(true)
                             .clamping(egui::SliderClamping::Never),
                     )
