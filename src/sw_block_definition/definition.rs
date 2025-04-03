@@ -72,6 +72,11 @@ impl SwBlockDefinition {
         self.meshes.is_some()
     }
 
+    pub fn unload(&mut self) {
+        self.data = None;
+        self.meshes = None;
+    }
+
     pub fn load_data(&mut self) -> Option<Result<Arc<Definition>, SwBlockDefinitionDataError>> {
         if let Some(rx) = &self.load_data_thread {
             if let Ok(r) = rx.try_recv() {

@@ -30,7 +30,7 @@ impl Default for MainTab {
             definition_select_panel,
             selector_observer_id,
 
-            definition_detail_panel: DefinitionDetailPanel::default(),
+            definition_detail_panel: DefinitionDetailPanel,
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
             window_id: 0,
