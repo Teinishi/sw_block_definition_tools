@@ -9,6 +9,7 @@ use crate::{
         SwBlockDefinitionMeshKey, SwBlockDefinitionMeshes,
     },
 };
+use core::f32;
 use egui::{DragValue, Grid};
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3};
@@ -66,6 +67,10 @@ const BOUNDING_BOX_PHYSICS_LINE_COLOR: Color4 = Color4 {
     a: 1.0,
 };
 
+fn is_propeller(data: &Definition) -> bool {
+    data.definition_type == Some(2)
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
@@ -77,6 +82,7 @@ pub struct BlockViewState {
     pub show_bounding_box_physics: bool,
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     pub mesh_offset: EnumMap<SwBlockDefinitionMeshKey, Vec3>,
+    pub propeller_blade_count: i32,
     pub show_child_body: bool,
 }
 
@@ -97,6 +103,7 @@ impl Default for BlockViewState {
             show_bounding_box_physics: false,
             show_mesh,
             mesh_offset: EnumMap::default(),
+            propeller_blade_count: 4,
             show_child_body: true,
         }
     }
@@ -128,6 +135,17 @@ impl BlockViewState {
                         ui.add_space(20.0);
                         ui_dragvalue_vec_z_inv(ui, &mut self.mesh_offset[key.clone()], 0.01);
                     });
+                    if matches!(key, SwBlockDefinitionMeshKey::Mesh1) && mesh_options.propeller {
+                        ui.horizontal(|ui| {
+                            ui.add_space(20.0);
+                            ui.add(
+                                DragValue::new(&mut self.propeller_blade_count)
+                                    .range(1..=8)
+                                    .speed(0.1),
+                            );
+                            ui.label("Blades");
+                        });
+                    }
                 }
             }
         }
@@ -261,6 +279,7 @@ impl BlockViewAppearance {
 #[derive(Default)]
 pub struct BlockViewStateMeshOptions {
     meshes: EnumMap<SwBlockDefinitionMeshKey, bool>,
+    propeller: bool,
     child: bool,
 }
 
@@ -290,24 +309,33 @@ impl BlockViewStateMeshOptions {
         definition_meshes: &SwBlockDefinitionMeshes,
         data: &Option<Arc<Definition>>,
     ) -> Self {
-        let child = data
-            .as_ref()
-            .map(|d| d.child_name.as_ref().is_some_and(|n| !n.is_empty()))
-            .unwrap_or(false);
+        let (propeller, child) = if let Some(data) = data.as_ref() {
+            (
+                is_propeller(data),
+                data.child_name.as_ref().is_some_and(|n| !n.is_empty()),
+            )
+        } else {
+            (false, false)
+        };
 
         let mut meshes: EnumMap<SwBlockDefinitionMeshKey, bool> = Default::default();
         for (key, value) in meshes.iter_mut() {
             *value = definition_meshes.get_mesh(&key).is_some();
         }
 
-        Self { meshes, child }
+        Self {
+            meshes,
+            propeller,
+            child,
+        }
     }
 
     pub fn or(&mut self, other: &Self) {
         for (key, value) in self.meshes.iter_mut() {
             *value = *value || other.meshes[key];
         }
-        self.child = self.child || other.child
+        self.propeller = self.propeller || other.propeller;
+        self.child = self.child || other.child;
     }
 }
 
@@ -440,13 +468,37 @@ impl BlockViewScene {
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     for m in mesh.as_meshes() {
-                        self.add_object(
-                            SceneObject::from_mesh(
-                                m,
-                                Some(Mat4::from_translation(self.state.mesh_offset[key.clone()])),
-                            )
-                            .apply_transform(&transform),
-                        );
+                        if matches!(key, SwBlockDefinitionMeshKey::Mesh1)
+                            && data.as_ref().map(|d| is_propeller(d)).unwrap_or(false)
+                        {
+                            for i in 0..self.state.propeller_blade_count {
+                                let angle = (i as f32 / self.state.propeller_blade_count as f32)
+                                    * 2.0
+                                    * f32::consts::PI;
+                                self.add_object(
+                                    SceneObject::from_mesh(
+                                        m.clone(),
+                                        Some(
+                                            Mat4::from_translation(
+                                                self.state.mesh_offset[key.clone()],
+                                            )
+                                            .mul_mat4(&Mat4::from_rotation_y(angle)),
+                                        ),
+                                    )
+                                    .apply_transform_left(&transform),
+                                );
+                            }
+                        } else {
+                            self.add_object(
+                                SceneObject::from_mesh(
+                                    m,
+                                    Some(Mat4::from_translation(
+                                        self.state.mesh_offset[key.clone()],
+                                    )),
+                                )
+                                .apply_transform_left(&transform),
+                            );
+                        }
                     }
                 }
             }
@@ -487,10 +539,10 @@ impl BlockViewScene {
                         self.appearance.surface,
                     );
                     if let Some(obj) = mesh_obj {
-                        self.add_object(obj.apply_transform(&transform));
+                        self.add_object(obj.apply_transform_left(&transform));
                     }
                     if let Some(obj) = line_obj {
-                        self.add_object(obj.apply_transform(&transform).set_z_offset(-1.0));
+                        self.add_object(obj.apply_transform_left(&transform).set_z_offset(-1.0));
                     }
                 }
             }
@@ -507,10 +559,14 @@ impl BlockViewScene {
                         )
                         .translucent_objects(mesh_color, line_color, line_width);
                         if let Some(obj) = mesh_obj {
-                            self.add_object(obj.apply_transform(&transform).set_z_offset(-1.0));
+                            self.add_object(
+                                obj.apply_transform_left(&transform).set_z_offset(-1.0),
+                            );
                         }
                         if let Some(obj) = line_obj {
-                            self.add_object(obj.apply_transform(&transform).set_z_offset(-2.0));
+                            self.add_object(
+                                obj.apply_transform_left(&transform).set_z_offset(-2.0),
+                            );
                         }
                     }
                 }
@@ -524,9 +580,11 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
                             .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-4.0));
+                    self.add_object(mesh_obj.apply_transform_left(&transform).set_z_offset(-4.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-5.0));
+                        self.add_object(
+                            line_obj.apply_transform_left(&transform).set_z_offset(-5.0),
+                        );
                     }
                 }
             }
@@ -544,9 +602,11 @@ impl BlockViewScene {
                         *voxel_physics_max,
                     )
                     .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-3.0));
+                    self.add_object(mesh_obj.apply_transform_left(&transform).set_z_offset(-3.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-4.0));
+                        self.add_object(
+                            line_obj.apply_transform_left(&transform).set_z_offset(-4.0),
+                        );
                     }
                 }
             }
@@ -559,9 +619,11 @@ impl BlockViewScene {
                     let (mesh_obj, line_obj) =
                         BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
                             .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform(&transform).set_z_offset(-2.0));
+                    self.add_object(mesh_obj.apply_transform_left(&transform).set_z_offset(-2.0));
                     if let Some(line_obj) = line_obj {
-                        self.add_object(line_obj.apply_transform(&transform).set_z_offset(-3.0));
+                        self.add_object(
+                            line_obj.apply_transform_left(&transform).set_z_offset(-3.0),
+                        );
                     }
                 }
             }

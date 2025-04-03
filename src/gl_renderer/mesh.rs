@@ -1,7 +1,7 @@
 use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
 use glam::Vec3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MeshMaterial {
     Flat,
     #[allow(dead_code)]
@@ -23,7 +23,7 @@ impl MeshMaterial {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Mesh {
     vertices: Vec<MeshVertex>,
     triangles: Vec<[usize; 3]>,
@@ -155,7 +155,7 @@ impl Mesh {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MeshVertex {
     pub position: Vec3,
     pub color: Color4,
