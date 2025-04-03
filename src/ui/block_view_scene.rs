@@ -134,25 +134,32 @@ impl BlockViewState {
         );
 
         for (key, show_option) in mesh_options.meshes {
-            if show_option {
-                ui.checkbox(&mut self.show_mesh[key.clone()], key.ui_name());
-                if self.show_mesh[key.clone()] {
+            if !show_option
+                || self.train_wheel_mode
+                    && matches!(
+                        key,
+                        SwBlockDefinitionMeshKey::Mesh1 | SwBlockDefinitionMeshKey::Mesh2
+                    )
+            {
+                continue;
+            }
+            ui.checkbox(&mut self.show_mesh[key.clone()], key.ui_name());
+            if self.show_mesh[key.clone()] {
+                ui.horizontal(|ui| {
+                    ui.add_space(20.0);
+                    ui_dragvalue_vec_z_inv(ui, &mut self.mesh_offset[key.clone()], 0.01);
+                });
+
+                if matches!(key, SwBlockDefinitionMeshKey::Mesh1) && mesh_options.propeller {
                     ui.horizontal(|ui| {
                         ui.add_space(20.0);
-                        ui_dragvalue_vec_z_inv(ui, &mut self.mesh_offset[key.clone()], 0.01);
+                        ui.add(
+                            DragValue::new(&mut self.propeller_blade_count)
+                                .range(1..=8)
+                                .speed(0.1),
+                        );
+                        ui.label("Blades");
                     });
-
-                    if matches!(key, SwBlockDefinitionMeshKey::Mesh1) && mesh_options.propeller {
-                        ui.horizontal(|ui| {
-                            ui.add_space(20.0);
-                            ui.add(
-                                DragValue::new(&mut self.propeller_blade_count)
-                                    .range(1..=8)
-                                    .speed(0.1),
-                            );
-                            ui.label("Blades");
-                        });
-                    }
                 }
             }
         }
