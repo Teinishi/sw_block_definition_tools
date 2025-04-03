@@ -71,6 +71,10 @@ fn is_propeller(data: &Definition) -> bool {
     data.definition_type == Some(2)
 }
 
+fn is_train_wheel(data: &Definition) -> bool {
+    data.definition_type == Some(36)
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct BlockViewState {
     pub show_xyz_axes: bool,
@@ -83,6 +87,7 @@ pub struct BlockViewState {
     pub show_mesh: EnumMap<SwBlockDefinitionMeshKey, bool>,
     pub mesh_offset: EnumMap<SwBlockDefinitionMeshKey, Vec3>,
     pub propeller_blade_count: i32,
+    pub train_wheel_mode: bool,
     pub show_child_body: bool,
 }
 
@@ -104,6 +109,7 @@ impl Default for BlockViewState {
             show_mesh,
             mesh_offset: EnumMap::default(),
             propeller_blade_count: 4,
+            train_wheel_mode: true,
             show_child_body: true,
         }
     }
@@ -135,6 +141,7 @@ impl BlockViewState {
                         ui.add_space(20.0);
                         ui_dragvalue_vec_z_inv(ui, &mut self.mesh_offset[key.clone()], 0.01);
                     });
+
                     if matches!(key, SwBlockDefinitionMeshKey::Mesh1) && mesh_options.propeller {
                         ui.horizontal(|ui| {
                             ui.add_space(20.0);
@@ -148,6 +155,10 @@ impl BlockViewState {
                     }
                 }
             }
+        }
+
+        if mesh_options.train_wheel {
+            ui.checkbox(&mut self.train_wheel_mode, "Train wheel mode");
         }
 
         if mesh_options.child {
@@ -280,6 +291,7 @@ impl BlockViewAppearance {
 pub struct BlockViewStateMeshOptions {
     meshes: EnumMap<SwBlockDefinitionMeshKey, bool>,
     propeller: bool,
+    train_wheel: bool,
     child: bool,
 }
 
@@ -309,13 +321,14 @@ impl BlockViewStateMeshOptions {
         definition_meshes: &SwBlockDefinitionMeshes,
         data: &Option<Arc<Definition>>,
     ) -> Self {
-        let (propeller, child) = if let Some(data) = data.as_ref() {
+        let (propeller, train_wheel, child) = if let Some(data) = data.as_ref() {
             (
                 is_propeller(data),
+                is_train_wheel(data),
                 data.child_name.as_ref().is_some_and(|n| !n.is_empty()),
             )
         } else {
-            (false, false)
+            (false, false, false)
         };
 
         let mut meshes: EnumMap<SwBlockDefinitionMeshKey, bool> = Default::default();
@@ -326,6 +339,7 @@ impl BlockViewStateMeshOptions {
         Self {
             meshes,
             propeller,
+            train_wheel,
             child,
         }
     }
@@ -335,6 +349,7 @@ impl BlockViewStateMeshOptions {
             *value = *value || other.meshes[key];
         }
         self.propeller = self.propeller || other.propeller;
+        self.train_wheel = self.train_wheel || other.train_wheel;
         self.child = self.child || other.child;
     }
 }
@@ -459,6 +474,11 @@ impl BlockViewScene {
             (None, None)
         };
 
+        let (propeller, train_wheel) = data
+            .as_ref()
+            .map(|d| (is_propeller(d), is_train_wheel(d)))
+            .unwrap_or((false, false));
+
         let mut done = data.is_some() && meshes.is_some();
 
         if let Some(meshes) = meshes {
@@ -468,9 +488,17 @@ impl BlockViewScene {
                 }
                 if let Some(Ok(mesh)) = meshes.get_mesh(&key) {
                     for m in mesh.as_meshes() {
-                        if matches!(key, SwBlockDefinitionMeshKey::Mesh1)
-                            && data.as_ref().map(|d| is_propeller(d)).unwrap_or(false)
+                        if train_wheel
+                            && matches!(
+                                key,
+                                SwBlockDefinitionMeshKey::Mesh1 | SwBlockDefinitionMeshKey::Mesh2
+                            )
                         {
+                            continue;
+                        }
+
+                        if propeller && matches!(key, SwBlockDefinitionMeshKey::Mesh1) {
+                            // プロペラ・ローター系のブレード
                             for i in 0..self.state.propeller_blade_count {
                                 let angle = (i as f32 / self.state.propeller_blade_count as f32)
                                     * 2.0
@@ -488,7 +516,40 @@ impl BlockViewScene {
                                     .apply_transform_left(&transform),
                                 );
                             }
+                        } else if train_wheel
+                            && self.state.train_wheel_mode
+                            && matches!(key, SwBlockDefinitionMeshKey::Mesh0)
+                        {
+                            // 鉄道車輪の車軸
+                            let (count, offset_y) = data
+                                .as_ref()
+                                .map(|d| {
+                                    (
+                                        d.door_side_dist.unwrap_or(1),
+                                        d.wheel_suspension_height.unwrap_or_default(),
+                                    )
+                                })
+                                .unwrap_or((1, Default::default()));
+                            let offset_x_vec: Vec<f32> = match count {
+                                1 => vec![0.0],
+                                2 => vec![1.05, -1.05],
+                                3 => vec![2.122, 0.0, -2.122],
+                                _ => vec![],
+                            };
+                            for offset_x in offset_x_vec {
+                                self.add_object(
+                                    SceneObject::from_mesh(
+                                        m.clone(),
+                                        Some(Mat4::from_translation(
+                                            self.state.mesh_offset[key.clone()]
+                                                + Vec3::new(offset_x, *offset_y, 0.0),
+                                        )),
+                                    )
+                                    .apply_transform_left(&transform),
+                                );
+                            }
                         } else {
+                            // 通常
                             self.add_object(
                                 SceneObject::from_mesh(
                                     m,
