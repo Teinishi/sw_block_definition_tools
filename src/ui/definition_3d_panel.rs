@@ -56,7 +56,7 @@ impl Definition3dPanel {
     }
 
     pub fn reset(&mut self) {
-        self.scene.clear();
+        self.scene.reset();
         self.camera = default_camera();
         self.mesh_loaded = false;
     }
