@@ -1,5 +1,6 @@
 use egui::{Button, DragValue, Rect, UiBuilder};
 use glam::Vec3;
+use std::collections::BTreeSet;
 
 use crate::gl_renderer::Color4;
 
@@ -22,6 +23,22 @@ pub fn fit_size_aspect(size: egui::Vec2, aspect_ratio: f32) -> egui::Vec2 {
 pub fn ui_center(ui: &mut egui::Ui, size: egui::Vec2, add_contents: impl FnOnce(&mut egui::Ui)) {
     let rect = Rect::from_center_size(ui.available_rect_before_wrap().center(), size);
     ui.allocate_new_ui(UiBuilder::new().max_rect(rect), add_contents);
+}
+
+pub fn ui_checkbox_btreeset<K: Ord + Eq>(
+    ui: &mut egui::Ui,
+    set: &mut BTreeSet<K>,
+    value: K,
+    text: impl Into<egui::WidgetText>,
+) -> bool {
+    let mut checked = set.contains(&value);
+    ui.checkbox(&mut checked, text);
+    if checked {
+        set.insert(value);
+    } else {
+        set.remove(&value);
+    }
+    checked
 }
 
 pub fn ui_dragvalue_vec_z_inv(ui: &mut egui::Ui, vec: &mut Vec3, speed: f32) {

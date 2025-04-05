@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
-    sw_block_definition::{Definition, SwBlockDefinitionMeshes, Voxel, VoxelLocationChild},
+    sw_block_definition::{Definition, SwBlockMeshes, Voxel, VoxelLocationChild},
 };
 use glam::Vec3;
 use std::{collections::HashSet, path::PathBuf, sync::Arc, time};
@@ -240,7 +240,8 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let voxels = VoxelPosition::get_voxels(data, definitions_store, state.show_child_body);
+            let voxels =
+                VoxelPosition::get_voxels(data, definitions_store, state.show_child_body());
             let (voxel_min, voxel_max) = VoxelPosition::get_bounds(&voxels);
             let corner_min = voxel_min.corner_min().world_pos_lh();
             let corner_max = voxel_max.corner_max().world_pos_lh();
@@ -299,7 +300,7 @@ impl AutoCamera {
     }
 }
 
-pub type RenderMessageTuple = (Arc<Definition>, Arc<SwBlockDefinitionMeshes>, String);
+pub type RenderMessageTuple = (Arc<Definition>, Arc<SwBlockMeshes>, String);
 
 pub struct ImageRenderer {
     definitions: Vec<DefinitionPointer>,

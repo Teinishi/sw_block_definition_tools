@@ -8,6 +8,8 @@ use std::{
     path::Path,
 };
 
+pub type SwMeshResult = Result<SwMesh, SwMeshFromFileError>;
+
 #[derive(Debug)]
 pub struct SwMesh {
     _mesh_type: SwMeshType,
@@ -111,6 +113,10 @@ impl SwMesh {
                 }
             })
             .collect()
+    }
+
+    pub fn as_combined_mesh(&self) -> gl_renderer::Mesh {
+        gl_renderer::Mesh::combined(self.as_meshes())
     }
 }
 

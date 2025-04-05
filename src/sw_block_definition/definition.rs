@@ -1,9 +1,5 @@
-use super::{
-    sw_mesh::{SwMesh, SwMeshFromFileError},
-    Definition,
-};
+use super::{Definition, SwBlockMeshes};
 use std::{
-    collections::BTreeMap,
     fmt, io,
     path::{Path, PathBuf},
     sync::{mpsc, Arc},
@@ -20,11 +16,11 @@ pub struct SwBlockDefinition {
     #[serde(skip)]
     data: Option<Result<Arc<Definition>, SwBlockDefinitionDataError>>,
     #[serde(skip)]
-    meshes: Option<Arc<SwBlockDefinitionMeshes>>,
+    meshes: Option<Arc<SwBlockMeshes>>,
     #[serde(skip)]
     load_data_thread: Option<mpsc::Receiver<LoadDataResult>>,
     #[serde(skip)]
-    load_mesh_thread: Option<mpsc::Receiver<SwBlockDefinitionMeshes>>,
+    load_mesh_thread: Option<mpsc::Receiver<SwBlockMeshes>>,
 }
 
 impl PartialEq for SwBlockDefinition {
@@ -122,7 +118,7 @@ impl SwBlockDefinition {
         self.data.clone()
     }
 
-    pub fn load_meshes(&mut self) -> Option<Arc<SwBlockDefinitionMeshes>> {
+    pub fn load_meshes(&mut self) -> Option<Arc<SwBlockMeshes>> {
         if let Some(rx) = &self.load_mesh_thread {
             if let Ok(meshes) = rx.try_recv() {
                 self.meshes = Some(Arc::new(meshes));
@@ -138,7 +134,7 @@ impl SwBlockDefinition {
         }
     }
 
-    pub fn load_meshes_block(&mut self) -> Result<Arc<SwBlockDefinitionMeshes>, mpsc::RecvError> {
+    pub fn load_meshes_block(&mut self) -> Result<Arc<SwBlockMeshes>, mpsc::RecvError> {
         if let Some(meshes) = &self.meshes {
             Ok(meshes.clone())
         } else {
@@ -153,12 +149,7 @@ impl SwBlockDefinition {
         }
     }
 
-    pub fn load_data_meshes(
-        &mut self,
-    ) -> (
-        Option<Arc<Definition>>,
-        Option<Arc<SwBlockDefinitionMeshes>>,
-    ) {
+    pub fn load_data_meshes(&mut self) -> (Option<Arc<Definition>>, Option<Arc<SwBlockMeshes>>) {
         (self.load_data().and_then(|d| d.ok()), self.load_meshes())
     }
 
@@ -203,8 +194,7 @@ impl SwBlockDefinition {
 
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
-                tx.send(SwBlockDefinitionMeshes::new(&data, rom_path))
-                    .unwrap();
+                tx.send(SwBlockMeshes::new(&data, rom_path)).unwrap();
             });
 
             self.load_mesh_thread = Some(rx);
@@ -277,75 +267,5 @@ impl fmt::Display for SwBlockDefinitionDataError {
 impl std::error::Error for SwBlockDefinitionDataError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
-    }
-}
-
-#[derive(
-    serde::Deserialize, serde::Serialize, enum_map::Enum, Clone, PartialEq, PartialOrd, Eq, Ord,
-)]
-pub enum SwBlockDefinitionMeshKey {
-    MeshData,
-    Mesh0,
-    Mesh1,
-    Mesh2,
-    MeshEditorOnly,
-}
-
-impl SwBlockDefinitionMeshKey {
-    pub fn xml_name(&self) -> &str {
-        match self {
-            Self::MeshData => "mesh_data_name",
-            Self::Mesh0 => "mesh_0_name",
-            Self::Mesh1 => "mesh_1_name",
-            Self::Mesh2 => "mesh_2_name",
-            Self::MeshEditorOnly => "mesh_editor_only_name",
-        }
-    }
-
-    pub fn ui_name(&self) -> &str {
-        match self {
-            Self::MeshData => "Mesh data",
-            Self::Mesh0 => "Mesh 0",
-            Self::Mesh1 => "Mesh 1",
-            Self::Mesh2 => "Mesh 2",
-            Self::MeshEditorOnly => "Mesh editor only",
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct SwBlockDefinitionMeshes {
-    meshes: BTreeMap<SwBlockDefinitionMeshKey, Result<SwMesh, SwMeshFromFileError>>,
-}
-
-impl SwBlockDefinitionMeshes {
-    pub fn new<P: AsRef<Path>>(data: &Definition, rom_path: P) -> Self {
-        let mut meshes = BTreeMap::new();
-
-        for (key, name) in [
-            (SwBlockDefinitionMeshKey::MeshData, &data.mesh_data_name),
-            (SwBlockDefinitionMeshKey::Mesh0, &data.mesh_0_name),
-            (SwBlockDefinitionMeshKey::Mesh1, &data.mesh_1_name),
-            (SwBlockDefinitionMeshKey::Mesh2, &data.mesh_2_name),
-            (
-                SwBlockDefinitionMeshKey::MeshEditorOnly,
-                &data.mesh_editor_only_name,
-            ),
-        ] {
-            if let Some(name) = name {
-                if !name.is_empty() {
-                    meshes.insert(key, SwMesh::from_file(rom_path.as_ref().join(name)));
-                }
-            }
-        }
-
-        Self { meshes }
-    }
-
-    pub fn get_mesh(
-        &self,
-        key: &SwBlockDefinitionMeshKey,
-    ) -> Option<&Result<SwMesh, SwMeshFromFileError>> {
-        self.meshes.get(key)
     }
 }
