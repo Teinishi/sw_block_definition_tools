@@ -152,66 +152,12 @@ impl SwBlockMeshBuilder {
             })
             .collect();
 
-        let mesh_map: BTreeMap<SwBlockMeshKey, &SwMesh> =
-            BTreeMap::from_iter(self.show_meshes.iter().filter_map(|key| {
-                block_meshes
-                    .meshes
-                    .get(key)
-                    .and_then(|r| r.as_ref().ok())
-                    .map(|sw_mesh| (*key, sw_mesh))
-            }));
-
-        match special_mesh {
-            Some(SwBlockSpecialMesh::Propeller) => {
-                // プロペラ・ローター系のブレード
-                if let Some(mesh1) = mesh_map.get(&SwBlockMeshKey::Mesh1) {
-                    let transform_mesh1 =
-                        Mat4::from_translation(self.mesh_offset[&SwBlockMeshKey::Mesh1]);
-                    result.extend(
-                        build_propeller(self.propeller_blade_count, mesh1.as_combined_mesh())
-                            .into_iter()
-                            .map(|(mesh, transform)| (mesh, transform_mesh1.mul_mat4(&transform))),
-                    );
-                }
-            }
-            Some(SwBlockSpecialMesh::TrainWheel) => {
-                // 鉄道車輪の車軸
-                if let Some(mesh0) = mesh_map.get(&SwBlockMeshKey::Mesh0) {
-                    let count = data.door_side_dist.unwrap_or(1);
-                    let offset_y = data.wheel_suspension_height.unwrap_or_default();
-                    let offset_x_vec: Vec<f32> = match count {
-                        1 => vec![0.0],
-                        2 => vec![1.05, -1.05],
-                        3 => vec![2.122, 0.0, -2.122],
-                        _ => vec![],
-                    };
-                    let transform_mesh0 =
-                        Mat4::from_translation(self.mesh_offset[&SwBlockMeshKey::Mesh0]);
-                    result.extend(offset_x_vec.iter().map(|offset_x| {
-                        let offset = Vec3::new(*offset_x, *offset_y, 0.0);
-                        (
-                            mesh0.as_combined_mesh(),
-                            transform_mesh0.mul_mat4(&Mat4::from_translation(offset)),
-                        )
-                    }));
-                }
-            }
-            Some(SwBlockSpecialMesh::WheelAdvanced) => {}
-            _ => {}
+        if let Some(special_mesh) = special_mesh {
+            special_mesh.build(self, block_meshes, data, &mut result);
         }
 
         result
     }
-}
-
-fn build_propeller(count: i32, mesh1: Mesh) -> Vec<(Mesh, Mat4)> {
-    // プロペラ・ローター系のブレード
-    (0..count)
-        .map(|i| {
-            let angle = (i as f32 / count as f32) * 2.0 * std::f32::consts::PI;
-            (mesh1.clone(), Mat4::from_rotation_y(angle))
-        })
-        .collect()
 }
 
 #[derive(Default)]
@@ -314,6 +260,64 @@ impl SwBlockSpecialMesh {
                 SwBlockMeshKey::Mesh0 | SwBlockMeshKey::Mesh1 | SwBlockMeshKey::Mesh2
             ),
             Self::WheelAdvanced => matches!(mesh_key, SwBlockMeshKey::Mesh0),
+        }
+    }
+
+    fn build(
+        &self,
+        builder: &SwBlockMeshBuilder,
+        block_meshes: &SwBlockMeshes,
+        data: &Definition,
+        result: &mut Vec<(Mesh, Mat4)>,
+    ) {
+        let mesh_map: BTreeMap<SwBlockMeshKey, &SwMesh> =
+            BTreeMap::from_iter(builder.show_meshes.iter().filter_map(|key| {
+                block_meshes
+                    .meshes
+                    .get(key)
+                    .and_then(|r| r.as_ref().ok())
+                    .map(|sw_mesh| (*key, sw_mesh))
+            }));
+
+        match self {
+            Self::Propeller => {
+                // プロペラ・ローター系のブレード
+                if let Some(mesh1) = mesh_map.get(&SwBlockMeshKey::Mesh1) {
+                    let count = builder.propeller_blade_count;
+                    let transform_mesh1 =
+                        Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh1]);
+                    result.extend((0..count).map(|i| {
+                        let angle = (i as f32 / count as f32) * 2.0 * std::f32::consts::PI;
+                        (
+                            mesh1.as_combined_mesh(),
+                            transform_mesh1.mul_mat4(&Mat4::from_rotation_y(angle)),
+                        )
+                    }));
+                }
+            }
+            Self::TrainWheel => {
+                // 鉄道車輪の車軸
+                if let Some(mesh0) = mesh_map.get(&SwBlockMeshKey::Mesh0) {
+                    let count = data.door_side_dist.unwrap_or(1);
+                    let offset_y = data.wheel_suspension_height.unwrap_or_default();
+                    let offset_x_vec: Vec<f32> = match count {
+                        1 => vec![0.0],
+                        2 => vec![1.05, -1.05],
+                        3 => vec![2.122, 0.0, -2.122],
+                        _ => vec![],
+                    };
+                    let transform_mesh0 =
+                        Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh0]);
+                    result.extend(offset_x_vec.iter().map(|offset_x| {
+                        let offset = Vec3::new(*offset_x, *offset_y, 0.0);
+                        (
+                            mesh0.as_combined_mesh(),
+                            transform_mesh0.mul_mat4(&Mat4::from_translation(offset)),
+                        )
+                    }));
+                }
+            }
+            Self::WheelAdvanced => {}
         }
     }
 }

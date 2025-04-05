@@ -123,13 +123,6 @@ impl BlockViewState {
             ui.separator();
         }
         for key in &mesh_options.meshes {
-            /*if enabled_special_meshes.all(|special_mesh| {
-                println!("{:?}", special_mesh);
-                special_mesh.skip(key)
-            }) {
-                continue;
-            }*/
-
             let mut checked = self.mesh_builder.show_meshes.contains(key);
             ui.checkbox(&mut checked, key.ui_name());
             if checked {
@@ -183,7 +176,6 @@ impl BlockViewState {
             );
         }
         if wheel_advanced {
-            ui.separator();
             ui_checkbox_btreeset(
                 ui,
                 &mut self.mesh_builder.special_meshes,
@@ -192,7 +184,6 @@ impl BlockViewState {
             );
         }
         if child {
-            ui.separator();
             ui.checkbox(&mut self.mesh_builder.show_child, "Child body");
         }
 
