@@ -3,7 +3,7 @@ use super::{
     DefinitionDetailPanel, DefinitionSearch, DefinitionSelect, DefinitionSelectPanel,
     DefinitionSingleSelect, DefinitionsStore, State,
 };
-use egui::{Button, CentralPanel, Id, ScrollArea, SidePanel, TopBottomPanel};
+use egui::{Button, CentralPanel, Frame, Id, ScrollArea, SidePanel, TopBottomPanel};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -106,22 +106,19 @@ impl Tab for MainTab {
             });
 
         SidePanel::right("right_panel")
+            .frame(Frame::side_top_panel(&ctx.style()).inner_margin(0.0))
             .resizable(true)
             .default_width(300.0)
             .width_range(80.0..=800.0)
             .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(4.0);
-                    self.definition_3d_panel.ui(
-                        ui,
-                        definitions_store,
-                        self.definition_select_panel.selected_definition(),
-                        self.definition_select_panel
-                            .check_update(self.selector_observer_id)
-                            .unwrap_or(false),
-                    );
-                    ui.add_space(4.0);
-                });
+                self.definition_3d_panel.ui(
+                    ui,
+                    definitions_store,
+                    self.definition_select_panel.selected_definition(),
+                    self.definition_select_panel
+                        .check_update(self.selector_observer_id)
+                        .unwrap_or(false),
+                );
             });
 
         TopBottomPanel::bottom("bottom_panel")

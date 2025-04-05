@@ -3,7 +3,7 @@ use super::{
     BlockViewStateMeshOptions, DefinitionsStore,
 };
 use crate::gl_renderer::{OrbitCamera, SceneRenderer};
-use egui::vec2;
+use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use glam::Vec3;
 use std::sync::Arc;
 
@@ -68,12 +68,61 @@ impl Definition3dPanel {
         selected: Option<DefinitionPointer>,
         select_changed: bool,
     ) {
-        egui::Frame::canvas(ui.style())
-            .fill(egui::Color32::TRANSPARENT)
-            .inner_margin(0.0)
-            .show(ui, |ui| {
-                let s = ui.available_width();
-                let (rect, response) = ui.allocate_exact_size(vec2(s, s), egui::Sense::drag());
+        TopBottomPanel::bottom("definition_3d_panel_bottom")
+            .default_height(250.0)
+            .resizable(true)
+            .show_inside(ui, |ui| {
+                ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.add_space(4.0);
+
+                        let mut data = None;
+                        let mut meshes = None;
+                        if let Some(definition) = &selected {
+                            if let Ok(mut definition) = definition.lock() {
+                                (data, meshes) = definition.load_data_meshes();
+                            }
+                        }
+
+                        let mesh_loaded = meshes.is_some();
+                        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
+                        self.mesh_loaded = mesh_loaded;
+
+                        let mesh_options = if let Some(meshes) = &meshes {
+                            BlockViewStateMeshOptions::from_definition_meshes(
+                                meshes.as_ref(),
+                                &data,
+                            )
+                        } else {
+                            Default::default()
+                        };
+                        let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
+                        if !self.scene_update_done
+                            || mesh_loaded_now
+                            || select_changed
+                            || scene_state_changed
+                        {
+                            if let Some(definition) = &selected {
+                                self.scene_update_done =
+                                    self.scene.update(definition, definitions_store);
+                            }
+                        }
+
+                        ui.add_space(4.0);
+                    });
+            });
+
+        CentralPanel::default()
+            .frame(
+                egui::Frame::new()
+                    .inner_margin(0.0)
+                    .fill(egui::Color32::TRANSPARENT),
+            )
+            .show_inside(ui, |ui| {
+                let (rect, response) =
+                    ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
+                self.camera.set_aspect_ratio(rect.width() / rect.height());
                 self.camera.control(ui, response, true, true, true);
                 if let Some(renderer) = &self.renderer {
                     paint_canvas_3d(
@@ -85,29 +134,5 @@ impl Definition3dPanel {
                     );
                 }
             });
-
-        let mut data = None;
-        let mut meshes = None;
-        if let Some(definition) = &selected {
-            if let Ok(mut definition) = definition.lock() {
-                (data, meshes) = definition.load_data_meshes();
-            }
-        }
-
-        let mesh_loaded = meshes.is_some();
-        let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
-        self.mesh_loaded = mesh_loaded;
-
-        let mesh_options = if let Some(meshes) = &meshes {
-            BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data)
-        } else {
-            Default::default()
-        };
-        let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
-        if !self.scene_update_done || mesh_loaded_now || select_changed || scene_state_changed {
-            if let Some(definition) = &selected {
-                self.scene_update_done = self.scene.update(definition, definitions_store);
-            }
-        }
     }
 }
