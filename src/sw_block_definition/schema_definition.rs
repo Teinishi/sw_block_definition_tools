@@ -126,7 +126,7 @@ pub struct Definition {
     #[serde(rename = "@wheel_wishbone_offset")]
     pub wheel_wishbone_offset: Option<Of32>,
     #[serde(rename = "@wheel_type")]
-    pub wheel_type: Option<Of32>,
+    pub wheel_type: Option<i32>,
     #[serde(rename = "@button_type")]
     pub button_type: Option<i32>,
     #[serde(rename = "@light_intensity")]

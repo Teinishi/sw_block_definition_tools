@@ -141,6 +141,7 @@ impl BlockViewState {
         }
 
         let propeller = mesh_options.propeller();
+        let wheel_old = mesh_options.wheel_old();
         let train_wheel = mesh_options.train_wheel();
         let wheel_advanced = mesh_options.wheel_advanced();
         let child = mesh_options.child();
@@ -166,6 +167,14 @@ impl BlockViewState {
                     ui.label("Blades");
                 });
             }
+        }
+        if wheel_old {
+            ui_checkbox_btreeset(
+                ui,
+                &mut self.mesh_builder.special_meshes,
+                SwBlockSpecialMesh::Wheel,
+                "Wheel (old) mode",
+            );
         }
         if train_wheel {
             ui_checkbox_btreeset(
@@ -384,6 +393,10 @@ impl BlockViewStateMeshOptions {
 
     fn propeller(&self) -> bool {
         self.special_meshes.contains(&SwBlockSpecialMesh::Propeller)
+    }
+
+    fn wheel_old(&self) -> bool {
+        self.special_meshes.contains(&SwBlockSpecialMesh::Wheel)
     }
 
     fn train_wheel(&self) -> bool {
