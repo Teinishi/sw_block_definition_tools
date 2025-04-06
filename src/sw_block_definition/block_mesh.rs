@@ -1,6 +1,6 @@
 use super::{Definition, SwMesh, SwMeshResult};
 use crate::gl_renderer::Mesh;
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec3Swizzles};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
@@ -72,7 +72,6 @@ impl SwBlockMeshKey {
     Ord,
 )]
 enum SwWheelAdvancedMeshKey {
-    Base,
     Plate,
     M,
     L,
@@ -85,7 +84,6 @@ enum SwWheelAdvancedMeshKey {
 impl SwWheelAdvancedMeshKey {
     pub fn name(&self) -> &str {
         match self {
-            Self::Base => "base",
             Self::Plate => "plate",
             Self::M => "m",
             Self::L => "l",
@@ -270,22 +268,17 @@ impl SwBlockSpecialMesh {
         data: &Definition,
         result: &mut Vec<(Mesh, Mat4)>,
     ) {
-        let mesh_map: BTreeMap<SwBlockMeshKey, &SwMesh> =
-            BTreeMap::from_iter(builder.show_meshes.iter().filter_map(|key| {
-                block_meshes
-                    .meshes
-                    .get(key)
-                    .and_then(|r| r.as_ref().ok())
-                    .map(|sw_mesh| (*key, sw_mesh))
-            }));
+        let show_mesh0 = builder.show_meshes.contains(&SwBlockMeshKey::Mesh0);
+        let show_mesh1 = builder.show_meshes.contains(&SwBlockMeshKey::Mesh1);
+
+        let transform_mesh0 = Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh0]);
+        let transform_mesh1 = Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh1]);
 
         match self {
-            Self::Propeller => {
+            Self::Propeller if show_mesh1 => {
                 // プロペラ・ローター系のブレード
-                if let Some(mesh1) = mesh_map.get(&SwBlockMeshKey::Mesh1) {
+                if let Some(Ok(mesh1)) = block_meshes.meshes.get(&SwBlockMeshKey::Mesh1) {
                     let count = builder.propeller_blade_count;
-                    let transform_mesh1 =
-                        Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh1]);
                     result.extend((0..count).map(|i| {
                         let angle = (i as f32 / count as f32) * 2.0 * std::f32::consts::PI;
                         (
@@ -295,9 +288,9 @@ impl SwBlockSpecialMesh {
                     }));
                 }
             }
-            Self::TrainWheel => {
+            Self::TrainWheel if show_mesh0 => {
                 // 鉄道車輪の車軸
-                if let Some(mesh0) = mesh_map.get(&SwBlockMeshKey::Mesh0) {
+                if let Some(Ok(mesh0)) = block_meshes.meshes.get(&SwBlockMeshKey::Mesh0) {
                     let count = data.door_side_dist.unwrap_or(1);
                     let offset_y = data.wheel_suspension_height.unwrap_or_default();
                     let offset_x_vec: Vec<f32> = match count {
@@ -306,8 +299,6 @@ impl SwBlockSpecialMesh {
                         3 => vec![2.122, 0.0, -2.122],
                         _ => vec![],
                     };
-                    let transform_mesh0 =
-                        Mat4::from_translation(builder.mesh_offset[&SwBlockMeshKey::Mesh0]);
                     result.extend(offset_x_vec.iter().map(|offset_x| {
                         let offset = Vec3::new(*offset_x, *offset_y, 0.0);
                         (
@@ -317,7 +308,116 @@ impl SwBlockSpecialMesh {
                     }));
                 }
             }
-            Self::WheelAdvanced => {}
+            Self::WheelAdvanced if show_mesh0 => {
+                // タイヤ
+                let no_suspension = (data.flags.unwrap_or(0) >> 23) & 1 != 0;
+                let radius = notnan_unwrap(data.wheel_radius, 0.0);
+                let _width = notnan_unwrap(data.wheel_width, 0.0);
+                let suspension_offset = notnan_unwrap(data.wheel_suspension_offset, 0.25);
+                let suspension_height = notnan_unwrap(data.wheel_suspension_height, 1.0);
+                let wishbone_offset = notnan_unwrap(data.wheel_wishbone_offset, 0.0);
+                let wishbone_length = notnan_unwrap(data.wheel_wishbone_length, 1.25);
+                let wishbone_margin = notnan_unwrap(data.wheel_wishbone_margin, 0.085);
+
+                let property_wheel_size = 1.0; // ゲーム内の Tyre Radius
+                let wheel_scale =
+                    (radius != 0.0).then(|| 1.0 + 0.125 * (property_wheel_size - 1.0) / radius);
+
+                let wishbone_offset_vec = Vec3::new(0.0, -0.125, -0.125 - wishbone_offset);
+                let suspension_pivot_1 = wishbone_offset_vec
+                    + Vec3::new(0.0, suspension_offset, suspension_height - wishbone_margin);
+                let suspension_pivot_2 = wishbone_offset_vec
+                    + Vec3::new(0.0, wishbone_length - wishbone_margin, wishbone_margin);
+                let suspension_pivot_3 = wishbone_offset_vec
+                    + Vec3::new(
+                        0.0,
+                        wishbone_length - 2.0 * wishbone_margin,
+                        wishbone_margin,
+                    );
+
+                let suspension_angle =
+                    glam::Vec2::Y.angle_to((suspension_pivot_3 - suspension_pivot_1).zy());
+                let suspension_rotation = Mat4::from_rotation_x(-suspension_angle);
+
+                if let Some(Ok(mesh_m)) = block_meshes
+                    .wheel_advanced_meshes
+                    .get(&SwWheelAdvancedMeshKey::M)
+                {
+                    // タイヤ本体
+                    let constraint_pos_parent = data
+                        .constraint_pos_parent
+                        .last()
+                        .map(|v| std::convert::Into::<Vec3>::into(*v))
+                        .unwrap_or_default();
+
+                    if let Some(scale) = wheel_scale {
+                        result.push((
+                            mesh_m.as_combined_mesh(),
+                            transform_mesh0
+                                .mul_mat4(&Mat4::from_translation(constraint_pos_parent))
+                                .mul_mat4(&Mat4::from_scale(scale * Vec3::ONE)),
+                        ));
+                    }
+                }
+
+                if !no_suspension {
+                    if let Some(Ok(mesh_plate)) = block_meshes
+                        .wheel_advanced_meshes
+                        .get(&SwWheelAdvancedMeshKey::Plate)
+                    {
+                        // タイヤ裏のプレート
+                        result.push((mesh_plate.as_combined_mesh(), transform_mesh0));
+                    }
+
+                    if let Some(Ok(mesh_sus_base)) = block_meshes
+                        .wheel_advanced_meshes
+                        .get(&SwWheelAdvancedMeshKey::SusBase)
+                    {
+                        // サスペンションの基部側
+                        let transform = Mat4::from_translation(suspension_pivot_1)
+                            .mul_mat4(&suspension_rotation);
+                        result.push((
+                            mesh_sus_base.as_combined_mesh(),
+                            transform_mesh0.mul_mat4(&transform),
+                        ));
+                    }
+
+                    if let Some(Ok(mesh_sus_spring)) = block_meshes
+                        .wheel_advanced_meshes
+                        .get(&SwWheelAdvancedMeshKey::SusSpring)
+                    {
+                        // サスペンションのタイヤ側
+                        let transform = Mat4::from_translation(suspension_pivot_2)
+                            .mul_mat4(&suspension_rotation);
+                        result.push((
+                            mesh_sus_spring.as_combined_mesh(),
+                            transform_mesh0.mul_mat4(&transform),
+                        ));
+                    }
+
+                    if let Some(Ok(mesh_wishbone)) = block_meshes
+                        .wheel_advanced_meshes
+                        .get(&SwWheelAdvancedMeshKey::Wishbone)
+                    {
+                        // 基部とプレートを繋ぐパーツ
+                        let transform = Mat4::from_translation(
+                            wishbone_offset_vec + Vec3::new(0.0, wishbone_margin, wishbone_margin),
+                        );
+                        result.push((
+                            mesh_wishbone.as_combined_mesh(),
+                            transform_mesh0.mul_mat4(&transform),
+                        ));
+                    }
+                }
+            }
+            _ => {}
         }
     }
+}
+
+fn notnan_unwrap<T: ordered_float::FloatCore>(
+    value: Option<ordered_float::NotNan<T>>,
+    default: T,
+) -> T {
+    value.map(|v| *v).unwrap_or(default)
 }
