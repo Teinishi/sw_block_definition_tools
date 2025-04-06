@@ -101,6 +101,23 @@ impl SwWheelAdvancedMeshKey {
     }
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+pub enum SwWheelAdvancedType {
+    AllRound,
+    HighSpeed,
+    HighGrip,
+}
+
+impl SwWheelAdvancedType {
+    fn mesh_key(&self) -> SwWheelAdvancedMeshKey {
+        match self {
+            Self::AllRound => SwWheelAdvancedMeshKey::M,
+            Self::HighSpeed => SwWheelAdvancedMeshKey::H,
+            Self::HighGrip => SwWheelAdvancedMeshKey::L,
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
 pub struct SwBlockMeshBuilder {
     pub show_meshes: BTreeSet<SwBlockMeshKey>,
@@ -108,6 +125,9 @@ pub struct SwBlockMeshBuilder {
     pub show_child: bool,
     pub special_meshes: BTreeSet<SwBlockSpecialMesh>,
     pub propeller_blade_count: i32,
+    pub wheel_advanced_type: SwWheelAdvancedType,
+    pub wheel_advanced_size: f32,
+    pub wheel_advanced_double: bool,
 }
 
 impl Default for SwBlockMeshBuilder {
@@ -122,6 +142,9 @@ impl Default for SwBlockMeshBuilder {
             show_child: true,
             special_meshes: BTreeSet::from_iter(SwBlockSpecialMesh::VARIANTS.iter().cloned()),
             propeller_blade_count: 4,
+            wheel_advanced_type: SwWheelAdvancedType::AllRound,
+            wheel_advanced_size: 1.0,
+            wheel_advanced_double: false,
         }
     }
 }
@@ -312,16 +335,16 @@ impl SwBlockSpecialMesh {
                 // タイヤ
                 let no_suspension = (data.flags.unwrap_or(0) >> 23) & 1 != 0;
                 let radius = notnan_unwrap(data.wheel_radius, 0.0);
-                let _width = notnan_unwrap(data.wheel_width, 0.0);
+                let width = notnan_unwrap(data.wheel_width, 0.0);
                 let suspension_offset = notnan_unwrap(data.wheel_suspension_offset, 0.25);
                 let suspension_height = notnan_unwrap(data.wheel_suspension_height, 1.0);
                 let wishbone_offset = notnan_unwrap(data.wheel_wishbone_offset, 0.0);
                 let wishbone_length = notnan_unwrap(data.wheel_wishbone_length, 1.25);
                 let wishbone_margin = notnan_unwrap(data.wheel_wishbone_margin, 0.085);
 
-                let property_wheel_size = 1.0; // ゲーム内の Tyre Radius
-                let wheel_scale =
-                    (radius != 0.0).then(|| 1.0 + 0.125 * (property_wheel_size - 1.0) / radius);
+                let wheel_mesh_key = builder.wheel_advanced_type.mesh_key();
+                let wheel_scale = (radius != 0.0)
+                    .then(|| 1.0 + 0.125 * (builder.wheel_advanced_size - 1.0) / radius);
 
                 let wishbone_offset_vec = Vec3::new(0.0, -0.125, -0.125 - wishbone_offset);
                 let suspension_pivot_1 = wishbone_offset_vec
@@ -339,24 +362,32 @@ impl SwBlockSpecialMesh {
                     glam::Vec2::Y.angle_to((suspension_pivot_3 - suspension_pivot_1).zy());
                 let suspension_rotation = Mat4::from_rotation_x(-suspension_angle);
 
-                if let Some(Ok(mesh_m)) = block_meshes
-                    .wheel_advanced_meshes
-                    .get(&SwWheelAdvancedMeshKey::M)
-                {
+                if let Some(Ok(mesh_m)) = block_meshes.wheel_advanced_meshes.get(&wheel_mesh_key) {
                     // タイヤ本体
-                    let constraint_pos_parent = data
+                    let position = data
                         .constraint_pos_parent
                         .last()
                         .map(|v| std::convert::Into::<Vec3>::into(*v))
-                        .unwrap_or_default();
+                        .unwrap_or_default()
+                        - wishbone_offset * Vec3::Z;
 
                     if let Some(scale) = wheel_scale {
                         result.push((
                             mesh_m.as_combined_mesh(),
                             transform_mesh0
-                                .mul_mat4(&Mat4::from_translation(constraint_pos_parent))
+                                .mul_mat4(&Mat4::from_translation(position))
                                 .mul_mat4(&Mat4::from_scale(scale * Vec3::ONE)),
                         ));
+                        if builder.wheel_advanced_double {
+                            result.push((
+                                mesh_m.as_combined_mesh(),
+                                transform_mesh0
+                                    .mul_mat4(&Mat4::from_translation(
+                                        position + width * scale * Vec3::Y,
+                                    ))
+                                    .mul_mat4(&Mat4::from_scale(scale * Vec3::ONE)),
+                            ));
+                        }
                     }
                 }
 

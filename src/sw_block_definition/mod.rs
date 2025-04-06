@@ -1,7 +1,9 @@
 mod definition;
 pub use definition::SwBlockDefinition;
 mod block_mesh;
-pub use block_mesh::{SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh};
+pub use block_mesh::{
+    SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
+};
 mod attribute_value;
 pub use attribute_value::{
     AttributeType, AttributeValue, DefinitionVec3, DisplayAttributeValue, IsDefault, Matrix, Of32,

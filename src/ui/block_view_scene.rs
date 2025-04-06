@@ -8,11 +8,11 @@ use crate::{
     gl_renderer::{Color4, Line, Scene, SceneObject},
     sw_block_definition::{
         BoundingBoxObjectBuilder, Definition, DefinitionVec3, SurfaceObjectBuilder,
-        SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh,
+        SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
     },
 };
 use core::f32;
-use egui::{DragValue, Grid};
+use egui::{DragValue, Grid, Slider};
 use glam::{Mat4, Vec3};
 use std::{
     collections::BTreeSet,
@@ -149,13 +149,13 @@ impl BlockViewState {
             ui.separator();
         }
         if propeller {
-            let propeller = ui_checkbox_btreeset(
+            let checked = ui_checkbox_btreeset(
                 ui,
                 &mut self.mesh_builder.special_meshes,
                 SwBlockSpecialMesh::Propeller,
                 "Propeller mode",
             );
-            if propeller {
+            if checked {
                 ui.horizontal(|ui| {
                     ui.add_space(20.0);
                     ui.add(
@@ -176,12 +176,44 @@ impl BlockViewState {
             );
         }
         if wheel_advanced {
-            ui_checkbox_btreeset(
+            let checked = ui_checkbox_btreeset(
                 ui,
                 &mut self.mesh_builder.special_meshes,
                 SwBlockSpecialMesh::WheelAdvanced,
                 "Wheel mode",
             );
+            if checked {
+                ui.horizontal(|ui: &mut egui::Ui| {
+                    ui.add_space(20.0);
+                    ui.selectable_value(
+                        &mut self.mesh_builder.wheel_advanced_type,
+                        SwWheelAdvancedType::AllRound,
+                        "All round",
+                    );
+                    ui.selectable_value(
+                        &mut self.mesh_builder.wheel_advanced_type,
+                        SwWheelAdvancedType::HighSpeed,
+                        "High speed",
+                    );
+                    ui.selectable_value(
+                        &mut self.mesh_builder.wheel_advanced_type,
+                        SwWheelAdvancedType::HighGrip,
+                        "High grip",
+                    );
+                });
+                ui.horizontal(|ui: &mut egui::Ui| {
+                    ui.add_space(20.0);
+                    ui.label("Tyre radius");
+                    ui.add(
+                        Slider::new(&mut self.mesh_builder.wheel_advanced_size, 0.0..=2.0)
+                            .step_by(0.5),
+                    );
+                });
+                ui.horizontal(|ui: &mut egui::Ui| {
+                    ui.add_space(20.0);
+                    ui.checkbox(&mut self.mesh_builder.wheel_advanced_double, "Double wheel");
+                });
+            }
         }
         if child {
             ui.checkbox(&mut self.mesh_builder.show_child, "Child body");
