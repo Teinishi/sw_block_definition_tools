@@ -46,7 +46,6 @@ impl DefinitionDetailPanel {
 
         if let Ok(mut definition) = definition.lock() {
             let filename = definition.filename();
-            let path = definition.path().clone();
             let mut refresh = false;
 
             match definition.load_data() {
@@ -64,7 +63,7 @@ impl DefinitionDetailPanel {
                             {
                                 ui.add_space(10.0);
                                 if ui.button("Open").clicked() {
-                                    let _ = open::that(path);
+                                    let _ = open::that(definition.path());
                                 }
                             }
                         },
