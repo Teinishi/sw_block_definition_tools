@@ -29,4 +29,4 @@ pub use surface_mesh::SurfaceObjectBuilder;
 mod bounding_box_mesh;
 pub use bounding_box_mesh::BoundingBoxObjectBuilder;
 mod sw_mesh;
-pub use sw_mesh::{SwMesh, SwMeshResult};
+pub use sw_mesh::{SwMesh, SwMeshResult, SwSubmesh};

@@ -12,14 +12,14 @@ pub type SwMeshResult = Result<SwMesh, SwMeshFromFileError>;
 
 #[derive(Debug)]
 pub struct SwMesh {
-    _mesh_type: SwMeshType,
-    _vertex_count: u16,
-    vertices: Vec<SwMeshVertex>,
-    _index_count: u32,
-    _triangle_count: u32,
-    triangles: Vec<SwMeshTriangle>,
-    _submesh_count: u16,
-    submeshes: Vec<SwSubmesh>,
+    pub _mesh_type: SwMeshType,
+    pub _vertex_count: u16,
+    pub vertices: Vec<SwMeshVertex>,
+    pub _index_count: u32,
+    pub _triangle_count: u32,
+    pub triangles: Vec<SwMeshTriangle>,
+    pub _submesh_count: u16,
+    pub submeshes: Vec<SwSubmesh>,
 }
 
 impl SwMesh {
@@ -85,39 +85,6 @@ impl SwMesh {
             submeshes,
         })
     }
-
-    pub fn as_meshes(&self) -> Vec<gl_renderer::Mesh> {
-        self.submeshes
-            .iter()
-            .map(|submesh| {
-                let start_index = submesh.index_buffer_start / 3;
-                let end_index = start_index + submesh.index_buffer_length / 3;
-
-                let mut vertices: Vec<gl_renderer::MeshVertex> = Vec::new();
-                let mut triangles = Vec::new();
-
-                for triangle_index in start_index..end_index {
-                    let indices = &self.triangles[triangle_index as usize].as_usize_arr();
-                    let vertex_index = vertices.len();
-                    for i in indices {
-                        vertices.push(self.vertices[*i].as_mesh_vertex());
-                    }
-                    triangles.push([vertex_index, vertex_index + 1, vertex_index + 2]);
-                }
-
-                let mesh = gl_renderer::Mesh::new(vertices, triangles);
-                match submesh.shader_id {
-                    1 => mesh.glass(),
-                    2 => mesh.additive(),
-                    _ => mesh,
-                }
-            })
-            .collect()
-    }
-
-    pub fn as_combined_mesh(&self) -> gl_renderer::Mesh {
-        gl_renderer::Mesh::combined(self.as_meshes())
-    }
 }
 
 #[derive(Debug)]
@@ -157,9 +124,9 @@ impl From<std::str::Utf8Error> for SwMeshFromFileError {
 
 #[derive(Debug)]
 pub struct SwMeshVertex {
-    position: SwMeshVec3,
-    color: SwMeshColor4,
-    normal: SwMeshVec3,
+    pub position: SwMeshVec3,
+    pub color: SwMeshColor4,
+    pub normal: SwMeshVec3,
 }
 
 impl SwMeshVertex {
@@ -205,13 +172,13 @@ impl SwMeshTriangle {
 
 #[derive(Debug)]
 pub struct SwSubmesh {
-    index_buffer_start: u32,
-    index_buffer_length: u32,
-    shader_id: u16,
-    _bounds_min: SwMeshVec3,
-    _bounds_max: SwMeshVec3,
-    _name_len: u16,
-    _name: Result<String, std::string::FromUtf8Error>,
+    pub index_buffer_start: u32,
+    pub index_buffer_length: u32,
+    pub shader_id: u16,
+    pub _bounds_min: SwMeshVec3,
+    pub _bounds_max: SwMeshVec3,
+    pub _name_len: u16,
+    pub _name: Result<String, std::string::FromUtf8Error>,
 }
 
 impl SwSubmesh {
@@ -253,6 +220,12 @@ impl SwSubmesh {
             _name_len: name_len,
             _name: String::from_utf8(name),
         })
+    }
+
+    pub fn index_buffer_range(&self) -> std::ops::Range<u32> {
+        let start_index = self.index_buffer_start / 3;
+        let end_index = start_index + self.index_buffer_length / 3;
+        start_index..end_index
     }
 }
 

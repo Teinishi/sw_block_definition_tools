@@ -1,4 +1,4 @@
-use crate::gl_renderer::{Color4, Line, Mesh, SceneObject};
+use crate::gl_renderer::{Color4, Line, Mesh, SceneObject, Submesh};
 use glam::Vec3;
 
 pub struct BoundingBoxObjectBuilder {
@@ -64,12 +64,12 @@ impl BoundingBoxObjectBuilder {
 
         (
             SceneObject::from_mesh(
-                Mesh::single_color_lh(
+                Mesh::from_submeshes(vec![Submesh::single_color_lh(
                     positions.clone(),
                     quads.iter().map(|q| q.as_slice()).collect(),
                     mesh_color,
                 )
-                .flat(),
+                .flat()]),
                 None,
             ),
             (line_width > 0.0).then(|| {

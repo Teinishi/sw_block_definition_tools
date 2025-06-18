@@ -164,7 +164,7 @@ impl SwBlockMeshBuilder {
                     None
                 } else if let Some(Ok(sw_mesh)) = &block_meshes.meshes.get(key) {
                     Some((
-                        sw_mesh.as_combined_mesh(),
+                        Mesh::from_sw_mesh(sw_mesh),
                         Mat4::from_translation(self.mesh_offset[key]),
                     ))
                 } else {
@@ -308,7 +308,7 @@ impl SwBlockSpecialMesh {
                     result.extend((0..count).map(|i| {
                         let angle = (i as f32 / count as f32) * 2.0 * std::f32::consts::PI;
                         (
-                            mesh1.as_combined_mesh(),
+                            Mesh::from_sw_mesh(mesh1),
                             transform_mesh1.mul_mat4(&Mat4::from_rotation_y(angle)),
                         )
                     }));
@@ -324,7 +324,7 @@ impl SwBlockSpecialMesh {
                         .unwrap_or_default();
 
                     result.push((
-                        mesh0.as_combined_mesh(),
+                        Mesh::from_sw_mesh(mesh0),
                         transform_mesh0.mul_mat4(&Mat4::from_translation(position)),
                     ));
                 }
@@ -343,7 +343,7 @@ impl SwBlockSpecialMesh {
                     result.extend(offset_x_vec.iter().map(|offset_x| {
                         let offset = Vec3::new(*offset_x, *offset_y, 0.0);
                         (
-                            mesh0.as_combined_mesh(),
+                            Mesh::from_sw_mesh(mesh0),
                             transform_mesh0.mul_mat4(&Mat4::from_translation(offset)),
                         )
                     }));
@@ -370,7 +370,7 @@ impl SwBlockSpecialMesh {
                             .map(|v| std::convert::Into::<Vec3>::into(*v))
                             .unwrap_or_default();
                         result.push((
-                            mesh0.as_combined_mesh(),
+                            Mesh::from_sw_mesh(mesh0),
                             transform_mesh0.mul_mat4(&Mat4::from_translation(position)),
                         ));
                     }
@@ -408,14 +408,14 @@ impl SwBlockSpecialMesh {
 
                         if let Some(scale) = wheel_scale {
                             result.push((
-                                mesh_m.as_combined_mesh(),
+                            Mesh::from_sw_mesh(mesh_m),
                                 transform_mesh0
                                     .mul_mat4(&Mat4::from_translation(position))
                                     .mul_mat4(&Mat4::from_scale(scale * Vec3::ONE)),
                             ));
                             if builder.wheel_advanced_double {
                                 result.push((
-                                    mesh_m.as_combined_mesh(),
+                            Mesh::from_sw_mesh(mesh_m),
                                     transform_mesh0
                                         .mul_mat4(&Mat4::from_translation(
                                             position + width * scale * Vec3::Y,
@@ -432,7 +432,7 @@ impl SwBlockSpecialMesh {
                             .get(&SwWheelAdvancedMeshKey::Plate)
                         {
                             // タイヤ裏のプレート
-                            result.push((mesh_plate.as_combined_mesh(), transform_mesh0));
+                            result.push((Mesh::from_sw_mesh(mesh_plate), transform_mesh0));
                         }
 
                         if let Some(Ok(mesh_sus_base)) = block_meshes
@@ -443,7 +443,7 @@ impl SwBlockSpecialMesh {
                             let transform = Mat4::from_translation(suspension_pivot_1)
                                 .mul_mat4(&suspension_rotation);
                             result.push((
-                                mesh_sus_base.as_combined_mesh(),
+                                Mesh::from_sw_mesh(mesh_sus_base),
                                 transform_mesh0.mul_mat4(&transform),
                             ));
                         }
@@ -456,7 +456,7 @@ impl SwBlockSpecialMesh {
                             let transform = Mat4::from_translation(suspension_pivot_2)
                                 .mul_mat4(&suspension_rotation);
                             result.push((
-                                mesh_sus_spring.as_combined_mesh(),
+                                Mesh::from_sw_mesh(mesh_sus_spring),
                                 transform_mesh0.mul_mat4(&transform),
                             ));
                         }
@@ -471,7 +471,7 @@ impl SwBlockSpecialMesh {
                                     + Vec3::new(0.0, wishbone_margin, wishbone_margin),
                             );
                             result.push((
-                                mesh_wishbone.as_combined_mesh(),
+                                Mesh::from_sw_mesh(mesh_wishbone),
                                 transform_mesh0.mul_mat4(&transform),
                             ));
                         }

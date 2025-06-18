@@ -97,40 +97,31 @@ impl SceneRenderer {
         let camera_position = camera.position();
 
         if let Some(scene) = self.scene.lock().unwrap().paint() {
-            match update_vaos(&self.programs, gl, scene) {
+            match update_vaos(gl, &self.programs, scene) {
                 Ok(vaos) => self.vaos = vaos,
                 Err(mes) => self.render_error = Some(mes),
             }
         }
 
-        let mut vaos: Vec<(i32, bool, &VaoContainer)> = self
-            .vaos
-            .iter()
-            .map(|vao_container| {
-                (
-                    vao_container.config.shader_type.render_order(),
-                    vao_container.config.shader_type.is_translucent(),
-                    vao_container,
-                )
-            })
-            .collect();
         // 不透明オブジェクトを先に、半透明オブジェクトはカメラから遠い順に描画
         // 同一VAO内で重なっていた場合はどうにもならんが、そうなることはたぶんない
+        let mut vaos: Vec<&VaoContainer> = self.vaos.iter().collect();
         vaos.sort_by(|a, b| {
-            a.0.cmp(&b.0).then_with(|| {
-                if a.1 || b.1 {
-                    b.2.z_offset
-                        .partial_cmp(&a.2.z_offset)
-                        .unwrap()
-                        .then_with(|| {
-                            let da = (a.2.center - camera_position).length();
-                            let db = (b.2.center - camera_position).length();
-                            db.partial_cmp(&da).unwrap()
-                        })
-                } else {
-                    std::cmp::Ordering::Equal
-                }
-            })
+            let shader_type_a = &a.config.shader_type;
+            let shader_type_b = &b.config.shader_type;
+            shader_type_a
+                .render_order()
+                .cmp(&shader_type_b.render_order())
+                .then_with(|| {
+                    if !(shader_type_a.is_translucent() || shader_type_b.is_translucent()) {
+                        return std::cmp::Ordering::Equal;
+                    }
+                    b.z_offset.partial_cmp(&a.z_offset).unwrap().then_with(|| {
+                        let da = (a.center - camera_position).length();
+                        let db = (b.center - camera_position).length();
+                        db.partial_cmp(&da).unwrap()
+                    })
+                })
         });
 
         unsafe {
@@ -147,7 +138,7 @@ impl SceneRenderer {
             #[cfg(not(target_arch = "wasm32"))]
             gl.enable(glow::MULTISAMPLE);
 
-            for (_, _, vao_container) in vaos {
+            for vao_container in vaos {
                 let program = self.programs[vao_container.config.shader_type];
 
                 gl.use_program(Some(program));
@@ -201,26 +192,28 @@ impl SceneRenderer {
 }
 
 fn update_vaos(
-    programs: &EnumMap<ShaderType, glow::Program>,
     gl: &glow::Context,
+    programs: &EnumMap<ShaderType, glow::Program>,
     scene: &Scene,
 ) -> Result<Vec<VaoContainer>, String> {
     scene
         .objects()
         .iter()
-        .map(|object| {
-            let config = object.gl_config();
-            let (vao, vertex_count) =
-                object.create_vertex_buffer(gl, &programs[config.shader_type])?;
-            let transform = object.transform_matrix();
-            Ok(VaoContainer {
-                vao,
-                transform: *transform,
-                vertex_count: vertex_count as i32,
-                config,
-                center: transform.mul_vec4(object.center().extend(1.0)).xyz(),
-                always_top: object.get_always_top(),
-                z_offset: object.z_offset(),
+        .flat_map(|object| {
+            let transform = object.transform_matrix;
+            let always_top = object.always_top;
+            let z_offset = object.z_offset;
+            object.contents.iter().map(move |content| {
+                let config = content.gl_config();
+                VaoContainer::new(
+                    gl,
+                    &programs[config.shader_type],
+                    content.as_ref(),
+                    transform,
+                    config,
+                    always_top,
+                    z_offset,
+                )
             })
         })
         .collect()
@@ -257,6 +250,55 @@ struct VaoContainer {
     center: Vec3,
     always_top: bool,
     z_offset: f32,
+}
+
+impl VaoContainer {
+    fn new(
+        gl: &glow::Context,
+        program: &glow::Program,
+        content: &dyn super::SceneObjectContent,
+        transform: Mat4,
+        config: GlConfig,
+        always_top: bool,
+        z_offset: f32,
+    ) -> Result<Self, String> {
+        let attr = content.get_shader_attribute_data();
+
+        unsafe {
+            let vao = gl.create_vertex_array()?;
+            gl.bind_vertex_array(Some(vao));
+
+            for (name, size, data) in &attr {
+                if let Some(location) = gl.get_attrib_location(*program, name) {
+                    let vbo = gl
+                        .create_buffer()
+                        .expect("Failed to create vertex buffer object");
+                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                    gl.buffer_data_u8_slice(
+                        glow::ARRAY_BUFFER,
+                        to_byte_slice(data),
+                        glow::STATIC_DRAW,
+                    );
+                    gl.enable_vertex_attrib_array(location);
+                    gl.vertex_attrib_pointer_f32(location, size, glow::FLOAT, false, size * 4, 0);
+                }
+            }
+
+            Ok(Self {
+                vao,
+                transform,
+                vertex_count: attr.vertex_count().unwrap_or(0) as i32,
+                config,
+                center: transform.mul_vec4(content.center().extend(1.0)).xyz(),
+                always_top,
+                z_offset,
+            })
+        }
+    }
+}
+
+unsafe fn to_byte_slice<T>(values: &[T]) -> &[u8] {
+    std::slice::from_raw_parts(values.as_ptr() as *const _, std::mem::size_of_val(values))
 }
 
 unsafe fn set_uniform_vec3(gl: &glow::Context, program: glow::Program, name: &str, value: Vec3) {

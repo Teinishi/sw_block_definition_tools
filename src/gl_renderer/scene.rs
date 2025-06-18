@@ -1,6 +1,5 @@
-use super::{GlConfig, Line, Mesh, SceneObjectContent};
-use eframe::glow;
-use glam::{Mat4, Vec3};
+use super::{Line, Mesh, SceneObjectContent};
+use glam::Mat4;
 
 #[derive(Default)]
 pub struct Scene {
@@ -34,16 +33,20 @@ impl Scene {
 }
 
 pub struct SceneObject {
-    content: Box<dyn SceneObjectContent>,
-    transform_matrix: Mat4,
-    always_top: bool,
-    z_offset: f32,
+    pub contents: Vec<Box<dyn SceneObjectContent>>,
+    pub transform_matrix: Mat4,
+    pub always_top: bool,
+    pub z_offset: f32,
 }
 
 impl SceneObject {
     pub fn from_mesh(mesh: Mesh, transform_matrix: Option<Mat4>) -> Self {
         Self {
-            content: Box::new(mesh),
+            contents: mesh
+                .submeshes
+                .iter()
+                .map(|submesh| Box::new(submesh.clone()) as Box<dyn SceneObjectContent>)
+                .collect(),
             transform_matrix: transform_matrix.unwrap_or_default(),
             always_top: false,
             z_offset: 0.0,
@@ -52,16 +55,11 @@ impl SceneObject {
 
     pub fn from_line(line: Line, transform_matrix: Option<Mat4>) -> Self {
         Self {
-            content: Box::new(line),
+            contents: vec![Box::new(line)],
             transform_matrix: transform_matrix.unwrap_or_default(),
             always_top: false,
             z_offset: 0.0,
         }
-    }
-
-    pub fn always_top(mut self) -> Self {
-        self.always_top = true;
-        self
     }
 
     pub fn set_z_offset(mut self, value: f32) -> Self {
@@ -69,65 +67,8 @@ impl SceneObject {
         self
     }
 
-    pub fn transform_matrix(&self) -> &Mat4 {
-        &self.transform_matrix
-    }
-
     pub fn apply_transform_left(mut self, transform: &Mat4) -> Self {
         self.transform_matrix = transform.mul_mat4(&self.transform_matrix);
         self
     }
-
-    pub fn gl_config(&self) -> GlConfig {
-        self.content.gl_config()
-    }
-
-    pub fn center(&self) -> Vec3 {
-        self.content.center()
-    }
-
-    pub fn get_always_top(&self) -> bool {
-        self.always_top
-    }
-
-    pub fn z_offset(&self) -> f32 {
-        self.z_offset
-    }
-
-    pub fn create_vertex_buffer(
-        &self,
-        gl: &glow::Context,
-        program: &glow::Program,
-    ) -> Result<(glow::VertexArray, usize), String> {
-        use glow::HasContext as _;
-
-        let attribute_data = self.content.get_shader_attribute_data();
-
-        unsafe {
-            let vao = gl.create_vertex_array()?;
-            gl.bind_vertex_array(Some(vao));
-
-            for (name, size, data) in &attribute_data {
-                if let Some(location) = gl.get_attrib_location(*program, name) {
-                    let vbo = gl
-                        .create_buffer()
-                        .expect("Failed to create vertex buffer object");
-                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                    gl.buffer_data_u8_slice(
-                        glow::ARRAY_BUFFER,
-                        to_byte_slice(data),
-                        glow::STATIC_DRAW,
-                    );
-                    gl.enable_vertex_attrib_array(location);
-                    gl.vertex_attrib_pointer_f32(location, size, glow::FLOAT, false, size * 4, 0);
-                }
-            }
-
-            Ok((vao, attribute_data.vertex_count().unwrap_or(0)))
-        }
-    }
-}
-
-unsafe fn to_byte_slice<T>(values: &[T]) -> &[u8] {
-    std::slice::from_raw_parts(values.as_ptr() as *const _, std::mem::size_of_val(values))
 }

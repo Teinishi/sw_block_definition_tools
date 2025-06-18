@@ -5,7 +5,7 @@ pub use scene::{Scene, SceneObject};
 mod color4;
 pub use color4::Color4;
 mod mesh;
-pub use mesh::{Mesh, MeshVertex};
+pub use mesh::{Mesh, Submesh, MeshVertex};
 mod line;
 pub use line::Line;
 mod camera;

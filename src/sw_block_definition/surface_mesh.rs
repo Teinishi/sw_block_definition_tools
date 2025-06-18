@@ -1,5 +1,5 @@
 use super::DefinitionVec3;
-use crate::gl_renderer::{Color4, Line, Mesh, SceneObject};
+use crate::gl_renderer::{Color4, Line, Mesh, SceneObject, Submesh};
 use glam::{Mat4, Quat, Vec3};
 use std::f32::consts::PI;
 
@@ -167,7 +167,12 @@ impl SurfaceObjectBuilder {
             let polygons: Vec<usize> = (0..v.len()).collect();
             let mut reversed: Vec<usize> = polygons.clone();
             reversed.reverse();
-            Mesh::single_color_lh(v.clone(), vec![&polygons, &reversed], mesh_color).flat()
+            Mesh::from_submeshes(vec![Submesh::single_color_lh(
+                v.clone(),
+                vec![&polygons, &reversed],
+                mesh_color,
+            )
+            .flat()])
         });
 
         (
@@ -559,7 +564,7 @@ fn pipe_surface(shape: i32, color: Color4) -> Option<Mesh> {
         let angle_offset = Some(22.5f32.to_radians());
         let outer_radius = 0.0625 / 22.5f32.to_radians().cos();
         let inner_radius = outer_radius - 0.01;
-        Some(Mesh::combined([
+        Some(Mesh::from_submeshes(vec![
             regular_polygon_yz(
                 center,
                 8,
@@ -639,7 +644,7 @@ fn regular_polygon_yz(
     inner_radius: Option<f32>,
     angle_offset: Option<f32>,
     color: Color4,
-) -> Mesh {
+) -> Submesh {
     let mut vertices = Vec::with_capacity(if inner_radius.is_none() { n } else { 2 * n });
 
     for i in 0..n {
@@ -652,7 +657,7 @@ fn regular_polygon_yz(
     }
 
     if inner_radius.is_none() {
-        Mesh::single_face_lh(vertices, color)
+        Submesh::single_face_lh(vertices, color)
     } else {
         let polygons: Vec<Vec<usize>> = (0..n)
             .map(|i| {
@@ -663,7 +668,7 @@ fn regular_polygon_yz(
                 vec![i0, i2, i3, i1]
             })
             .collect();
-        Mesh::single_color_lh(
+        Submesh::single_color_lh(
             vertices,
             polygons.iter().map(|p| p.as_slice()).collect(),
             color,
