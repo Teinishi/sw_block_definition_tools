@@ -1,4 +1,4 @@
-use crate::gl_renderer;
+use crate::sw_gl_3d::{Color4, MeshVertex};
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt;
 use glam::Vec3;
@@ -141,8 +141,8 @@ impl SwMeshVertex {
         })
     }
 
-    pub fn as_mesh_vertex(&self) -> gl_renderer::MeshVertex {
-        gl_renderer::MeshVertex {
+    pub fn as_mesh_vertex(&self) -> MeshVertex {
+        MeshVertex {
             position: Vec3::new(self.position.x, self.position.y, -self.position.z),
             color: self.color.as_color4(),
             normal: Vec3::new(self.normal.x, self.normal.y, -self.normal.z),
@@ -262,8 +262,8 @@ impl SwMeshColor4 {
         Ok(Self { r, g, b, a })
     }
 
-    fn as_color4(&self) -> gl_renderer::Color4 {
-        gl_renderer::Color4 {
+    fn as_color4(&self) -> Color4 {
+        Color4 {
             r: self.r as f32 / 255.0,
             g: self.g as f32 / 255.0,
             b: self.b as f32 / 255.0,

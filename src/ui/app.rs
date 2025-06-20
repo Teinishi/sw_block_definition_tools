@@ -1,6 +1,10 @@
 use super::{
-    tab::Tab, DefinitionSearch, DefinitionSingleSelect, DefinitionsStore, MainTab, SaveImageTab,
-    SettingsTab, State, TabVariants,
+    components::DefinitionSearch,
+    tabs::{MainTab, SaveImageTab, SettingsTab, Tab, TabVariants},
+};
+use crate::{
+    file_dialog,
+    store::{DefinitionSingleSelect, DefinitionsStore, State},
 };
 use egui::{Sides, TopBottomPanel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
@@ -150,8 +154,7 @@ impl eframe::App for MainApp {
                 }
                 AppAction::SelectRomFolder => {
                     #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(rom_path) = super::file_dialog::open_rom_folder_dialog(Some(frame))
-                    {
+                    if let Some(rom_path) = file_dialog::open_rom_folder_dialog(Some(frame)) {
                         update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
                     }
                 }

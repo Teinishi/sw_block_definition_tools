@@ -1,4 +1,8 @@
-use super::{AppAction, DefinitionsStore, State, Tab};
+use super::Tab;
+use crate::{
+    store::{DefinitionsStore, State},
+    ui::AppAction,
+};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]

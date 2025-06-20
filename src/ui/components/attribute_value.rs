@@ -1,5 +1,8 @@
-use super::{play_stop_audio, State};
-use crate::sw_block_definition::{AttributeType, AttributeValue, DisplayAttributeValue};
+use crate::{
+    audio::play_stop_audio,
+    store::State,
+    sw_block_definition::{AttributeType, AttributeValue, DisplayAttributeValue},
+};
 use egui::{
     text::LayoutJob, Align, Button, FontFamily, FontId, Layout, RichText, TextFormat, TextStyle,
 };

@@ -1,10 +1,16 @@
-use super::{
-    paint_canvas_3d, utils, AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions,
-    DefinitionMultiSelectPanel, DefinitionPointer, DefinitionSearch, DefinitionSelect,
-    DefinitionSingleSelect, DefinitionsStore, ImageRenderer, State, Tab,
+use super::Tab;
+use crate::{
+    store::{DefinitionPointer, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State},
+    sw_gl_3d::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer},
+    ui::{
+        components::DefinitionSearch,
+        paint_canvas_3d, paint_checker_pattern,
+        panels::DefinitionMultiSelectPanel,
+        utils::{ui_center, ui_dragvalue_vec_z_inv},
+        AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions, ImageRenderer,
+    },
+    utils::{fit_size_aspect, replace_extension},
 };
-#[allow(unused_imports)]
-use crate::gl_renderer::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer};
 use eframe::glow::Context;
 use egui::{
     Button, CentralPanel, DragValue, Frame, Grid, Id, Modal, ProgressBar, ScrollArea, SidePanel,
@@ -198,10 +204,9 @@ impl Tab for SaveImageTab {
             });
 
         CentralPanel::default().show(ctx, |ui| {
-            let canvas_size =
-                utils::fit_size_aspect(ui.available_size(), self.auto_camera.aspect_ratio());
+            let canvas_size = fit_size_aspect(ui.available_size(), self.auto_camera.aspect_ratio());
 
-            utils::ui_center(ui, canvas_size, |ui| {
+            ui_center(ui, canvas_size, |ui| {
                 egui::Frame::canvas(ui.style())
                     .inner_margin(0.0)
                     .show(ui, |ui| {
@@ -214,7 +219,7 @@ impl Tab for SaveImageTab {
                         );
                         self.auto_camera.control(ui, response);
 
-                        super::paint_checker_pattern(ui, rect);
+                        paint_checker_pattern(ui, rect);
 
                         if self.image_renderer.is_none() {
                             if let Some(renderer) = &self.renderer {
@@ -353,7 +358,7 @@ impl SaveImageTab {
             let mut distance = camera.direction.length();
             if !self.auto_camera.is_auto {
                 ui.label("Look at");
-                utils::ui_dragvalue_vec_z_inv(ui, &mut camera.center, 0.01);
+                ui_dragvalue_vec_z_inv(ui, &mut camera.center, 0.01);
                 ui.end_row();
 
                 ui.label("Distance");
@@ -486,8 +491,7 @@ impl SaveImageTab {
         &mut self,
         dialog_parent: Option<&W>,
     ) -> bool {
-        use super::file_dialog;
-        use crate::ui::SaveImageConfig;
+        use crate::{file_dialog, ui::SaveImageConfig};
         use std::io::BufReader;
 
         if let Some(path) = file_dialog::load_json_dialog(dialog_parent, Some("config.json")) {
@@ -508,10 +512,10 @@ impl SaveImageTab {
         &self,
         dialog_parent: Option<&W>,
     ) {
-        use super::file_dialog;
+        use crate::{file_dialog, ui::SaveImageConfig};
         use std::io::Write;
 
-        let config = super::SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
+        let config = SaveImageConfig::new(self.auto_camera.clone(), &self.scene);
         if let Ok(json) = serde_json::to_string(&config) {
             if let Some(path) = file_dialog::save_json_dialog(dialog_parent, Some("config.json")) {
                 if let Ok(mut file) = std::fs::File::create(path) {
@@ -527,8 +531,7 @@ impl SaveImageTab {
         definitions: Vec<DefinitionPointer>,
         dialog_parent: Option<&W>,
     ) {
-        use super::file_dialog;
-        use crate::ui::ImageRenderer;
+        use crate::{file_dialog, ui::ImageRenderer};
         use std::cmp::Ordering;
 
         if let Some(gl) = &self.gl {
@@ -539,7 +542,7 @@ impl SaveImageTab {
                     let filename = definitions[0]
                         .lock()
                         .ok()
-                        .map(|d| utils::replace_extension(&d.filename(), "png"));
+                        .map(|d| replace_extension(&d.filename(), "png"));
                     (
                         file_dialog::save_png_dialog(dialog_parent, filename.as_deref()),
                         true,

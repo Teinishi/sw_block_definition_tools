@@ -1,5 +1,7 @@
-use super::DefinitionVec3;
-use crate::gl_renderer::{Color4, Line, Mesh, SceneObject, Submesh};
+use crate::{
+    sw_block_definition::DefinitionVec3,
+    sw_gl_3d::{Color4, Line, Mesh, SceneObject, Submesh},
+};
 use glam::{Mat4, Quat, Vec3};
 use std::f32::consts::PI;
 

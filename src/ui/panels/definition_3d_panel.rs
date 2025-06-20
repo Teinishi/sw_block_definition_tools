@@ -1,8 +1,8 @@
-use super::{
-    definitions_store::DefinitionPointer, paint_canvas_3d, BlockViewScene,
-    BlockViewStateMeshOptions, DefinitionsStore,
+use crate::{
+    store::{DefinitionPointer, DefinitionsStore},
+    sw_gl_3d::{OrbitCamera, SceneRenderer, SwBlockMeshes},
+    ui::{paint_canvas_3d, BlockViewScene, BlockViewStateMeshOptions},
 };
-use crate::gl_renderer::{OrbitCamera, SceneRenderer};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use glam::Vec3;
 use std::sync::Arc;
@@ -78,7 +78,7 @@ impl Definition3dPanel {
                         ui.add_space(4.0);
 
                         let mut data = None;
-                        let mut meshes = None;
+                        let mut meshes: Option<Arc<SwBlockMeshes>> = None;
                         if let Some(definition) = &selected {
                             if let Ok(mut definition) = definition.lock() {
                                 (data, meshes) = definition.load_data_meshes();

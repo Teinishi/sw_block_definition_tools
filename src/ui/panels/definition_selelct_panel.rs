@@ -1,6 +1,9 @@
-use super::{
-    definitions_store::DefinitionPointer, DefinitionMultiSelect, DefinitionSearch,
-    DefinitionSelect, DefinitionSingleSelect, DefinitionsStore,
+use crate::{
+    store::{
+        DefinitionMultiSelect, DefinitionPointer, DefinitionSelect, DefinitionSingleSelect,
+        DefinitionsStore,
+    },
+    ui::components::DefinitionSearch,
 };
 use egui::{Checkbox, Layout, RichText};
 use egui_extras::{Size, StripBuilder};
@@ -212,10 +215,6 @@ impl DefinitionMultiSelectPanel {
 
     pub fn register_observer(&mut self) -> u32 {
         self.panel.register_observer()
-    }
-
-    pub fn selector(&self) -> Rc<RefCell<DefinitionSingleSelect>> {
-        self.panel.selector()
     }
 
     pub fn multi_selector(&self) -> Rc<RefCell<DefinitionMultiSelect>> {

@@ -1,6 +1,6 @@
-use super::LoadingState;
+use super::{LoadingState, SwBlockDefinition};
 use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault, SwBlockDefinition,
+    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault,
 };
 use std::{
     cell::RefCell,
@@ -117,7 +117,7 @@ impl AttributeValueContainer {
 
         for (filename, definition) in definitions.borrow().iter() {
             if let Some(Ok(data)) = definition.lock().ok().and_then(|d| d.data()) {
-                for value in specifier.get_value_root(&data) {
+                for value in specifier.get_value_root(data.as_ref()) {
                     if !hide_defalt || !value.is_default() {
                         values.push((filename.clone(), Arc::downgrade(definition), value));
                     }

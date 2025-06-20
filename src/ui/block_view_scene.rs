@@ -2,13 +2,14 @@ use super::{
     utils::{
         ui_checkbox_btreeset, ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv,
     },
-    DefinitionPointer, DefinitionsStore,
+    BoundingBoxObjectBuilder,
 };
 use crate::{
-    gl_renderer::{Color4, Line, Scene, SceneObject},
-    sw_block_definition::{
-        BoundingBoxObjectBuilder, Definition, DefinitionVec3, SurfaceObjectBuilder,
-        SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
+    store::{DefinitionPointer, DefinitionsStore},
+    sw_block_definition::{Definition, DefinitionVec3},
+    sw_gl_3d::{
+        Color4, Line, Scene, SceneObject, SurfaceObjectBuilder, SwBlockMeshBuilder, SwBlockMeshKey,
+        SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
     },
 };
 use core::f32;

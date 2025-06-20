@@ -1,6 +1,7 @@
-use crate::ui::BlockViewAppearance;
-
-use super::{Camera, Scene, ShaderType};
+use crate::{
+    sw_gl_3d::{Camera, Scene, ShaderType},
+    ui::BlockViewAppearance,
+};
 use eframe::glow::{self, HasContext};
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};

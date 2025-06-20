@@ -1,4 +1,4 @@
-use super::{Definition, SwBlockMeshes};
+use crate::{sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes};
 use std::{
     fmt, io,
     path::{Path, PathBuf},

@@ -1,6 +1,5 @@
-use crate::sw_block_definition;
-
-use super::{Color4, GlConfig, SceneObjectContent, ShaderAttributeData, ShaderType};
+use super::{GlConfig, SwMesh, SwSubmesh};
+use crate::sw_gl_3d::{Color4, SceneObjectContent, ShaderAttributeData, ShaderType};
 use glam::Vec3;
 
 #[derive(Debug, Clone)]
@@ -35,7 +34,7 @@ impl Mesh {
         Self { submeshes }
     }
 
-    pub fn from_sw_mesh(sw_mesh: &sw_block_definition::SwMesh) -> Self {
+    pub fn from_sw_mesh(sw_mesh: &SwMesh) -> Self {
         let submeshes = sw_mesh
             .submeshes
             .iter()
@@ -80,10 +79,7 @@ impl Submesh {
         }
     }
 
-    pub fn from_sw_submesh(
-        sw_mesh: &sw_block_definition::SwMesh,
-        sw_submesh: &sw_block_definition::SwSubmesh,
-    ) -> Self {
+    pub fn from_sw_submesh(sw_mesh: &SwMesh, sw_submesh: &SwSubmesh) -> Self {
         let index_buffer_range = sw_submesh.index_buffer_range();
         let len_triangles = index_buffer_range.len();
 

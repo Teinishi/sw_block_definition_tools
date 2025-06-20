@@ -1,6 +1,8 @@
+use crate::{
+    store::{DefinitionSingleSelect, DefinitionsStore, State},
+    ui::{components::DefinitionSearch, AppAction},
+};
 use std::{cell::RefCell, rc::Rc};
-
-use super::{AppAction, DefinitionSearch, DefinitionSingleSelect, DefinitionsStore, State};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
 pub enum TabVariants {

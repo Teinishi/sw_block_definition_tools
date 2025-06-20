@@ -1,10 +1,9 @@
-use super::{
-    utils::replace_extension, BlockViewAppearance, BlockViewScene, BlockViewState,
-    DefinitionPointer, DefinitionsStore,
-};
+use super::{BlockViewAppearance, BlockViewScene, BlockViewState};
 use crate::{
-    gl_renderer::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer},
-    sw_block_definition::{Definition, SwBlockMeshes, Voxel, VoxelLocationChild},
+    store::{DefinitionPointer, DefinitionsStore},
+    sw_block_definition::{Definition, Voxel, VoxelLocationChild},
+    sw_gl_3d::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer, SwBlockMeshes},
+    utils::replace_extension,
 };
 use glam::Vec3;
 use std::{collections::HashSet, path::PathBuf, sync::Arc, time};
@@ -113,7 +112,7 @@ impl VoxelPosition {
                         .map(Self::from)
                         .unwrap_or_default();
                     voxels.extend(
-                        Self::get_voxels(&child_data, definitions_store, false)
+                        Self::get_voxels(child_data.as_ref(), definitions_store, false)
                             .iter()
                             .map(|v| v.add(&child_position)),
                     );
@@ -387,7 +386,8 @@ impl ImageRenderer {
 
             if let Some((data, filename)) = data {
                 if self.scene.update(definition, definitions_store) {
-                    self.auto_camera.update(&data, definitions_store, state);
+                    self.auto_camera
+                        .update(data.as_ref(), definitions_store, state);
 
                     self.framebuffer.before_paint();
                     self.renderer.paint(

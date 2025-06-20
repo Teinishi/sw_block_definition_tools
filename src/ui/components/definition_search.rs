@@ -1,4 +1,4 @@
-use super::{DefinitionPointer, DefinitionsStore};
+use crate::store::{DefinitionPointer, DefinitionsStore};
 use egui::{vec2, Align, Button, Layout, TextEdit};
 use std::collections::BTreeMap;
 

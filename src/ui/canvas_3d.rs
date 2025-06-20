@@ -1,10 +1,8 @@
+use super::BlockViewAppearance;
+use crate::sw_gl_3d::{OrbitCamera, SceneRenderer};
 use eframe::egui_glow;
 use egui::{Image, Rect, TextureOptions};
 use std::sync::Arc;
-
-use crate::gl_renderer::{OrbitCamera, SceneRenderer};
-
-use super::BlockViewAppearance;
 
 pub fn paint_canvas_3d(
     ui: &mut egui::Ui,

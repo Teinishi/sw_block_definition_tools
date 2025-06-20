@@ -1,8 +1,11 @@
-use super::{
-    ui_attribute_value, AttributeValueContainer, DefinitionSelect, DefinitionSingleSelect,
-    DefinitionsStore, State, WeakDefinitionPointer,
+use crate::{
+    store::{
+        AttributeValueContainer, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State,
+        WeakDefinitionPointer,
+    },
+    sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot},
+    ui::components::ui_attribute_value,
 };
-use crate::sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot};
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
 use std::{

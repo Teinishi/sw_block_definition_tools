@@ -1,7 +1,13 @@
-use super::{
-    tab::Tab, utils::ui_center, AppAction, AttributeDetailWindow, Definition3dPanel,
-    DefinitionDetailPanel, DefinitionSearch, DefinitionSelect, DefinitionSelectPanel,
-    DefinitionSingleSelect, DefinitionsStore, State,
+use super::tab::Tab;
+use crate::{
+    store::{DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State},
+    ui::{
+        components::DefinitionSearch,
+        panels::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel},
+        utils::ui_center,
+        windows::AttributeDetailWindow,
+        AppAction,
+    },
 };
 use egui::{Button, CentralPanel, Frame, Id, ScrollArea, SidePanel, TopBottomPanel};
 use std::{cell::RefCell, rc::Rc};

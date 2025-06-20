@@ -1,5 +1,5 @@
-use super::{Definition, SwMesh, SwMeshResult};
-use crate::gl_renderer::Mesh;
+use super::{Mesh, SwMesh, SwMeshResult};
+use crate::sw_block_definition::Definition;
 use glam::{Mat4, Vec3, Vec3Swizzles};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -408,14 +408,14 @@ impl SwBlockSpecialMesh {
 
                         if let Some(scale) = wheel_scale {
                             result.push((
-                            Mesh::from_sw_mesh(mesh_m),
+                                Mesh::from_sw_mesh(mesh_m),
                                 transform_mesh0
                                     .mul_mat4(&Mat4::from_translation(position))
                                     .mul_mat4(&Mat4::from_scale(scale * Vec3::ONE)),
                             ));
                             if builder.wheel_advanced_double {
                                 result.push((
-                            Mesh::from_sw_mesh(mesh_m),
+                                    Mesh::from_sw_mesh(mesh_m),
                                     transform_mesh0
                                         .mul_mat4(&Mat4::from_translation(
                                             position + width * scale * Vec3::Y,

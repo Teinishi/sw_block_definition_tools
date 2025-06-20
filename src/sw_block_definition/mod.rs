@@ -1,9 +1,3 @@
-mod definition;
-pub use definition::SwBlockDefinition;
-mod block_mesh;
-pub use block_mesh::{
-    SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
-};
 mod attribute_value;
 pub use attribute_value::{
     AttributeType, AttributeValue, DefinitionVec3, DisplayAttributeValue, IsDefault, Matrix, Of32,
@@ -24,9 +18,3 @@ mod schema_voxels;
 pub use schema_voxels::*;
 mod schema_elements;
 pub use schema_elements::*;
-mod surface_mesh;
-pub use surface_mesh::SurfaceObjectBuilder;
-mod bounding_box_mesh;
-pub use bounding_box_mesh::BoundingBoxObjectBuilder;
-mod sw_mesh;
-pub use sw_mesh::{SwMesh, SwMeshResult, SwSubmesh};

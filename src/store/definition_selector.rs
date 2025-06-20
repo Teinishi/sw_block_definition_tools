@@ -1,4 +1,4 @@
-use super::{definitions_store::DefinitionPointer, WeakDefinitionPointer};
+use super::{DefinitionPointer, WeakDefinitionPointer};
 use std::{collections::HashMap, sync::Arc};
 
 pub trait DefinitionSelect {
@@ -113,10 +113,6 @@ impl DefinitionSelect for DefinitionMultiSelect {
 impl DefinitionMultiSelect {
     pub fn count(&self) -> usize {
         self.selected.len()
-    }
-
-    pub fn selection_weak(&self) -> &Vec<WeakDefinitionPointer> {
-        &self.selected
     }
 
     pub fn selection(&self) -> Vec<DefinitionPointer> {

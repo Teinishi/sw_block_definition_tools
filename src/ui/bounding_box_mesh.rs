@@ -1,4 +1,4 @@
-use crate::gl_renderer::{Color4, Line, Mesh, SceneObject, Submesh};
+use crate::sw_gl_3d::{Color4, Line, Mesh, SceneObject, Submesh};
 use glam::Vec3;
 
 pub struct BoundingBoxObjectBuilder {

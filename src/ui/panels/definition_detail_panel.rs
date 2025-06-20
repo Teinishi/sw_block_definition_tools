@@ -1,12 +1,14 @@
-use super::{
-    definitions_store::DefinitionPointer, ui_attribute_value, utils, AttributeDetailWindow, State,
-};
-use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
-    CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, IsDefault,
-    JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute, RewardPropertiesAttribute,
-    SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute,
-    TooltipPropertiesAttribute, Voxel, VoxelAttribute,
+use crate::{
+    store::{DefinitionPointer, State},
+    sw_block_definition::{
+        AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
+        CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, IsDefault,
+        JetEngineConnectionAttribute, LogicNode, LogicNodeAttribute, RewardPropertiesAttribute,
+        SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute,
+        TooltipPropertiesAttribute, Voxel, VoxelAttribute,
+    },
+    ui::{components::ui_attribute_value, windows::AttributeDetailWindow},
+    utils::count_true,
 };
 use egui::{Align, Button, CollapsingHeader, Layout, RichText, Sides, Ui};
 use egui_extras::{Column, TableBuilder};
@@ -775,7 +777,7 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
             TableBuilder::new(ui)
                 .columns(
                     Column::auto_with_initial_suggestion(0.0),
-                    utils::count_true(show_columns.iter()),
+                    count_true(show_columns.iter()),
                 )
                 .striped(true)
                 .vscroll(false)

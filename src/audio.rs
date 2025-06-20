@@ -1,3 +1,4 @@
+use crate::store::{PlayingAudio, State};
 use std::{
     fs::File,
     io::{self, BufReader},
@@ -5,8 +6,6 @@ use std::{
     sync::{mpsc, Arc},
     thread,
 };
-
-use super::{PlayingAudio, State};
 
 pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioError> {
     if let Some(playing_audio) = state.playing_audio() {
