@@ -8,6 +8,8 @@ use egui::{CentralPanel, Grid, Slider};
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsTab {
     rom_path: String,
+    mods_path: String,
+    workshop_path: String,
 }
 
 impl Tab for SettingsTab {
@@ -37,28 +39,42 @@ impl Tab for SettingsTab {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    ui.label("rom folder");
-                    ui.horizontal(|ui| {
-                        let rom_path_buf = state.rom_path.clone().unwrap_or_default();
-                        self.rom_path = rom_path_buf
-                            .as_os_str()
-                            .to_str()
-                            .unwrap_or_default()
-                            .to_string();
-                        let text_edit = ui.add_sized(
-                            [300.0, 18.0],
-                            egui::TextEdit::singleline(&mut self.rom_path),
-                        );
-                        if text_edit.changed() {
-                            action = Some(AppAction::UpdateRomFolder(std::path::PathBuf::from(
-                                self.rom_path.clone(),
-                            )));
-                        }
+                    use crate::ui::components::{ui_filepath_edit, FilepathEditAction};
 
-                        if ui.button("Select").clicked() {
-                            action = Some(AppAction::SelectRomFolder);
+                    ui.label("rom folder");
+                    match ui_filepath_edit(ui, &state.rom_path, &mut self.rom_path) {
+                        Some(FilepathEditAction::Select) => {
+                            action = Some(AppAction::SelectRomFolder)
                         }
-                    });
+                        Some(FilepathEditAction::Update(pathbuf)) => {
+                            action = Some(AppAction::UpdateRomFolder(pathbuf))
+                        }
+                        _ => {}
+                    }
+                    ui.end_row();
+
+                    ui.label("mods folder");
+                    match ui_filepath_edit(ui, &state.mods_path, &mut self.mods_path) {
+                        Some(FilepathEditAction::Select) => {
+                            action = Some(AppAction::SelectModsFolder)
+                        }
+                        Some(FilepathEditAction::Update(pathbuf)) => {
+                            action = Some(AppAction::UpdateModsFolder(pathbuf))
+                        }
+                        _ => {}
+                    }
+                    ui.end_row();
+
+                    ui.label("workshop folder (573090)");
+                    match ui_filepath_edit(ui, &state.workshop_path, &mut self.workshop_path) {
+                        Some(FilepathEditAction::Select) => {
+                            action = Some(AppAction::SelectWorkshopFolder)
+                        }
+                        Some(FilepathEditAction::Update(pathbuf)) => {
+                            action = Some(AppAction::UpdateWorkshopFolder(pathbuf))
+                        }
+                        _ => {}
+                    }
                     ui.end_row();
                 }
 

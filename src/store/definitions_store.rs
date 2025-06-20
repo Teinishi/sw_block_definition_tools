@@ -51,8 +51,8 @@ impl DefinitionsStore {
         None
     }
 
-    pub fn open_rom_directory(&mut self, rom_path: Option<PathBuf>) -> io::Result<()> {
-        let rom_path = rom_path.or_else(|| self.rom_path.clone());
+    pub fn open_rom_directory(&mut self, pathbuf: Option<PathBuf>) -> io::Result<()> {
+        let rom_path = pathbuf.or_else(|| self.rom_path.clone());
         if rom_path.is_none() {
             return Ok(());
         }
@@ -75,6 +75,14 @@ impl DefinitionsStore {
             }
         }
         self.rom_path = Some(rom_path);
+        Ok(())
+    }
+
+    pub fn open_mods_directory(&mut self, _pathbuf: Option<PathBuf>) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn open_workshop_directory(&mut self, _pathbuf: Option<PathBuf>) -> io::Result<()> {
         Ok(())
     }
 

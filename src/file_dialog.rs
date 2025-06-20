@@ -1,7 +1,9 @@
+use std::path::{Path, PathBuf};
+
 #[cfg(not(target_arch = "wasm32"))]
 fn dialog<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
     parent: Option<&W>,
-    directory: Option<std::path::PathBuf>,
+    directory: Option<PathBuf>,
     filename: Option<&str>,
 ) -> rfd::FileDialog {
     use rfd::FileDialog;
@@ -25,15 +27,51 @@ pub fn open_rom_folder_dialog<
     W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
 >(
     parent: Option<&W>,
-) -> Option<std::path::PathBuf> {
-    const STORMWORKS_DATA_PATH: &str = "Steam\\steamapps\\common\\Stormworks";
+) -> Option<PathBuf> {
+    const ROM_PATH: &str = "Steam\\steamapps\\common\\Stormworks\\rom";
 
     dialog(
         parent,
         std::env::var("ProgramFiles(x86)")
             .ok()
-            .map(|p| std::path::Path::new(&p).join(STORMWORKS_DATA_PATH)),
-        Some("rom"),
+            .map(|p| Path::new(&p).join(ROM_PATH)),
+        None,
+    )
+    .pick_folder()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn open_mods_folder_dialog<
+    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
+>(
+    parent: Option<&W>,
+) -> Option<PathBuf> {
+    const MODS_PATH: &str = "Stormworks\\data\\mods";
+
+    dialog(
+        parent,
+        std::env::var("appdata")
+            .ok()
+            .map(|p| Path::new(&p).join(MODS_PATH)),
+        None,
+    )
+    .pick_folder()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn open_workshop_folder_dialog<
+    W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle,
+>(
+    parent: Option<&W>,
+) -> Option<PathBuf> {
+    const WORKSHOP_PATH: &str = "Steam\\steamapps\\workshop\\content\\573090";
+
+    dialog(
+        parent,
+        std::env::var("ProgramFiles(x86)")
+            .ok()
+            .map(|p| Path::new(&p).join(WORKSHOP_PATH)),
+        None,
     )
     .pick_folder()
 }

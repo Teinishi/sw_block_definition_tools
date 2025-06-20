@@ -154,14 +154,44 @@ impl eframe::App for MainApp {
                 }
                 AppAction::SelectRomFolder => {
                     #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(rom_path) = file_dialog::open_rom_folder_dialog(Some(frame)) {
-                        update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
+                    if let Some(pathbuf) = file_dialog::open_rom_folder_dialog(Some(frame)) {
+                        update_rom_folder(pathbuf, &mut self.state, &mut self.definitions_store);
                     }
                 }
                 #[allow(unused_variables)]
-                AppAction::UpdateRomFolder(rom_path) => {
+                AppAction::UpdateRomFolder(pathbuf) => {
                     #[cfg(not(target_arch = "wasm32"))]
-                    update_rom_folder(rom_path, &mut self.state, &mut self.definitions_store);
+                    update_rom_folder(pathbuf, &mut self.state, &mut self.definitions_store);
+                }
+                AppAction::SelectModsFolder => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if let Some(pathbuf) = file_dialog::open_mods_folder_dialog(Some(frame)) {
+                        update_mods_folder(pathbuf, &mut self.state, &mut self.definitions_store);
+                    }
+                }
+                #[allow(unused_variables)]
+                AppAction::UpdateModsFolder(pathbuf) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    update_mods_folder(pathbuf, &mut self.state, &mut self.definitions_store);
+                }
+                AppAction::SelectWorkshopFolder => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if let Some(pathbuf) = file_dialog::open_workshop_folder_dialog(Some(frame)) {
+                        update_workshop_folder(
+                            pathbuf,
+                            &mut self.state,
+                            &mut self.definitions_store,
+                        );
+                    }
+                }
+                #[allow(unused_variables)]
+                AppAction::UpdateWorkshopFolder(workshop_path) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    update_workshop_folder(
+                        workshop_path,
+                        &mut self.state,
+                        &mut self.definitions_store,
+                    );
                 }
             }
         }
@@ -172,6 +202,10 @@ pub enum AppAction {
     Reset,
     SelectRomFolder,
     UpdateRomFolder(PathBuf),
+    SelectModsFolder,
+    UpdateModsFolder(PathBuf),
+    SelectWorkshopFolder,
+    UpdateWorkshopFolder(PathBuf),
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -183,4 +217,26 @@ fn update_rom_folder(
     // TODO: ここでエラー出たら拾って表示
     let _ = definitions_store.open_rom_directory(Some(rom_path.clone()));
     state.rom_path = Some(rom_path);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn update_mods_folder(
+    mods_path: PathBuf,
+    state: &mut State,
+    definitions_store: &mut DefinitionsStore,
+) {
+    // TODO: ここでエラー出たら拾って表示
+    let _ = definitions_store.open_mods_directory(Some(mods_path.clone()));
+    state.mods_path = Some(mods_path);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn update_workshop_folder(
+    workshop_path: PathBuf,
+    state: &mut State,
+    definitions_store: &mut DefinitionsStore,
+) {
+    // TODO: ここでエラー出たら拾って表示
+    let _ = definitions_store.open_workshop_directory(Some(workshop_path.clone()));
+    state.workshop_path = Some(workshop_path);
 }

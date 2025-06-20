@@ -13,6 +13,8 @@ pub enum LoadingState {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct State {
     pub rom_path: Option<PathBuf>,
+    pub mods_path: Option<PathBuf>,
+    pub workshop_path: Option<PathBuf>,
     pub show_all: bool,
     pub hide_default: bool,
     pub audio_volume: f32,
@@ -25,6 +27,8 @@ impl Default for State {
     fn default() -> Self {
         Self {
             rom_path: None,
+            mods_path: None,
+            workshop_path: None,
             show_all: false,
             hide_default: false,
             audio_volume: 0.5,
