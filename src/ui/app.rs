@@ -1,22 +1,27 @@
 use super::{
-    components::DefinitionSearch,
+    set_fonts,
     tabs::{MainTab, SaveImageTab, SettingsTab, Tab, TabVariants},
 };
 use crate::{
-    file_dialog,
-    store::{DefinitionSingleSelect, DefinitionsStore, State},
+    definition_hub::{DefinitionRegistory, ModDefinition, ModKey},
+    state::State,
+    ui::{components::SharedDefinitionSearch, SharedMultipleSelection, SharedSingleSelection},
 };
 use egui::{Sides, TopBottomPanel};
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::path::Path;
+
+pub type BlockKey = (ModKey, String);
+pub type BlockSingleSelection = SharedSingleSelection<BlockKey>;
+pub type BlockMultipleSelection = SharedMultipleSelection<BlockKey>;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 #[serde(default)]
 pub struct MainApp {
     state: State,
-    definitions_store: DefinitionsStore,
-    search: Rc<RefCell<DefinitionSearch>>,
+    registory: DefinitionRegistory,
+    search: SharedDefinitionSearch,
     #[serde(skip)]
-    selector: Rc<RefCell<DefinitionSingleSelect>>,
+    selection: BlockSingleSelection,
     tab: TabVariants,
 
     main_tab: MainTab,
@@ -26,75 +31,57 @@ pub struct MainApp {
 
 impl MainApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "noto_sans_jp_regular".to_owned(),
-            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../fonts/NotoSansJP-Regular.ttf"
-            ))),
-        );
-        fonts.font_data.insert(
-            "roboto_regular".to_owned(),
-            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../fonts/Roboto-Regular.ttf"
-            ))),
-        );
-        fonts.font_data.insert(
-            "roboto_mono_regular".to_owned(),
-            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../fonts/RobotoMono-Regular.ttf"
-            ))),
-        );
-        let font_families_proportional = fonts
-            .families
-            .get_mut(&egui::FontFamily::Proportional)
-            .unwrap();
-        font_families_proportional.insert(0, "roboto_regular".to_owned());
-        font_families_proportional.insert(1, "noto_sans_jp_regular".to_owned());
-        let font_families_monospace = fonts
-            .families
-            .get_mut(&egui::FontFamily::Monospace)
-            .unwrap();
-        font_families_monospace.insert(0, "roboto_mono_regular".to_owned());
-        cc.egui_ctx.set_fonts(fonts);
+        set_fonts(cc);
 
         let mut app = cc
             .storage
             .and_then(|storage| {
+                // 状態を復元
                 let app: Option<Self> = eframe::get_value(storage, eframe::APP_KEY);
                 app
             })
             .map(|mut app| {
-                let _ = app.definitions_store.open_rom_directory(None);
-                if let Some(rom_path) = app.definitions_store.rom_path() {
-                    app.state.rom_path = Some(rom_path.clone());
-                }
+                app.registory.init(&app.state);
                 app
             })
             .unwrap_or_default();
 
-        app.main_tab.creation_context(cc);
-        app.main_tab.use_selector(app.selector.clone());
-        app.main_tab.use_search(app.search.clone());
-        app.save_image_tab.creation_context(cc);
-        app.save_image_tab.use_selector(app.selector.clone());
-        app.save_image_tab.use_search(app.search.clone());
-        app.settings_tab.creation_context(cc);
-        app.settings_tab.use_selector(app.selector.clone());
-        app.settings_tab.use_search(app.search.clone());
+        app.main_tab
+            .creation_context(cc, app.search.clone(), app.selection.clone());
+        app.save_image_tab
+            .creation_context(cc, app.search.clone(), app.selection.clone());
+        app.settings_tab
+            .creation_context(cc, app.search.clone(), app.selection.clone());
 
         app
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.state = Default::default();
-        self.definitions_store = Default::default();
-        self.selector = Default::default();
+        self.registory = Default::default();
+        self.search = Default::default();
+        self.selection = Default::default();
         self.tab = Default::default();
 
         self.main_tab.reset();
         self.save_image_tab.reset();
         self.settings_tab.reset();
+    }
+
+    pub fn set_rom_folder<P: AsRef<Path>>(&mut self, path: P) {
+        self.state.rom_path = Some(path.as_ref().to_path_buf());
+        self.registory
+            .add_mod(ModDefinition::new(ModKey::Stormworks, path));
+    }
+
+    pub fn set_mods_folder<P: AsRef<Path>>(&mut self, path: P) {
+        self.state.mods_path = Some(path.as_ref().to_path_buf());
+        let _ = self.registory.add_mods_in_folder(path, ModKey::Local);
+    }
+
+    pub fn set_workshop_folder<P: AsRef<Path>>(&mut self, path: P) {
+        self.state.workshop_path = Some(path.as_ref().to_path_buf());
+        let _ = self.registory.add_mods_in_folder(path, ModKey::Workshop);
     }
 }
 
@@ -110,7 +97,7 @@ impl eframe::App for MainApp {
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
-        self.state.start_frame(&self.definitions_store);
+        // self.state.start_frame(&self.registory);
 
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -133,110 +120,22 @@ impl eframe::App for MainApp {
         let action = match self.tab {
             TabVariants::Main => {
                 self.main_tab
-                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
+                    .update(ctx, frame, &mut self.state, &mut self.registory)
             }
             TabVariants::SaveImage => {
                 self.save_image_tab
-                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
+                    .update(ctx, frame, &mut self.state, &mut self.registory)
             }
             TabVariants::Settings => {
                 self.settings_tab
-                    .update(ctx, frame, &mut self.state, &mut self.definitions_store)
+                    .update(ctx, frame, &mut self.state, &mut self.registory)
             }
         };
 
         self.state.end_frame(ctx);
 
         if let Some(action) = action {
-            match action {
-                AppAction::Reset => {
-                    self.reset();
-                }
-                AppAction::SelectRomFolder => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(pathbuf) = file_dialog::open_rom_folder_dialog(Some(frame)) {
-                        update_rom_folder(pathbuf, &mut self.state, &mut self.definitions_store);
-                    }
-                }
-                #[allow(unused_variables)]
-                AppAction::UpdateRomFolder(pathbuf) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    update_rom_folder(pathbuf, &mut self.state, &mut self.definitions_store);
-                }
-                AppAction::SelectModsFolder => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(pathbuf) = file_dialog::open_mods_folder_dialog(Some(frame)) {
-                        update_mods_folder(pathbuf, &mut self.state, &mut self.definitions_store);
-                    }
-                }
-                #[allow(unused_variables)]
-                AppAction::UpdateModsFolder(pathbuf) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    update_mods_folder(pathbuf, &mut self.state, &mut self.definitions_store);
-                }
-                AppAction::SelectWorkshopFolder => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Some(pathbuf) = file_dialog::open_workshop_folder_dialog(Some(frame)) {
-                        update_workshop_folder(
-                            pathbuf,
-                            &mut self.state,
-                            &mut self.definitions_store,
-                        );
-                    }
-                }
-                #[allow(unused_variables)]
-                AppAction::UpdateWorkshopFolder(workshop_path) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    update_workshop_folder(
-                        workshop_path,
-                        &mut self.state,
-                        &mut self.definitions_store,
-                    );
-                }
-            }
+            action.execute(self, frame);
         }
     }
-}
-
-pub enum AppAction {
-    Reset,
-    SelectRomFolder,
-    UpdateRomFolder(PathBuf),
-    SelectModsFolder,
-    UpdateModsFolder(PathBuf),
-    SelectWorkshopFolder,
-    UpdateWorkshopFolder(PathBuf),
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn update_rom_folder(
-    rom_path: PathBuf,
-    state: &mut State,
-    definitions_store: &mut DefinitionsStore,
-) {
-    // TODO: ここでエラー出たら拾って表示
-    let _ = definitions_store.open_rom_directory(Some(rom_path.clone()));
-    state.rom_path = Some(rom_path);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn update_mods_folder(
-    mods_path: PathBuf,
-    state: &mut State,
-    definitions_store: &mut DefinitionsStore,
-) {
-    // TODO: ここでエラー出たら拾って表示
-    let _ = definitions_store.open_mods_directory(Some(mods_path.clone()));
-    state.mods_path = Some(mods_path);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn update_workshop_folder(
-    workshop_path: PathBuf,
-    state: &mut State,
-    definitions_store: &mut DefinitionsStore,
-) {
-    // TODO: ここでエラー出たら拾って表示
-    let _ = definitions_store.open_workshop_directory(Some(workshop_path.clone()));
-    state.workshop_path = Some(workshop_path);
 }

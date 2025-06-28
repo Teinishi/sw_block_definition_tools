@@ -1,5 +1,5 @@
 use crate::{
-    store::{DefinitionPointer, DefinitionsStore},
+    definition_hub::{BlockDefinition, DefinitionRegistory},
     sw_gl_3d::{OrbitCamera, SceneRenderer, SwBlockMeshes},
     ui::{paint_canvas_3d, BlockViewScene, BlockViewStateMeshOptions},
 };
@@ -64,8 +64,8 @@ impl Definition3dPanel {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        definitions_store: &mut DefinitionsStore,
-        selected: Option<DefinitionPointer>,
+        registory: &mut DefinitionRegistory,
+        selected: Option<&BlockDefinition>,
         select_changed: bool,
     ) {
         TopBottomPanel::bottom("definition_3d_panel_bottom")
@@ -80,9 +80,7 @@ impl Definition3dPanel {
                         let mut data = None;
                         let mut meshes: Option<Arc<SwBlockMeshes>> = None;
                         if let Some(definition) = &selected {
-                            if let Ok(mut definition) = definition.lock() {
-                                (data, meshes) = definition.load_data_meshes();
-                            }
+                            (data, meshes) = definition.load_data_meshes();
                         }
 
                         let mesh_loaded = meshes.is_some();
@@ -104,8 +102,7 @@ impl Definition3dPanel {
                             || scene_state_changed
                         {
                             if let Some(definition) = &selected {
-                                self.scene_update_done =
-                                    self.scene.update(definition, definitions_store);
+                                self.scene_update_done = self.scene.update(definition, registory);
                             }
                         }
 

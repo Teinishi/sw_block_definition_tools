@@ -1,53 +1,76 @@
-use crate::store::{DefinitionPointer, DefinitionsStore};
+use crate::definition_hub::{BlockDefinition, DefinitionRegistory, ModDefinition, ModKey};
 use egui::{vec2, Align, Button, Layout, TextEdit};
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+
+fn search(
+    mod_definition: &ModDefinition,
+    filename: &str,
+    block: &BlockDefinition,
+    pat: &str,
+) -> bool {
+    if let Some(Ok(manifest)) = mod_definition.manifest.get() {
+        if manifest.name.contains(pat) {
+            return true;
+        }
+    }
+
+    if filename.contains(pat) {
+        return true;
+    }
+
+    if let Some(Ok(definition)) = block.load_data() {
+        if let Some(name) = &definition.name {
+            if name.contains(pat) {
+                return true;
+            }
+        }
+
+        if let Some(tags) = &definition.tags {
+            if tags.contains(pat) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionSearch {
     search_text: String,
-    search_result: BTreeMap<String, bool>,
+    #[serde(skip)]
+    search_result: BTreeMap<(ModKey, String), bool>,
 }
 
 impl DefinitionSearch {
-    pub fn is_empty(&self) -> bool {
+    /*pub fn is_empty(&self) -> bool {
         self.search_text.is_empty()
-    }
+    }*/
 
     fn clear(&mut self) {
         self.search_text.clear();
         self.search_result.clear();
     }
 
-    pub fn update_search(&mut self, definitions_store: &mut DefinitionsStore) {
-        for (filename, definition) in definitions_store.definitions().borrow().iter() {
-            if self.search_result.contains_key(filename) {
+    pub fn update_search(&mut self, registory: &mut DefinitionRegistory) {
+        let pat = self.search_text.to_lowercase();
+
+        for (key, mod_definition, block) in registory.definitions() {
+            let key = (key.0.clone(), key.1.clone());
+            if self.search_result.contains_key(&key) {
                 continue;
             }
-            if let Some(result) = definition
-                .lock()
-                .ok()
-                .and_then(|mut d| d.search(&self.search_text))
-            {
-                self.search_result.insert(filename.clone(), result);
+
+            if search(mod_definition, &key.1, block, &pat) {
+                self.search_result.insert(key, true);
             }
         }
     }
 
-    pub fn get_result(
-        &self,
-        definitions_store: &mut DefinitionsStore,
-    ) -> Vec<(String, DefinitionPointer)> {
-        let binding = definitions_store.definitions().borrow();
-        binding
+    pub fn get_result_items(&self) -> impl Iterator<Item = &(ModKey, String)> {
+        self.search_result
             .iter()
-            .filter_map(|(filename, ptr)| {
-                if self.is_empty() || self.search_result.get(filename) == Some(&true) {
-                    Some((filename.clone(), ptr.clone()))
-                } else {
-                    None
-                }
-            })
-            .collect()
+            .filter_map(|(k, v)| if *v { Some(k) } else { None })
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
@@ -71,5 +94,32 @@ impl DefinitionSearch {
                 }
             },
         );
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
+pub struct SharedDefinitionSearch {
+    inner: Rc<RefCell<DefinitionSearch>>,
+}
+
+impl SharedDefinitionSearch {
+    /*pub fn is_empty(&self) -> bool {
+        self.inner.borrow().is_empty()
+    }
+
+    fn clear(&self) {
+        self.inner.borrow_mut().clear();
+    }*/
+
+    pub fn update_search(&self, registory: &mut DefinitionRegistory) {
+        self.inner.borrow_mut().update_search(registory);
+    }
+
+    pub fn get_result_items(&self) -> Vec<(ModKey, String)> {
+        self.inner.borrow().get_result_items().cloned().collect()
+    }
+
+    pub fn ui(&self, ui: &mut egui::Ui) {
+        self.inner.borrow_mut().ui(ui);
     }
 }

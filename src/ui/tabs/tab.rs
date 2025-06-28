@@ -1,8 +1,8 @@
 use crate::{
-    store::{DefinitionSingleSelect, DefinitionsStore, State},
-    ui::{components::DefinitionSearch, AppAction},
+    definition_hub::DefinitionRegistory,
+    state::State,
+    ui::{app::BlockSingleSelection, components::SharedDefinitionSearch, AppAction},
 };
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
 pub enum TabVariants {
@@ -19,13 +19,13 @@ impl Default for TabVariants {
 
 pub trait Tab: Default {
     #[allow(unused_variables)]
-    fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {}
-
-    #[allow(unused_variables)]
-    fn use_selector(&mut self, selector: Rc<RefCell<DefinitionSingleSelect>>) {}
-
-    #[allow(unused_variables)]
-    fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {}
+    fn creation_context(
+        &mut self,
+        cc: &eframe::CreationContext<'_>,
+        search: SharedDefinitionSearch,
+        selection: BlockSingleSelection,
+    ) {
+    }
 
     #[allow(unused_variables)]
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {}
@@ -40,6 +40,6 @@ pub trait Tab: Default {
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
         state: &mut State,
-        definitions_store: &mut DefinitionsStore,
+        registory: &mut DefinitionRegistory,
     ) -> Option<AppAction>;
 }

@@ -1,4 +1,6 @@
-pub fn replace_extension(filename: &str, new_ext: &str) -> String {
+use std::ffi::OsStr;
+
+pub fn replace_extension(filename: &OsStr, new_ext: &str) -> String {
     let mut path = std::path::Path::new(filename).to_owned();
     path.set_extension(new_ext);
     path.to_string_lossy().into_owned()
@@ -19,4 +21,25 @@ where
     I: Iterator<Item = &'a bool>,
 {
     iter.map(|s| *s as usize).sum()
+}
+
+pub fn check_xml_root_tag(xml: &str, root_tag: &[u8]) -> Result<(), String> {
+    let mut xml_reader = quick_xml::Reader::from_str(xml);
+    xml_reader.config_mut().trim_text(true);
+    loop {
+        if let Ok(event) = xml_reader.read_event() {
+            if let quick_xml::events::Event::Start(ref e) = event {
+                if e.name().as_ref() == root_tag {
+                    break Ok(());
+                } else {
+                    break Err(format!(
+                        "Unexpected root element: {:?}",
+                        std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                    ));
+                }
+            }
+        } else {
+            break Err("Could not find root element".to_string());
+        }
+    }
 }

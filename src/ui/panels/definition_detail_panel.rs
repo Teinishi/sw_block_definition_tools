@@ -1,5 +1,6 @@
 use crate::{
-    store::{DefinitionPointer, State},
+    definition_hub::DefinitionRegistory,
+    state::State,
     sw_block_definition::{
         AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
         CouplingAttribute, Definition, DefinitionAttribute, GetAttributeValue, IsDefault,
@@ -7,7 +8,9 @@ use crate::{
         SfxDataAttribute, SfxLayer, SfxLayerAttribute, Surface, SurfaceAttribute,
         TooltipPropertiesAttribute, Voxel, VoxelAttribute,
     },
-    ui::{components::ui_attribute_value, windows::AttributeDetailWindow},
+    ui::{
+        app::BlockSingleSelection, components::ui_attribute_value, windows::AttributeDetailWindow,
+    },
     utils::count_true,
 };
 use egui::{Align, Button, CollapsingHeader, Layout, RichText, Sides, Ui};
@@ -41,13 +44,14 @@ impl DefinitionDetailPanel {
         &mut self,
         ui: &mut Ui,
         state: &mut State,
-        definition: DefinitionPointer,
+        registory: &DefinitionRegistory,
+        selection: &BlockSingleSelection,
     ) -> Option<AttributeDetailWindow> {
         let attribute_filter = AttributeFilter::from_state(state);
         let mut new_window = None;
 
-        if let Ok(mut definition) = definition.lock() {
-            let filename = definition.filename();
+        if let Some(definition) = selection.get().and_then(|key| registory.get(&key)) {
+            let filename = definition.filename().to_string();
             let mut refresh = false;
 
             match definition.load_data() {
@@ -99,7 +103,7 @@ impl DefinitionDetailPanel {
             }
 
             if refresh {
-                definition.unload();
+                definition.refresh();
             }
         }
         new_window

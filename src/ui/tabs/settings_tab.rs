@@ -1,8 +1,5 @@
 use super::Tab;
-use crate::{
-    store::{DefinitionsStore, State},
-    ui::AppAction,
-};
+use crate::{definition_hub::DefinitionRegistory, state::State, ui::AppAction};
 use egui::{CentralPanel, Grid, Slider};
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -19,7 +16,7 @@ impl Tab for SettingsTab {
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
         state: &mut State,
-        definitions_store: &mut DefinitionsStore,
+        _registory: &mut DefinitionRegistory,
     ) -> Option<AppAction> {
         let mut action = None;
 

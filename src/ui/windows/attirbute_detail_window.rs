@@ -1,18 +1,12 @@
 use crate::{
-    store::{
-        AttributeValueContainer, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State,
-        WeakDefinitionPointer,
-    },
+    definition_hub::{AttributeValueContainer, BlockDefinition, DefinitionRegistory},
+    state::State,
     sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot},
-    ui::components::ui_attribute_value,
+    ui::{app::BlockSingleSelection, components::ui_attribute_value, Selection},
 };
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
 use egui_extras::{Column, TableBuilder};
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, BTreeSet},
-    rc::Rc,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 const DEFAULT_ROW_HEIGHT: f32 = 18.0;
 
@@ -34,7 +28,7 @@ pub struct AttributeDetailWindow {
     #[serde(skip)]
     changed: bool,
     #[serde(skip)]
-    prev_loading_count: i32,
+    prev_loading_count: usize,
     #[serde(skip)]
     value_container: Option<AttributeValueContainer>,
 }
@@ -66,18 +60,18 @@ impl AttributeDetailWindow {
         &mut self,
         ctx: &egui::Context,
         state: &mut State,
-        definitions_store: &mut DefinitionsStore,
-        selector: Rc<RefCell<DefinitionSingleSelect>>,
+        registory: &DefinitionRegistory,
+        selector: &BlockSingleSelection,
     ) {
         if let Some(id) = self.id {
-            let loading_count = definitions_store.load_all_definitions();
+            let loading_count = registory.load_all();
             if loading_count != self.prev_loading_count {
                 self.changed = true;
                 self.prev_loading_count = loading_count;
             }
             if self.changed || self.value_container.is_none() {
                 self.value_container = Some(AttributeValueContainer::new(
-                    definitions_store.definitions(),
+                    registory,
                     &self.specifier,
                     self.hide_default,
                 ));
@@ -134,7 +128,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: Rc<RefCell<DefinitionSingleSelect>>,
+        selector: &BlockSingleSelection,
     ) {
         ScrollArea::vertical().show(ui, |ui| match self.tab {
             AttributeDetailTabs::Definitions => {
@@ -150,7 +144,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: Rc<RefCell<DefinitionSingleSelect>>,
+        selection: &BlockSingleSelection,
     ) {
         if let Some(definition_map) = self.value_container.as_ref().map(|c| c.definition_map()) {
             TableBuilder::new(ui)
@@ -158,16 +152,11 @@ impl AttributeDetailWindow {
                 .column(Column::remainder())
                 .striped(true)
                 .body(|body| {
-                    let entries: Vec<(
-                        &String,
-                        &(WeakDefinitionPointer, BTreeSet<AttributeValue>),
-                    )> = definition_map.iter().collect();
+                    let entries: Vec<(&String, &(BlockDefinition, BTreeSet<AttributeValue>))> =
+                        definition_map.iter().collect();
                     body.rows(DEFAULT_ROW_HEIGHT, definition_map.len(), |mut row| {
                         let (filename, (definition, values)) = entries[row.index()];
-                        let checked = definition
-                            .upgrade()
-                            .map(|d| selector.borrow().is_selected(&d))
-                            .unwrap_or(false);
+                        let checked = selection.is_selected(&definition.key());
 
                         row.col(|ui| {
                             let label =
@@ -176,9 +165,7 @@ impl AttributeDetailWindow {
                                         ui.label(filename);
                                     });
                             if label.clicked() {
-                                if let Some(d) = definition.upgrade() {
-                                    selector.borrow_mut().select(&d);
-                                }
+                                selection.add(definition.key());
                             }
                         });
                         row.col(|ui| {
@@ -207,7 +194,7 @@ impl AttributeDetailWindow {
         &mut self,
         ui: &mut egui::Ui,
         state: &mut State,
-        selector: Rc<RefCell<DefinitionSingleSelect>>,
+        selection: &BlockSingleSelection,
     ) {
         if let Some(value_map) = self.value_container.as_ref().map(|c| c.value_map()) {
             TableBuilder::new(ui)
@@ -215,7 +202,7 @@ impl AttributeDetailWindow {
                 .column(Column::remainder())
                 .striped(true)
                 .body(|body| {
-                    let entries: Vec<(&AttributeValue, &BTreeMap<String, WeakDefinitionPointer>)> =
+                    let entries: Vec<(&AttributeValue, &BTreeMap<String, BlockDefinition>)> =
                         value_map.iter().collect();
                     self.values_table_heights
                         .resize(entries.len(), DEFAULT_ROW_HEIGHT);
@@ -230,22 +217,23 @@ impl AttributeDetailWindow {
                                 let mut rect;
                                 if definitions.len() == 1 {
                                     let (filename, definition) = definitions.iter().next().unwrap();
-                                    let checked = selector.borrow().is_selected_weak(definition);
+                                    let key = definition.key();
+                                    let checked = selection.is_selected(&key);
                                     let response = ui.selectable_label(checked, filename);
                                     rect = response.rect;
                                     if response.clicked() {
-                                        selector.borrow_mut().select_weak(definition);
+                                        selection.add(key);
                                     }
                                 } else {
                                     let collapsing_response = ui.collapsing(
                                         format!("{} definitions", definitions.len()),
                                         |ui| {
                                             for (filename, definition) in definitions {
-                                                let checked =
-                                                    selector.borrow().is_selected_weak(definition);
+                                                let key = definition.key();
+                                                let checked = selection.is_selected(&key);
                                                 if ui.selectable_label(checked, filename).clicked()
                                                 {
-                                                    selector.borrow_mut().select_weak(definition);
+                                                    selection.add(key);
                                                 }
                                             }
                                         },

@@ -1,6 +1,6 @@
 use crate::{
     audio::play_stop_audio,
-    store::State,
+    state::State,
     sw_block_definition::{AttributeType, AttributeValue, DisplayAttributeValue},
 };
 use egui::{
@@ -46,7 +46,7 @@ fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &String) {
     let is_playing = state
         .playing_audio()
         .as_ref()
-        .is_some_and(|playing_audio| playing_audio.path() == path);
+        .is_some_and(|playing_audio| playing_audio.path == *path);
 
     let button = ui.add_sized(
         [20.0, 20.0],

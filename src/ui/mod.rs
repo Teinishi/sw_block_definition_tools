@@ -1,5 +1,9 @@
 mod app;
-pub use app::{AppAction, MainApp};
+pub use app::{BlockKey, MainApp};
+mod app_action;
+pub use app_action::AppAction;
+mod set_fonts;
+pub use set_fonts::set_fonts;
 mod save_image;
 pub use save_image::{
     AutoCamera, ImageRenderer, ProgressMessage, RenderMessageTuple, SaveImageConfig,
@@ -16,5 +20,9 @@ mod utils;
 pub use bounding_box_mesh::BoundingBoxObjectBuilder;
 mod components;
 mod panels;
+mod selection;
 mod tabs;
 mod windows;
+pub use selection::{
+    MultipleSelection, Selection, SharedMultipleSelection, SharedSingleSelection, SingleSelection,
+};

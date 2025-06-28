@@ -3,7 +3,7 @@ use crate::sw_block_definition::Definition;
 use glam::{Mat4, Vec3, Vec3Swizzles};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::Path,
+    path::PathBuf,
 };
 use strum::VariantArray;
 
@@ -181,6 +181,10 @@ impl SwBlockMeshBuilder {
     }
 }
 
+pub trait FileResolver {
+    fn load_file(&self, path: &str) -> Option<PathBuf>;
+}
+
 #[derive(Default)]
 pub struct SwBlockMeshes {
     special_mesh: Option<SwBlockSpecialMesh>,
@@ -190,7 +194,7 @@ pub struct SwBlockMeshes {
 }
 
 impl SwBlockMeshes {
-    pub fn new<P: AsRef<Path>>(data: &Definition, rom_path: P) -> Self {
+    pub fn new(data: &Definition, file_loader: impl FileResolver) -> Self {
         let special_mesh =
             SwBlockSpecialMesh::from_definition_type(data.definition_type.unwrap_or(0));
 
@@ -198,7 +202,9 @@ impl SwBlockMeshes {
         for key in SwBlockMeshKey::VARIANTS {
             if let Some(name) = key.get_filepath(data) {
                 if !name.is_empty() {
-                    meshes.insert(*key, SwMesh::from_file(rom_path.as_ref().join(name)));
+                    if let Some(path) = file_loader.load_file(name) {
+                        meshes.insert(*key, SwMesh::from_file(path));
+                    }
                 }
             }
         }
@@ -206,9 +212,9 @@ impl SwBlockMeshes {
         let mut wheel_advanced_meshes = BTreeMap::new();
         if special_mesh == Some(SwBlockSpecialMesh::WheelAdvanced) {
             for key in SwWheelAdvancedMeshKey::VARIANTS {
-                if let Some(path) = key.get_filepath(data) {
-                    wheel_advanced_meshes
-                        .insert(*key, SwMesh::from_file(rom_path.as_ref().join(path)));
+                if let Some(Some(path)) = key.get_filepath(data).map(|p| file_loader.load_file(&p))
+                {
+                    wheel_advanced_meshes.insert(*key, SwMesh::from_file(path));
                 }
             }
         }

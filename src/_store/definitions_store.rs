@@ -1,25 +1,27 @@
-use super::{LoadingState, SwBlockDefinition};
-use crate::sw_block_definition::{
-    AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault,
+use super::LoadingState;
+use crate::{
+    store::{
+        mod_definition::{DefinitionPointer, DefinitionsMap, WeakDefinitionPointer},
+        mod_store::ModStore,
+        ModKey, SwModDefinition,
+    },
+    sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot, IsDefault},
 };
+use std::fs::read_dir;
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, BTreeSet},
     io,
     path::PathBuf,
-    rc::Rc,
-    sync::{Arc, Mutex, Weak},
+    sync::Arc,
 };
-
-pub type DefinitionPointer = Arc<Mutex<SwBlockDefinition>>;
-pub type WeakDefinitionPointer = Weak<Mutex<SwBlockDefinition>>;
-pub type DefinitionsMap = Rc<RefCell<BTreeMap<String, DefinitionPointer>>>;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct DefinitionsStore {
     rom_path: Option<PathBuf>,
+    mods_path: Option<PathBuf>,
+    workshop_path: Option<PathBuf>,
     #[serde(skip)]
-    definitions: DefinitionsMap,
+    mods: ModStore,
 }
 
 impl DefinitionsStore {
@@ -27,67 +29,95 @@ impl DefinitionsStore {
         &self.rom_path
     }
 
-    pub fn definitions(&self) -> &DefinitionsMap {
-        &self.definitions
+    pub fn mods(&self) -> &ModStore {
+        &self.mods
     }
 
-    pub fn get(&self, name: &str) -> Option<DefinitionPointer> {
-        self.definitions
+    pub fn get(&self, mod_key: ModKey, name: &str) -> Option<DefinitionPointer> {
+        self.mods
+            .mods_map
             .borrow()
-            .get(&format!("{}.xml", name))
-            .cloned()
+            .get(&mod_key)?
+            .lock()
+            .ok()?
+            .get_definition(name)
     }
 
     pub fn loading_state(&self) -> Option<LoadingState> {
-        for (filename, definition) in self.definitions.borrow().iter() {
+        /*for (filename, definition) in self.definitions.borrow().iter() {
             if let Ok(definition) = definition.lock() {
-                if definition.data_loading() {
+                if definition.is_loading_data() {
                     return Some(LoadingState::Data(filename.clone()));
-                } else if definition.meshes_loading() {
+                } else if definition.is_lodading_meshes() {
                     return Some(LoadingState::Mesh(filename.clone()));
                 }
             }
-        }
+        }*/
+        // TODO: modのロード判定
         None
     }
 
-    pub fn open_rom_directory(&mut self, pathbuf: Option<PathBuf>) -> io::Result<()> {
-        let rom_path = pathbuf.or_else(|| self.rom_path.clone());
-        if rom_path.is_none() {
+    pub fn open_rom_directory(&mut self, _pathbuf: Option<PathBuf>) -> io::Result<()> {
+        /*let pathbuf = pathbuf.or_else(|| self.rom_path.clone());
+        if pathbuf.is_none() {
             return Ok(());
         }
-        let rom_path = rom_path.unwrap();
+        let pathbuf = pathbuf.unwrap();
 
         let mut definitions = self.definitions.borrow_mut();
         definitions.clear();
         self.rom_path = None;
         // ディレクトリ内の .xml ファイルを列挙
-        let dir = std::fs::read_dir(rom_path.join("data").join("definitions"))?;
+        let dir = read_dir(pathbuf.join("data").join("definitions"))?;
         for entry in dir {
             if let Some(entry_path) = entry
                 .ok()
                 .map(|e| e.path())
                 .filter(|e| e.is_file() && e.extension().is_some_and(|x| x == "xml"))
             {
-                if let Some(def) = SwBlockDefinition::new(&rom_path, entry_path) {
+                if let Some(def) = SwBlockDefinition::new(entry_path) {
                     definitions.insert(def.filename().to_string(), Arc::new(Mutex::new(def)));
                 }
             }
         }
-        self.rom_path = Some(rom_path);
+        self.rom_path = Some(pathbuf);*/
         Ok(())
     }
 
-    pub fn open_mods_directory(&mut self, _pathbuf: Option<PathBuf>) -> io::Result<()> {
+    pub fn open_mods_directory(&mut self, pathbuf: Option<PathBuf>) -> io::Result<()> {
+        let pathbuf = pathbuf.or_else(|| self.mods_path.clone());
+        if pathbuf.is_none() {
+            return Ok(());
+        }
+        let pathbuf = pathbuf.unwrap();
+
+        self.mods.clear_local_mods();
+
+        self.mods_path = None;
+        for entry in read_dir(&pathbuf)? {
+            if let Some(entry_path) = entry.ok().map(|e| e.path()).filter(|e| e.is_dir()) {
+                if let Some(mod_definition) = SwModDefinition::new(entry_path) {
+                    self.mods.add_local_mod(mod_definition);
+                }
+            }
+        }
+        self.mods_path = Some(pathbuf);
+
         Ok(())
     }
 
-    pub fn open_workshop_directory(&mut self, _pathbuf: Option<PathBuf>) -> io::Result<()> {
+    pub fn open_workshop_directory(&mut self, pathbuf: Option<PathBuf>) -> io::Result<()> {
+        let pathbuf = pathbuf.or_else(|| self.workshop_path.clone());
+        if pathbuf.is_none() {
+            return Ok(());
+        }
+        let _pathbuf = pathbuf.unwrap();
+
         Ok(())
     }
 
     pub fn load_all_definitions(&mut self) -> i32 {
-        let mut loading_count = 0;
+        /*let mut loading_count = 0;
         for definition in self.definitions.borrow().values() {
             if let Ok(mut definition) = definition.lock() {
                 if definition.load_data().is_none() {
@@ -95,16 +125,17 @@ impl DefinitionsStore {
                 }
             }
         }
-        loading_count
+        loading_count*/
+        0
     }
 
-    pub fn get_attribute_from_all(
+    /*pub fn get_attribute_from_all(
         &self,
         specifier: &AttributeSpecifier,
         hide_default: bool,
     ) -> AttributeValueContainer {
         AttributeValueContainer::new(&self.definitions, specifier, hide_default)
-    }
+    }*/
 }
 
 pub type AttributeDefinitionMap =

@@ -1,4 +1,9 @@
-use crate::{sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes};
+use crate::{
+    store::{ModFileLoader, ModKey},
+    sw_block_definition::Definition,
+    sw_gl_3d::SwBlockMeshes,
+    utils::check_xml_root_tag,
+};
 use std::{
     fmt, io,
     path::{Path, PathBuf},
@@ -10,7 +15,7 @@ type LoadDataResult = Result<Definition, SwBlockDefinitionDataError>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SwBlockDefinition {
-    rom_path: PathBuf,
+    mod_key: ModKey,
     path: PathBuf,
     filename: String,
     #[serde(skip)]
@@ -30,11 +35,11 @@ impl PartialEq for SwBlockDefinition {
 }
 
 impl SwBlockDefinition {
-    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(rom_path: P, path: Q) -> Option<Self> {
+    pub fn new<P: AsRef<Path>>(mod_key: ModKey, path: P) -> Option<Self> {
         let pathbuf = path.as_ref().to_path_buf();
         let filename = pathbuf.file_name()?.to_os_string().into_string().ok()?;
         Some(Self {
-            rom_path: rom_path.as_ref().to_path_buf(),
+            mod_key,
             path: pathbuf,
             filename,
             data: None,
@@ -48,19 +53,15 @@ impl SwBlockDefinition {
         self.filename.clone()
     }
 
-    pub fn rom_path(&self) -> &PathBuf {
-        &self.rom_path
-    }
-
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
-    pub fn data_loading(&self) -> bool {
+    pub fn is_loading_data(&self) -> bool {
         self.load_data_thread.is_some()
     }
 
-    pub fn meshes_loading(&self) -> bool {
+    pub fn is_lodading_meshes(&self) -> bool {
         self.load_mesh_thread.is_some()
     }
 
@@ -190,11 +191,11 @@ impl SwBlockDefinition {
 
         if let Some(Ok(data)) = &self.data {
             let data = data.clone();
-            let rom_path = self.rom_path.clone();
 
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
-                tx.send(SwBlockMeshes::new(&data, rom_path)).unwrap();
+                tx.send(SwBlockMeshes::new(&data, ModFileLoader::from_mod_key(self.mod_key)))
+                    .unwrap();
             });
 
             self.load_mesh_thread = Some(rx);
@@ -205,29 +206,7 @@ impl SwBlockDefinition {
 fn load_data<P: AsRef<Path>>(path: P) -> LoadDataResult {
     let xml = std::fs::read_to_string(path)?;
 
-    // ルート要素が  <definition> であるかチェック
-    let check_definition: Result<(), String> = {
-        let mut xml_reader = quick_xml::Reader::from_str(&xml);
-        xml_reader.config_mut().trim_text(true);
-        loop {
-            if let Ok(event) = xml_reader.read_event() {
-                if let quick_xml::events::Event::Start(ref e) = event {
-                    if e.name().as_ref() == b"definition" {
-                        break Ok(());
-                    } else {
-                        break Err(format!(
-                            "Unexpected root element: {:?}",
-                            std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
-                        ));
-                    }
-                }
-            } else {
-                break Err("Could not find root element".to_string());
-            }
-        }
-    };
-
-    if let Err(mes) = check_definition {
+    if let Err(mes) = check_xml_root_tag(&xml, b"definition") {
         Err(SwBlockDefinitionDataError::Xml(mes))
     } else {
         let data = quick_xml::de::from_str(&xml)?;

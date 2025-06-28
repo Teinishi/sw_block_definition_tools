@@ -1,8 +1,10 @@
 use super::tab::Tab;
 use crate::{
-    store::{DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State},
+    definition_hub::DefinitionRegistory,
+    state::State,
     ui::{
-        components::DefinitionSearch,
+        app::BlockSingleSelection,
+        components::SharedDefinitionSearch,
         panels::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel},
         utils::ui_center,
         windows::AttributeDetailWindow,
@@ -10,7 +12,6 @@ use crate::{
     },
 };
 use egui::{Button, CentralPanel, Frame, Id, ScrollArea, SidePanel, TopBottomPanel};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -18,8 +19,7 @@ pub struct MainTab {
     #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
     #[serde(skip)]
-    selector_observer_id: u32,
-
+    selection: BlockSingleSelection,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
@@ -28,14 +28,13 @@ pub struct MainTab {
 
 impl Default for MainTab {
     fn default() -> Self {
-        let mut definition_select_panel = DefinitionSelectPanel::default();
-        let selector_observer_id = definition_select_panel.register_observer();
+        let definition_select_panel = DefinitionSelectPanel::default();
+        let selection = definition_select_panel.selection().clone();
         let definition_3d_panel = Definition3dPanel::new(None);
 
         Self {
             definition_select_panel,
-            selector_observer_id,
-
+            selection,
             definition_detail_panel: DefinitionDetailPanel,
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
@@ -45,17 +44,17 @@ impl Default for MainTab {
 }
 
 impl Tab for MainTab {
-    fn creation_context(&mut self, cc: &eframe::CreationContext<'_>) {
+    fn creation_context(
+        &mut self,
+        cc: &eframe::CreationContext<'_>,
+        search: SharedDefinitionSearch,
+        selection: BlockSingleSelection,
+    ) {
         self.definition_3d_panel.creation_context(cc);
-    }
-
-    fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {
-        self.selector_observer_id = selector.borrow_mut().register_observer();
-        self.definition_select_panel.use_selector(selector);
-    }
-
-    fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {
         self.definition_select_panel.use_search(search);
+        self.definition_select_panel
+            .use_selection(selection.clone());
+        self.selection = selection;
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -64,7 +63,7 @@ impl Tab for MainTab {
 
     fn reset(&mut self) {
         self.definition_select_panel = Default::default();
-        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.selection = self.definition_select_panel.selection().clone();
         self.definition_detail_panel = Default::default();
         self.definition_3d_panel.reset();
         self.attribute_detail_windows = Vec::new();
@@ -76,14 +75,14 @@ impl Tab for MainTab {
         ctx: &eframe::egui::Context,
         _frame: &mut eframe::Frame,
         state: &mut State,
-        definitions_store: &mut DefinitionsStore,
+        registory: &mut DefinitionRegistory,
     ) -> Option<AppAction> {
         for window in &mut self.attribute_detail_windows {
             window.ui(
                 ctx,
                 state,
-                definitions_store,
-                self.definition_select_panel.selector(),
+                registory,
+                self.definition_select_panel.selection(),
             );
         }
         self.attribute_detail_windows.retain(|w| w.is_open());
@@ -108,8 +107,16 @@ impl Tab for MainTab {
             .default_width(200.0)
             .width_range(80.0..=500.0)
             .show(ctx, |ui| {
-                self.definition_select_panel.ui(ui, definitions_store);
+                self.definition_select_panel.ui(ui, registory);
             });
+
+        let definition = self
+            .definition_select_panel
+            .selection()
+            .get()
+            .and_then(|key| registory.get(&key))
+            .cloned();
+        let selection_changed = self.selection.check_update();
 
         SidePanel::right("right_panel")
             .frame(Frame::side_top_panel(&ctx.style()).inner_margin(0.0))
@@ -117,14 +124,8 @@ impl Tab for MainTab {
             .default_width(300.0)
             .width_range(80.0..=800.0)
             .show(ctx, |ui| {
-                self.definition_3d_panel.ui(
-                    ui,
-                    definitions_store,
-                    self.definition_select_panel.selected_definition(),
-                    self.definition_select_panel
-                        .check_update(self.selector_observer_id)
-                        .unwrap_or(false),
-                );
+                self.definition_3d_panel
+                    .ui(ui, registory, definition.as_ref(), selection_changed);
             });
 
         TopBottomPanel::bottom("bottom_panel")
@@ -142,13 +143,16 @@ impl Tab for MainTab {
         CentralPanel::default().show(ctx, |ui| {
             ScrollArea::both().show(ui, |ui| {
                 ui.allocate_space(egui::vec2(ui.available_width(), 0.0));
-                if let Some(definition) = self.definition_select_panel.selected_definition() {
-                    let new_window = self.definition_detail_panel.ui(ui, state, definition);
-                    if let Some(w) = new_window {
-                        self.add_attribute_detail_window(w);
-                    }
-                    ui.add_space(10.0);
+                let new_window = self.definition_detail_panel.ui(
+                    ui,
+                    state,
+                    registory,
+                    self.definition_select_panel.selection(),
+                );
+                if let Some(w) = new_window {
+                    self.add_attribute_detail_window(w);
                 }
+                ui.add_space(10.0);
             });
         });
 

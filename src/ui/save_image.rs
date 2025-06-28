@@ -1,12 +1,12 @@
 use super::{BlockViewAppearance, BlockViewScene, BlockViewState};
 use crate::{
-    store::{DefinitionPointer, DefinitionsStore},
+    definition_hub::{BlockDefinition, DefinitionRegistory},
     sw_block_definition::{Definition, Voxel, VoxelLocationChild},
     sw_gl_3d::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer, SwBlockMeshes},
     utils::replace_extension,
 };
 use glam::Vec3;
-use std::{collections::HashSet, path::PathBuf, sync::Arc, time};
+use std::{collections::HashSet, ffi::OsString, path::PathBuf, sync::Arc, time};
 
 #[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 struct VoxelPosition {
@@ -86,41 +86,41 @@ impl VoxelPosition {
     }
 
     fn get_voxels(
-        data: &Definition,
-        definitions_store: &mut DefinitionsStore,
+        definition: &BlockDefinition,
+        registory: &mut DefinitionRegistory,
         include_child: bool,
     ) -> Vec<Self> {
-        let mut voxels = if let Some(voxels) = data.voxels.last() {
-            voxels.voxel.iter().map(Self::from).collect()
-        } else {
-            Vec::new()
-        };
+        if let Some(Ok(data)) = definition.load_data() {
+            let mut voxels = if let Some(voxels) = data.voxels.last() {
+                voxels.voxel.iter().map(Self::from).collect()
+            } else {
+                Vec::new()
+            };
 
-        if let Some(child) = include_child
-            .then(|| {
-                data.child_name
-                    .as_ref()
-                    .and_then(|name| definitions_store.get(name))
-            })
-            .flatten()
-        {
-            if let Ok(mut child) = child.lock() {
-                if let Some(Ok(child_data)) = child.load_data() {
-                    let child_position = data
-                        .voxel_location_child
-                        .last()
-                        .map(Self::from)
-                        .unwrap_or_default();
-                    voxels.extend(
-                        Self::get_voxels(child_data.as_ref(), definitions_store, false)
-                            .iter()
-                            .map(|v| v.add(&child_position)),
-                    );
-                }
+            if !include_child {
+                return voxels;
             }
-        }
+            if let Some(child) = data
+                .child_name
+                .as_ref()
+                .and_then(|name| registory.resolve(definition.mod_key(), name))
+            {
+                let child_position = data
+                    .voxel_location_child
+                    .last()
+                    .map(Self::from)
+                    .unwrap_or_default();
+                voxels.extend(
+                    Self::get_voxels(&child.clone(), registory, false)
+                        .iter()
+                        .map(|v| v.add(&child_position)),
+                );
+            }
 
-        voxels
+            voxels
+        } else {
+            vec![]
+        }
     }
 
     fn get_bounds(voxels: &[Self]) -> (Self, Self) {
@@ -220,8 +220,8 @@ impl AutoCamera {
 
     pub fn update(
         &mut self,
-        data: &Definition,
-        definitions_store: &mut DefinitionsStore,
+        definition: &BlockDefinition,
+        registory: &mut DefinitionRegistory,
         state: &BlockViewState,
     ) {
         let width = self.width as f32;
@@ -239,8 +239,7 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let voxels =
-                VoxelPosition::get_voxels(data, definitions_store, state.show_child_body());
+            let voxels = VoxelPosition::get_voxels(definition, registory, state.show_child_body());
             let (voxel_min, voxel_max) = VoxelPosition::get_bounds(&voxels);
             let corner_min = voxel_min.corner_min().world_pos_lh();
             let corner_max = voxel_max.corner_max().world_pos_lh();
@@ -302,7 +301,7 @@ impl AutoCamera {
 pub type RenderMessageTuple = (Arc<Definition>, Arc<SwBlockMeshes>, String);
 
 pub struct ImageRenderer {
-    definitions: Vec<DefinitionPointer>,
+    definitions: Vec<BlockDefinition>,
     i: usize,
     auto_camera: AutoCamera,
     scene: BlockViewScene,
@@ -318,7 +317,7 @@ pub struct ImageRenderer {
 
 impl ImageRenderer {
     pub fn new(
-        definitions: Vec<DefinitionPointer>,
+        definitions: Vec<BlockDefinition>,
         scene: BlockViewScene,
         renderer: SceneRenderer,
         auto_camera: &AutoCamera,
@@ -343,7 +342,7 @@ impl ImageRenderer {
         }
     }
 
-    pub fn update(&mut self, definitions_store: &mut DefinitionsStore, state: &BlockViewState) {
+    pub fn update(&mut self, registory: &mut DefinitionRegistory, state: &BlockViewState) {
         let frame_start_time = std::time::Instant::now();
 
         loop {
@@ -365,48 +364,41 @@ impl ImageRenderer {
             }
 
             let definition = &self.definitions[self.i];
-            let data = if let Ok(mut definition) = definition.lock() {
-                let filename = definition.filename();
-                match definition.load_data() {
-                    Some(Ok(data)) => Some((data, filename)),
-                    Some(Err(err)) => {
-                        self.logs.push(format!(
-                            "Failed to save image of {} due to {}",
-                            filename, err
-                        ));
-                        self.i += 1;
-                        self.progress.current = self.i;
-                        continue;
-                    }
-                    None => None,
-                }
-            } else {
-                None
-            };
+            let filename = definition.filename();
+            if let Some(Err(err)) = definition.load_data() {
+                self.logs.push(format!(
+                    "Failed to save image of {} due to {}",
+                    filename, err
+                ));
+                self.i += 1;
+                self.progress.current = self.i;
+                continue;
+            }
 
-            if let Some((data, filename)) = data {
-                if self.scene.update(definition, definitions_store) {
-                    self.auto_camera
-                        .update(data.as_ref(), definitions_store, state);
+            let filename = definition.filename();
+            if self.scene.update(definition, registory) {
+                self.auto_camera.update(definition, registory, state);
 
-                    self.framebuffer.before_paint();
-                    self.renderer.paint(
-                        self.framebuffer.gl(),
-                        &self.auto_camera.camera,
-                        self.scene.appearance(),
-                    );
-                    self.framebuffer.after_paint();
+                self.framebuffer.before_paint();
+                self.renderer.paint(
+                    self.framebuffer.gl(),
+                    &self.auto_camera.camera,
+                    self.scene.appearance(),
+                );
+                self.framebuffer.after_paint();
 
-                    let image = self.framebuffer.get_image();
-                    let _result = if self.append_filename {
-                        image.save(self.save_path.join(replace_extension(&filename, "png")))
-                    } else {
-                        image.save(&self.save_path)
-                    };
+                let image = self.framebuffer.get_image();
+                let _result = if self.append_filename {
+                    image.save(self.save_path.join(replace_extension(
+                        &OsString::from(filename.to_string()),
+                        "png",
+                    )))
+                } else {
+                    image.save(&self.save_path)
+                };
 
-                    self.i += 1;
-                    self.progress.current = self.i;
-                }
+                self.i += 1;
+                self.progress.current = self.i;
             }
 
             // 1フレームに200ミリ秒以上かけない、でも1フレームに最低1枚は処理する

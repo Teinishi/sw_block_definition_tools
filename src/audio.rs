@@ -1,4 +1,4 @@
-use crate::store::{PlayingAudio, State};
+use crate::state::{PlayingAudio, State};
 use std::{
     fs::File,
     io::{self, BufReader},
@@ -9,7 +9,7 @@ use std::{
 
 pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioError> {
     if let Some(playing_audio) = state.playing_audio() {
-        if playing_audio.path() == path {
+        if playing_audio.path == path {
             playing_audio.stop();
             return Ok(());
         }

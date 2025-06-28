@@ -1,15 +1,19 @@
 use super::Tab;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::definition_hub::ModKey;
 use crate::{
-    store::{DefinitionPointer, DefinitionSelect, DefinitionSingleSelect, DefinitionsStore, State},
+    definition_hub::{BlockDefinition, DefinitionRegistory},
+    state::State,
     sw_gl_3d::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer},
     ui::{
-        components::DefinitionSearch,
+        app::BlockSingleSelection,
+        components::SharedDefinitionSearch,
         paint_canvas_3d, paint_checker_pattern,
         panels::DefinitionMultiSelectPanel,
         utils::{ui_center, ui_dragvalue_vec_z_inv},
         AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions, ImageRenderer,
     },
-    utils::{fit_size_aspect, replace_extension},
+    utils::fit_size_aspect,
 };
 use eframe::glow::Context;
 use egui::{
@@ -17,7 +21,7 @@ use egui::{
     Sides, Slider,
 };
 use egui_extras::{Size, StripBuilder};
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -28,7 +32,7 @@ pub struct SaveImageTab {
     #[serde(skip)]
     definition_select_panel: DefinitionMultiSelectPanel,
     #[serde(skip)]
-    selector_observer_id: u32,
+    selection: BlockSingleSelection,
 
     #[serde(skip)]
     gl: Option<Arc<Context>>,
@@ -48,15 +52,14 @@ pub struct SaveImageTab {
 impl Default for SaveImageTab {
     fn default() -> Self {
         let auto_camera = AutoCamera::default();
-
-        let mut definition_select_panel = DefinitionMultiSelectPanel::default();
-        let selector_observer_id = definition_select_panel.register_observer();
+        let definition_select_panel = DefinitionMultiSelectPanel::default();
+        let selection = definition_select_panel.single_selection().clone();
 
         Self {
             auto_camera,
             msaa_samples: 8,
             definition_select_panel,
-            selector_observer_id,
+            selection,
             gl: None,
             scene: Default::default(),
             renderer: None,
@@ -71,28 +74,27 @@ impl Tab for SaveImageTab {
     fn reset(&mut self) {
         self.auto_camera = Default::default();
         self.msaa_samples = 8;
-        self.definition_select_panel = DefinitionMultiSelectPanel::default();
-        self.selector_observer_id = self.definition_select_panel.register_observer();
+        self.definition_select_panel = Default::default();
         self.scene.reset();
         self.mesh_loaded = false;
         self.image_renderer = None;
     }
 
-    fn creation_context<'a>(&mut self, cc: &'a eframe::CreationContext<'a>) {
+    fn creation_context<'a>(
+        &mut self,
+        cc: &'a eframe::CreationContext<'a>,
+        search: SharedDefinitionSearch,
+        selection: BlockSingleSelection,
+    ) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
             self.renderer = Some(Arc::new(egui::mutex::Mutex::new(renderer)));
             self.gl = Some(gl.clone());
         }
-    }
-
-    fn use_selector(&mut self, selector: std::rc::Rc<std::cell::RefCell<DefinitionSingleSelect>>) {
-        self.selector_observer_id = selector.borrow_mut().register_observer();
-        self.definition_select_panel.use_selector(selector);
-    }
-
-    fn use_search(&mut self, search: Rc<RefCell<DefinitionSearch>>) {
         self.definition_select_panel.use_search(search);
+        self.definition_select_panel
+            .use_selection(selection.clone());
+        self.selection = selection;
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -107,36 +109,33 @@ impl Tab for SaveImageTab {
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
         _state: &mut State,
-        definitions_store: &mut DefinitionsStore,
+        registory: &mut DefinitionRegistory,
     ) -> Option<AppAction> {
         SidePanel::left("left_panel")
             .resizable(true)
             .default_width(200.0)
             .width_range(80.0..=500.0)
             .show(ctx, |ui| {
-                self.definition_select_panel.ui(ui, definitions_store);
+                self.definition_select_panel.ui(ui, registory);
             });
 
-        let definition = self.definition_select_panel.selected_definition();
+        let key = self.definition_select_panel.single_selection().get();
+        let definition = key.as_ref().and_then(|key| registory.get(key)).cloned();
+        let data = definition
+            .as_ref()
+            .and_then(|d| d.load_data())
+            .and_then(|d| d.ok());
 
         // 現在の選択に含まれるmeshの列挙
         let mut mesh_options = BlockViewStateMeshOptions::default();
-        if let Some(definition) = self.definition_select_panel.selected_definition() {
-            if let Some((data, Some(meshes))) =
-                definition.lock().ok().map(|mut d| d.load_data_meshes())
-            {
-                let options =
-                    BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
-                mesh_options.or(&options);
-            }
+        if let Some(meshes) = definition.as_ref().and_then(|d| d.load_meshes()) {
+            let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
+            mesh_options.or(&options);
         }
-        for s in self
-            .definition_select_panel
-            .multi_selector()
-            .borrow()
-            .selection()
-        {
-            if let Ok(mut definition) = s.lock() {
+
+        // 複数選択してれば裏で選択しているものも選択肢を出す
+        for key in self.definition_select_panel.multiple_selection().get() {
+            if let Some(definition) = registory.get(&key) {
                 if let (data, Some(meshes)) = definition.load_data_meshes() {
                     let options =
                         BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
@@ -145,16 +144,17 @@ impl Tab for SaveImageTab {
             }
         }
 
+        // meshのロード検出
         let mesh_loaded = definition
             .as_ref()
-            .and_then(|d| d.lock().ok())
-            .map(|d| d.meshes_loaded())
+            .map(|d| d.load_meshes().is_some())
             .unwrap_or(false);
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
 
         let mut scene_update = false;
 
+        // 画像保存設定UI
         SidePanel::right("save_image_right_panel")
             .resizable(true)
             .default_width(300.0)
@@ -198,11 +198,12 @@ impl Tab for SaveImageTab {
 
                         strip.cell(|ui| {
                             ui.add_space(4.0);
-                            self.ui_button(ui, frame);
+                            self.ui_button(ui, frame, registory);
                         });
                     });
             });
 
+        // 描画領域
         CentralPanel::default().show(ctx, |ui| {
             let canvas_size = fit_size_aspect(ui.available_size(), self.auto_camera.aspect_ratio());
 
@@ -236,14 +237,16 @@ impl Tab for SaveImageTab {
             });
         });
 
+        // 描画内容を更新
         if !self.scene_update_done || mesh_loaded_now || scene_update {
-            if let Some(definition) = &definition {
-                self.scene_update_done = self.scene.update(definition, definitions_store);
+            if let Some(definition) = definition.as_ref() {
+                self.scene_update_done = self.scene.update(definition, registory);
             }
         }
 
+        // 出力中は進捗を表示
         if let Some(renderer) = &mut self.image_renderer {
-            renderer.update(definitions_store, self.scene.state());
+            renderer.update(registory, self.scene.state());
             if renderer.progress().done() {
                 self.image_renderer = None;
             } else {
@@ -253,22 +256,15 @@ impl Tab for SaveImageTab {
             }
         }
 
-        if let Some(data) = definition
-            .as_ref()
-            .and_then(|d| d.lock().ok())
-            .and_then(|mut d| d.load_data())
-            .and_then(|d| d.ok())
-        {
+        // 自動カメラ
+        if let Some(definition) = definition.as_ref() {
             self.auto_camera
-                .update(&data, definitions_store, self.scene.state());
+                .update(definition, registory, self.scene.state());
         }
 
-        if self
-            .definition_select_panel
-            .check_update(self.selector_observer_id)
-            .unwrap_or(false)
-        {
-            self.update_scene(&definition, definitions_store);
+        // 選択変更時に描画内容変更
+        if self.selection.check_update() {
+            self.update_scene(definition.as_ref(), registory);
         }
 
         None
@@ -278,11 +274,11 @@ impl Tab for SaveImageTab {
 impl SaveImageTab {
     fn update_scene(
         &mut self,
-        definition: &Option<DefinitionPointer>,
-        definitions_store: &mut DefinitionsStore,
+        definition: Option<&BlockDefinition>,
+        registory: &mut DefinitionRegistory,
     ) {
         if let Some(definition) = definition {
-            self.scene.update(definition, definitions_store);
+            self.scene.update(definition, registory);
         } else {
             self.scene.clear();
         }
@@ -434,9 +430,14 @@ impl SaveImageTab {
     }
 
     #[allow(unused_variables)]
-    fn ui_button(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        let multi_selector = self.definition_select_panel.multi_selector();
-        let count = multi_selector.borrow().count();
+    fn ui_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        frame: &mut eframe::Frame,
+        registory: &DefinitionRegistory,
+    ) {
+        let multi_selector = self.definition_select_panel.multiple_selection();
+        let count = multi_selector.count();
         let mut save_definitions = None;
 
         let size = egui::vec2(ui.available_width(), 60.0);
@@ -444,18 +445,20 @@ impl SaveImageTab {
         if count > 0 {
             let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
             if button.clicked() {
-                save_definitions = Some(multi_selector.borrow().selection());
+                save_definitions = Some(multi_selector.get());
             }
-        } else if let Some(definition) = self.definition_select_panel.selected_definition() {
+        } else if let Some((mod_key, definition)) =
+            self.definition_select_panel.single_selection().get()
+        {
             let button = ui.add_sized(size, Button::new("Save image"));
             if button.clicked() {
-                save_definitions = Some(vec![definition]);
+                save_definitions = Some(HashSet::from([(mod_key, definition)]));
             }
         }
 
         if let Some(definitions) = save_definitions {
             #[cfg(not(target_arch = "wasm32"))]
-            self.save_image(definitions, Some(frame));
+            self.save_image(definitions, registory, Some(frame));
         }
     }
 
@@ -528,7 +531,8 @@ impl SaveImageTab {
     #[cfg(not(target_arch = "wasm32"))]
     fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
         &mut self,
-        definitions: Vec<DefinitionPointer>,
+        definitions: HashSet<(ModKey, String)>,
+        registory: &DefinitionRegistory,
         dialog_parent: Option<&W>,
     ) {
         use crate::{file_dialog, ui::ImageRenderer};
@@ -538,16 +542,13 @@ impl SaveImageTab {
             // 保存場所のダイアログ
             let (save_path, is_single) = match definitions.len().cmp(&1) {
                 Ordering::Greater => (file_dialog::open_folder_dialog(dialog_parent), false),
-                Ordering::Equal => {
-                    let filename = definitions[0]
-                        .lock()
-                        .ok()
-                        .map(|d| replace_extension(&d.filename(), "png"));
-                    (
-                        file_dialog::save_png_dialog(dialog_parent, filename.as_deref()),
-                        true,
-                    )
-                }
+                Ordering::Equal => (
+                    file_dialog::save_png_dialog(
+                        dialog_parent,
+                        Some(&definitions.iter().next().unwrap().1),
+                    ),
+                    true,
+                ),
                 Ordering::Less => {
                     return;
                 }
@@ -576,7 +577,11 @@ impl SaveImageTab {
             };
 
             self.image_renderer = Some(ImageRenderer::new(
-                definitions,
+                definitions
+                    .iter()
+                    .filter_map(|key| registory.get(key))
+                    .cloned()
+                    .collect(),
                 scene,
                 renderer,
                 &self.auto_camera,
