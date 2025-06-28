@@ -95,7 +95,7 @@ fn ui_panel(
         ui_select_all(ui, &items, multi_selection);
     }
     ui.add_space(6.0);
-    ui_list(ui, registory, &items, single_selection);
+    ui_list(ui, registory, &items, single_selection, multi_selection);
 }
 
 fn ui_select_all(ui: &mut egui::Ui, items: &[BlockKey], multi_selection: &BlockMultipleSelection) {
@@ -128,6 +128,7 @@ fn ui_list(
     registory: &DefinitionRegistory,
     items: &[BlockKey],
     single_selection: &BlockSingleSelection,
+    multi_selection: Option<&BlockMultipleSelection>,
 ) {
     let mut items_map: BTreeMap<&ModKey, Vec<&String>> = BTreeMap::new();
     for (mod_key, filename) in items {
@@ -157,7 +158,13 @@ fn ui_list(
 
                     for filename in filenames {
                         strip.strip(|builder| {
-                            ui_list_item(builder, mod_key, filename, single_selection, None);
+                            ui_list_item(
+                                builder,
+                                mod_key,
+                                filename,
+                                single_selection,
+                                multi_selection,
+                            );
                         });
                     }
                 }
