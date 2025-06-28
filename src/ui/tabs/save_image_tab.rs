@@ -108,7 +108,7 @@ impl Tab for SaveImageTab {
         &mut self,
         ctx: &eframe::egui::Context,
         frame: &mut eframe::Frame,
-        _state: &mut State,
+        state: &mut State,
         registory: &mut DefinitionRegistory,
     ) -> Option<AppAction> {
         SidePanel::left("left_panel")
@@ -128,26 +128,31 @@ impl Tab for SaveImageTab {
 
         // 現在の選択に含まれるmeshの列挙
         let mut mesh_options = BlockViewStateMeshOptions::default();
-        if let Some(meshes) = definition.as_ref().and_then(|d| d.load_meshes()) {
-            let options = BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
-            mesh_options.or(&options);
+        if let Some(meshes) = definition.as_ref().map(|d| d.load_meshes(state)) {
+            let m = meshes.borrow();
+            if let Some(meshes) = m.as_ref() {
+                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes, &data);
+                mesh_options.or(&options);
+            }
         }
 
         // 複数選択してれば裏で選択しているものも選択肢を出す
         for key in self.definition_select_panel.multiple_selection().get() {
             if let Some(definition) = registory.get(&key) {
-                if let (data, Some(meshes)) = definition.load_data_meshes() {
-                    let options =
-                        BlockViewStateMeshOptions::from_definition_meshes(meshes.as_ref(), &data);
-                    mesh_options.or(&options);
-                }
+                let (data, meshes) = definition.load_data_meshes(state);
+                let options = meshes
+                    .borrow()
+                    .as_ref()
+                    .map(|meshes| BlockViewStateMeshOptions::from_definition_meshes(meshes, &data))
+                    .unwrap_or_default();
+                mesh_options.or(&options);
             }
         }
 
         // meshのロード検出
         let mesh_loaded = definition
             .as_ref()
-            .map(|d| d.load_meshes().is_some())
+            .map(|d| d.load_meshes(state).borrow().is_some())
             .unwrap_or(false);
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
@@ -240,13 +245,13 @@ impl Tab for SaveImageTab {
         // 描画内容を更新
         if !self.scene_update_done || mesh_loaded_now || scene_update {
             if let Some(definition) = definition.as_ref() {
-                self.scene_update_done = self.scene.update(definition, registory);
+                self.scene_update_done = self.scene.update(definition, registory, state);
             }
         }
 
         // 出力中は進捗を表示
         if let Some(renderer) = &mut self.image_renderer {
-            renderer.update(registory, self.scene.state());
+            renderer.update(state, registory, self.scene.state());
             if renderer.progress().done() {
                 self.image_renderer = None;
             } else {
@@ -264,7 +269,7 @@ impl Tab for SaveImageTab {
 
         // 選択変更時に描画内容変更
         if self.selection.check_update() {
-            self.update_scene(definition.as_ref(), registory);
+            self.update_scene(definition.as_ref(), registory, state);
         }
 
         None
@@ -276,9 +281,10 @@ impl SaveImageTab {
         &mut self,
         definition: Option<&BlockDefinition>,
         registory: &mut DefinitionRegistory,
+        state: &State,
     ) {
         if let Some(definition) = definition {
-            self.scene.update(definition, registory);
+            self.scene.update(definition, registory, state);
         } else {
             self.scene.clear();
         }

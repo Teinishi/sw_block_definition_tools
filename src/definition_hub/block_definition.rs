@@ -1,18 +1,31 @@
+use super::LazyXml;
 use crate::{
-    definition_hub::ModKey, lazy_load::LazyXml, sw_block_definition::Definition,
-    sw_gl_3d::SwBlockMeshes,
+    definition_hub::ModKey, state::State, sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes,
 };
+use core::fmt;
 use std::{
+    cell::RefCell,
     path::{Path, PathBuf},
+    rc::Rc,
     sync::Arc,
 };
 
-#[derive(Debug)]
 pub struct BlockDefinition {
     mod_key: ModKey,
     path: PathBuf,
     filename: String,
     data: LazyXml<Definition>,
+    meshes: Rc<RefCell<Option<SwBlockMeshes>>>,
+}
+
+impl fmt::Debug for BlockDefinition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "BlockDefinition {{ mod_key: {:?}, path: {:?}, filename: {:?}, data: {:?}, meshes: ... }}",
+            self.mod_key, self.path, self.filename, self.data
+        )
+    }
 }
 
 impl BlockDefinition {
@@ -30,6 +43,7 @@ impl BlockDefinition {
             path: pathbuf,
             filename,
             data,
+            meshes: Rc::new(RefCell::new(None)),
         }
     }
 
@@ -53,12 +67,27 @@ impl BlockDefinition {
         self.data.get()
     }
 
-    pub fn load_meshes(&self) -> Option<Arc<SwBlockMeshes>> {
-        None
+    pub fn load_meshes(&self, state: &State) -> Rc<RefCell<Option<SwBlockMeshes>>> {
+        if self.meshes.borrow().is_none() {
+            if let Some(Ok(data)) = self.load_data() {
+                let path = self.mod_key.get_path(state).clone();
+                let meshes = SwBlockMeshes::new(&data, &move |name| {
+                    <Option<PathBuf> as Clone>::clone(&path).map(|p| p.join(name))
+                });
+                *self.meshes.borrow_mut() = Some(meshes);
+            }
+        }
+        self.meshes.clone()
     }
 
-    pub fn load_data_meshes(&self) -> (Option<Arc<Definition>>, Option<Arc<SwBlockMeshes>>) {
-        (self.load_data().and_then(|d| d.ok()), self.load_meshes())
+    pub fn load_data_meshes(
+        &self,
+        state: &State,
+    ) -> (Option<Arc<Definition>>, Rc<RefCell<Option<SwBlockMeshes>>>) {
+        (
+            self.load_data().and_then(|d| d.ok()),
+            self.load_meshes(state),
+        )
     }
 
     pub fn refresh(&self) {
@@ -73,6 +102,7 @@ impl Clone for BlockDefinition {
             path: self.path.clone(),
             filename: self.filename.clone(),
             data: self.data.clone(),
+            meshes: self.meshes.clone(),
         }
     }
 }

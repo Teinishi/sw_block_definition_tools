@@ -181,9 +181,7 @@ impl SwBlockMeshBuilder {
     }
 }
 
-pub trait FileResolver {
-    fn load_file(&self, path: &str) -> Option<PathBuf>;
-}
+pub type FileResolverFn = dyn Fn(&str) -> Option<PathBuf>;
 
 #[derive(Default)]
 pub struct SwBlockMeshes {
@@ -194,7 +192,7 @@ pub struct SwBlockMeshes {
 }
 
 impl SwBlockMeshes {
-    pub fn new(data: &Definition, file_loader: impl FileResolver) -> Self {
+    pub fn new(data: &Definition, file_loader: &FileResolverFn) -> Self {
         let special_mesh =
             SwBlockSpecialMesh::from_definition_type(data.definition_type.unwrap_or(0));
 
@@ -202,7 +200,7 @@ impl SwBlockMeshes {
         for key in SwBlockMeshKey::VARIANTS {
             if let Some(name) = key.get_filepath(data) {
                 if !name.is_empty() {
-                    if let Some(path) = file_loader.load_file(name) {
+                    if let Some(path) = file_loader(name) {
                         meshes.insert(*key, SwMesh::from_file(path));
                     }
                 }
@@ -212,8 +210,7 @@ impl SwBlockMeshes {
         let mut wheel_advanced_meshes = BTreeMap::new();
         if special_mesh == Some(SwBlockSpecialMesh::WheelAdvanced) {
             for key in SwWheelAdvancedMeshKey::VARIANTS {
-                if let Some(Some(path)) = key.get_filepath(data).map(|p| file_loader.load_file(&p))
-                {
+                if let Some(Some(path)) = key.get_filepath(data).map(|p| file_loader(&p)) {
                     wheel_advanced_meshes.insert(*key, SwMesh::from_file(path));
                 }
             }

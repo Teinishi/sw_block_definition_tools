@@ -1,6 +1,7 @@
 use super::{BlockViewAppearance, BlockViewScene, BlockViewState};
 use crate::{
     definition_hub::{BlockDefinition, DefinitionRegistory},
+    state::State,
     sw_block_definition::{Definition, Voxel, VoxelLocationChild},
     sw_gl_3d::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer, SwBlockMeshes},
     utils::replace_extension,
@@ -342,7 +343,12 @@ impl ImageRenderer {
         }
     }
 
-    pub fn update(&mut self, registory: &mut DefinitionRegistory, state: &BlockViewState) {
+    pub fn update(
+        &mut self,
+        state: &State,
+        registory: &mut DefinitionRegistory,
+        view_state: &BlockViewState,
+    ) {
         let frame_start_time = std::time::Instant::now();
 
         loop {
@@ -376,8 +382,8 @@ impl ImageRenderer {
             }
 
             let filename = definition.filename();
-            if self.scene.update(definition, registory) {
-                self.auto_camera.update(definition, registory, state);
+            if self.scene.update(definition, registory, state) {
+                self.auto_camera.update(definition, registory, view_state);
 
                 self.framebuffer.before_paint();
                 self.renderer.paint(

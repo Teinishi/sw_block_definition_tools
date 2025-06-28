@@ -1,6 +1,7 @@
 use crate::{
     definition_hub::{BlockDefinition, DefinitionRegistory},
-    sw_gl_3d::{OrbitCamera, SceneRenderer, SwBlockMeshes},
+    state::State,
+    sw_gl_3d::{OrbitCamera, SceneRenderer},
     ui::{paint_canvas_3d, BlockViewScene, BlockViewStateMeshOptions},
 };
 use egui::{CentralPanel, ScrollArea, TopBottomPanel};
@@ -64,6 +65,7 @@ impl Definition3dPanel {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        state: &State,
         registory: &mut DefinitionRegistory,
         selected: Option<&BlockDefinition>,
         select_changed: bool,
@@ -77,24 +79,22 @@ impl Definition3dPanel {
                     .show(ui, |ui| {
                         ui.add_space(4.0);
 
-                        let mut data = None;
-                        let mut meshes: Option<Arc<SwBlockMeshes>> = None;
-                        if let Some(definition) = &selected {
-                            (data, meshes) = definition.load_data_meshes();
-                        }
-
-                        let mesh_loaded = meshes.is_some();
+                        let mesh_loaded = selected
+                            .map(|d| d.load_meshes(state).borrow().is_some())
+                            .unwrap_or(false);
                         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
                         self.mesh_loaded = mesh_loaded;
 
-                        let mesh_options = if let Some(meshes) = &meshes {
-                            BlockViewStateMeshOptions::from_definition_meshes(
-                                meshes.as_ref(),
-                                &data,
-                            )
-                        } else {
-                            Default::default()
-                        };
+                        let mesh_options = selected
+                            .and_then(|d| {
+                                let (data, meshes) = d.load_data_meshes(state);
+                                let x = meshes.borrow().as_ref().map(|meshes| {
+                                    BlockViewStateMeshOptions::from_definition_meshes(meshes, &data)
+                                });
+                                x
+                            })
+                            .unwrap_or_default();
+
                         let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
                         if !self.scene_update_done
                             || mesh_loaded_now
@@ -102,7 +102,8 @@ impl Definition3dPanel {
                             || scene_state_changed
                         {
                             if let Some(definition) = &selected {
-                                self.scene_update_done = self.scene.update(definition, registory);
+                                self.scene_update_done =
+                                    self.scene.update(definition, registory, state);
                             }
                         }
 

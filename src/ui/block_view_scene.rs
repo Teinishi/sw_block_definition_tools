@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     definition_hub::{BlockDefinition, DefinitionRegistory},
+    state::State,
     sw_block_definition::{Definition, DefinitionVec3},
     sw_gl_3d::{
         Color4, Line, Scene, SceneObject, SurfaceObjectBuilder, SwBlockMeshBuilder, SwBlockMeshKey,
@@ -16,8 +17,10 @@ use core::f32;
 use egui::{DragValue, Grid, Slider};
 use glam::{Mat4, Vec3};
 use std::{
+    cell::RefCell,
     collections::BTreeSet,
     fmt::Debug,
+    rc::Rc,
     sync::{Arc, Mutex, MutexGuard},
 };
 use strum::VariantArray;
@@ -496,6 +499,7 @@ impl BlockViewScene {
         &mut self,
         definition: &BlockDefinition,
         registory: &mut DefinitionRegistory,
+        state: &State,
     ) -> bool {
         self.use_scene(|mut scene| {
             scene.clear();
@@ -515,8 +519,8 @@ impl BlockViewScene {
         }
 
         let transform = Mat4::IDENTITY;
-        let (data, meshes) = definition.load_data_meshes();
-        let mut done = data.is_some() && meshes.is_some();
+        let (data, meshes) = definition.load_data_meshes(state);
+        let mut done = data.is_some() && meshes.borrow().is_some();
         self.add_block_objects(&data, &meshes, &transform);
 
         // 子パーツを追加
@@ -526,8 +530,8 @@ impl BlockViewScene {
                     .clone()
                     .and_then(|name| registory.resolve(definition.mod_key(), &name))
             }) {
-                let (child_data, child_meshes) = child.load_data_meshes();
-                done = done && child_data.is_some() && child_meshes.is_some();
+                let (child_data, child_meshes) = child.load_data_meshes(state);
+                done = done && child_data.is_some() && child_meshes.borrow().is_some();
 
                 let mut translation = Vec3::ZERO;
                 if let Some(ref child_data) = &child_data {
@@ -550,12 +554,12 @@ impl BlockViewScene {
     fn add_block_objects(
         &mut self,
         data: &Option<Arc<Definition>>,
-        meshes: &Option<Arc<SwBlockMeshes>>,
+        meshes: &Rc<RefCell<Option<SwBlockMeshes>>>,
         transform: &Mat4,
     ) {
         // meshを追加
-        if let Some((data, block_meshes)) = data.as_ref().zip(meshes.as_ref()) {
-            for (mesh, mesh_transform) in self.state.mesh_builder.build(block_meshes, data) {
+        if let Some((meshes, data)) = meshes.borrow().as_ref().zip(data.as_ref()) {
+            for (mesh, mesh_transform) in self.state.mesh_builder.build(meshes, data) {
                 self.add_object(SceneObject::from_mesh(
                     mesh,
                     Some(transform.mul_mat4(&mesh_transform)),

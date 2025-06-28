@@ -124,8 +124,13 @@ impl Tab for MainTab {
             .default_width(300.0)
             .width_range(80.0..=800.0)
             .show(ctx, |ui| {
-                self.definition_3d_panel
-                    .ui(ui, registory, definition.as_ref(), selection_changed);
+                self.definition_3d_panel.ui(
+                    ui,
+                    state,
+                    registory,
+                    definition.as_ref(),
+                    selection_changed,
+                );
             });
 
         TopBottomPanel::bottom("bottom_panel")

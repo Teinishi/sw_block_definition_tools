@@ -1,3 +1,5 @@
+mod lazy_xml;
+pub use lazy_xml::LazyXml;
 mod mod_key;
 pub use mod_key::ModKey;
 mod mod_definition;

@@ -1,5 +1,5 @@
-use super::BlockDefinition;
-use crate::{definition_hub::ModKey, lazy_load::LazyXml, sw_schema_lib::Mod};
+use super::{BlockDefinition, LazyXml};
+use crate::{definition_hub::ModKey, sw_schema_lib::Mod};
 use std::{
     collections::BTreeMap,
     fs::read_dir,
