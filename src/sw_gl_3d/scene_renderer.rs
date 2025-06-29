@@ -5,6 +5,7 @@ use crate::{
 use eframe::glow::{self, HasContext};
 use enum_map::EnumMap;
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
+use ordered_float::OrderedFloat;
 use std::sync::{Arc, Mutex};
 
 /*
@@ -110,19 +111,18 @@ impl SceneRenderer {
         vaos.sort_by(|a, b| {
             let shader_type_a = &a.config.shader_type;
             let shader_type_b = &b.config.shader_type;
-            shader_type_a
-                .render_order()
-                .cmp(&shader_type_b.render_order())
-                .then_with(|| {
-                    if !(shader_type_a.is_translucent() || shader_type_b.is_translucent()) {
-                        return std::cmp::Ordering::Equal;
-                    }
-                    b.z_offset.partial_cmp(&a.z_offset).unwrap().then_with(|| {
-                        let da = (a.center - camera_position).length();
-                        let db = (b.center - camera_position).length();
-                        db.partial_cmp(&da).unwrap()
-                    })
+            let order_a = shader_type_a.render_order();
+            let order_b = shader_type_b.render_order();
+            order_a.cmp(&order_b).then_with(|| {
+                if !(shader_type_a.is_translucent() || shader_type_b.is_translucent()) {
+                    return std::cmp::Ordering::Equal;
+                }
+                b.z_offset.partial_cmp(&a.z_offset).unwrap().then_with(|| {
+                    let da = OrderedFloat::from((a.center - camera_position).length());
+                    let db = OrderedFloat::from((b.center - camera_position).length());
+                    db.cmp(&da)
                 })
+            })
         });
 
         unsafe {
