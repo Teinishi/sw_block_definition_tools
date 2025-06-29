@@ -79,8 +79,9 @@ impl DefinitionRegistory {
     }
 
     pub fn resolve(&self, mod_key: &ModKey, name: &str) -> Option<&BlockDefinition> {
-        self.get(&(mod_key.clone(), name.to_string()))
-            .or_else(|| self.get(&(ModKey::Stormworks, name.to_string())))
+        let name = format!("{}.xml", name);
+        self.get(&(mod_key.clone(), name.clone()))
+            .or_else(|| self.get(&(ModKey::Stormworks, name)))
     }
 
     pub fn load_all(&self) -> usize {

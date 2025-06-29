@@ -533,20 +533,25 @@ impl BlockViewScene {
             // 子パーツを追加
             if self.state.show_child_body() {
                 let child_name = definition.use_data(|d| d.child_name.clone()).flatten();
-                let child =
-                    child_name.and_then(|name| registory.resolve(definition.mod_key(), &name));
+                let child = child_name
+                    .as_ref()
+                    .and_then(|name| registory.resolve(definition.mod_key(), name));
                 if let Some(child) = child {
                     if !child.is_data_ready() || !child.is_mesh_ready() {
                         done = false;
                     }
-                    child.use_data(|child_data| {
-                        let mut translation = Vec3::ZERO;
-                        if let Some(v) = child_data.voxel_location_child.last() {
-                            translation = std::convert::Into::<Vec3>::into(*v) * 0.25;
-                        }
-
+                    let translation = definition
+                        .use_data(|data| {
+                            data.voxel_location_child
+                                .last()
+                                .map(|v| std::convert::Into::<Vec3>::into(*v) * 0.25)
+                        })
+                        .flatten()
+                        .unwrap_or(Vec3::ZERO);
+                    child.load_data();
+                    child.use_data(|data| {
                         self.add_block_objects(
-                            child_data,
+                            data,
                             child.load_meshes(state).as_deref(),
                             &Mat4::from_translation(translation).mul_mat4(&transform),
                         );
