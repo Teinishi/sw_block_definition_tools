@@ -1,4 +1,4 @@
-use std::ffi::OsStr;
+use std::{ffi::OsStr, io, process::Command};
 
 pub fn replace_extension(filename: &OsStr, new_ext: &str) -> String {
     let mut path = std::path::Path::new(filename).to_owned();
@@ -49,4 +49,11 @@ pub fn check_xml_root_tag(xml: &str, root_tag: &[u8]) -> Result<(), String> {
             break Err("Could not find root element".to_string());
         }
     }
+}
+
+pub fn open_explorer(path: &str) -> io::Result<()> {
+    Command::new("explorer.exe")
+        .args(["/select,", path])
+        .spawn()?;
+    Ok(())
 }

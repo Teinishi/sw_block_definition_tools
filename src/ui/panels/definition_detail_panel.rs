@@ -68,7 +68,13 @@ impl DefinitionDetailPanel {
                             #[cfg(not(target_arch = "wasm32"))]
                             {
                                 ui.add_space(10.0);
-                                if ui.button("Open").clicked() {
+                                if ui.button("Open in explorer").clicked() {
+                                    if let Some(path) = definition.path().to_str() {
+                                        let _ = crate::utils::open_explorer(path);
+                                    }
+                                }
+                                ui.add_space(10.0);
+                                if ui.button("Open in editor").clicked() {
                                     let _ = open::that(definition.path());
                                 }
                             }
