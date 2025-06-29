@@ -51,46 +51,50 @@ impl DefinitionDetailPanel {
         let mut new_window = None;
 
         if let Some(definition) = selection.get().and_then(|key| registory.get(&key)) {
+            let data = definition.load_data();
             let filename = definition.filename().to_string();
             let mut refresh = false;
 
-            match definition.load_data().as_deref() {
+            Sides::new().show(
+                ui,
+                |ui| {
+                    if let Some(name) = data
+                        .as_deref()
+                        .and_then(|d| d.as_ref().ok().and_then(|d| d.name.as_ref()))
+                    {
+                        ui.heading(name);
+                        ui.add_space(10.0);
+                    }
+                    ui.weak(filename);
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        ui.add_space(10.0);
+                        if ui.button("Open in explorer").clicked() {
+                            if let Some(path) = definition.path().to_str() {
+                                let _ = crate::utils::open_explorer(path);
+                            }
+                        }
+                        ui.add_space(4.0);
+                        if ui.button("Open in editor").clicked() {
+                            let _ = open::that(definition.path());
+                        }
+                    }
+                },
+                |ui| {
+                    if ui
+                        .add_sized(egui::vec2(20.0, 20.0), Button::new("\u{1F503}"))
+                        .clicked()
+                    {
+                        refresh = true;
+                    }
+                },
+            );
+
+            ui.separator();
+
+            match data.as_deref() {
                 Some(Ok(data)) => {
-                    Sides::new().show(
-                        ui,
-                        |ui| {
-                            if let Some(name) = &data.name {
-                                ui.heading(name);
-                                ui.add_space(10.0);
-                            }
-                            ui.weak(filename);
-
-                            #[cfg(not(target_arch = "wasm32"))]
-                            {
-                                ui.add_space(10.0);
-                                if ui.button("Open in explorer").clicked() {
-                                    if let Some(path) = definition.path().to_str() {
-                                        let _ = crate::utils::open_explorer(path);
-                                    }
-                                }
-                                ui.add_space(10.0);
-                                if ui.button("Open in editor").clicked() {
-                                    let _ = open::that(definition.path());
-                                }
-                            }
-                        },
-                        |ui| {
-                            if ui
-                                .add_sized(egui::vec2(20.0, 20.0), Button::new("\u{1F503}"))
-                                .clicked()
-                            {
-                                refresh = true;
-                            }
-                        },
-                    );
-
-                    ui.separator();
-
                     if let Some(clicked_attribute) = ui_definition_detail(
                         ui,
                         state,

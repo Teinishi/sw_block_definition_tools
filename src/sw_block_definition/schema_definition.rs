@@ -613,9 +613,6 @@ impl GetAttributeValueRoot for DefinitionAttribute {
             | Self::VoxelPhysicsMax
             | Self::CompartmentSamplePos
             | Self::VoxelLocationChild
-            | Self::SeatFront
-            | Self::SeatUp
-            | Self::SeatExitPosition
             | Self::ForceDir
             | Self::LightPosition
             | Self::LightForward
@@ -635,6 +632,9 @@ impl GetAttributeValueRoot for DefinitionAttribute {
             | Self::BbPhysicsMax
             | Self::ConstraintPosParent
             | Self::ConstraintPosChild
+            | Self::SeatFront
+            | Self::SeatUp
+            | Self::SeatExitPosition
             | Self::SeatOffset
             | Self::SeatCamera
             | Self::SeatRender
