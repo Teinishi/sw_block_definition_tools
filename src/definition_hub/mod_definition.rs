@@ -11,7 +11,7 @@ use std::{
 pub struct ModDefinition {
     mod_key: ModKey,
     path: PathBuf,
-    pub manifest: LazyXml<Mod>,
+    manifest: LazyXml<Mod>,
     pub definitions: BTreeMap<String, BlockDefinition>,
 }
 

@@ -142,16 +142,17 @@ fn ui_list(
             .vertical(|mut strip| {
                 for (mod_key, filenames) in items_map {
                     let mod_name = match mod_key {
-                        ModKey::Stormworks => "Stormworks",
-                        _ => &registory
+                        ModKey::Stormworks => "Stormworks".to_string(),
+                        _ => registory
                             .mods
                             .get(mod_key)
                             .and_then(|m| m.use_manifest(|m| m.name.clone()))
-                            .unwrap_or_default(),
+                            .flatten()
+                            .unwrap_or(mod_key.get_folder_name()),
                     };
 
                     strip.cell(|ui| {
-                        ui_list_mod_label(ui, mod_name);
+                        ui_list_mod_label(ui, &mod_name);
                     });
 
                     for filename in filenames {

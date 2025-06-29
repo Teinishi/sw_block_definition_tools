@@ -9,7 +9,8 @@ fn search(
     pat: &str,
 ) -> bool {
     if mod_definition
-        .use_manifest(|manifest| manifest.name.contains(pat))
+        .use_manifest(|manifest| manifest.name.as_ref().map(|n| n.contains(pat)))
+        .flatten()
         .unwrap_or(false)
     {
         return true;
