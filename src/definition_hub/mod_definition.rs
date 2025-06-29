@@ -35,7 +35,13 @@ impl ModDefinition {
     }
 
     pub fn load_all(&self) -> usize {
-        0 //todo
+        let mut count = 0;
+        for definition in self.definitions.values() {
+            if definition.load_data().is_none() {
+                count += 1;
+            }
+        }
+        count
     }
 
     pub fn use_manifest<R>(&self, f: impl FnOnce(&Mod) -> R) -> Option<R> {
