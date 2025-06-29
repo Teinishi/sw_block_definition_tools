@@ -20,10 +20,6 @@ impl LazyMeshes {
         });
     }
 
-    pub fn _get(&self) -> Option<Arc<SwBlockMeshes>> {
-        self.inner.get()
-    }
-
     pub fn try_get(&self) -> Option<Arc<SwBlockMeshes>> {
         self.inner.try_get()
     }

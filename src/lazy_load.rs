@@ -109,10 +109,9 @@ where
                 guard.clone()
             };
             if let Some(func) = loader {
-                let result = func();
-                let arc_val = Arc::new(result);
+                let result = Arc::new(func());
                 let mut guard = state.content.lock().unwrap();
-                *guard = Some(arc_val);
+                *guard = Some(result);
                 state.is_ready.store(true, Ordering::SeqCst);
             }
             state.is_loading.store(false, Ordering::SeqCst);

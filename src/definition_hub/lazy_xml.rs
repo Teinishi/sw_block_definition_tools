@@ -26,14 +26,6 @@ where
         }
     }
 
-    pub fn _get(&self) -> Option<Arc<Result<T, String>>> {
-        self.inner.get()
-    }
-
-    pub fn try_load(&self) {
-        self.inner.try_load()
-    }
-
     pub fn try_get(&self) -> Option<Arc<Result<T, String>>> {
         self.inner.try_get()
     }

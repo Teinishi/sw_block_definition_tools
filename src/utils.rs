@@ -24,19 +24,26 @@ where
 }
 
 pub fn check_xml_root_tag(xml: &str, root_tag: &[u8]) -> Result<(), String> {
+    use quick_xml::events::Event;
     let mut xml_reader = quick_xml::Reader::from_str(xml);
     xml_reader.config_mut().trim_text(true);
     loop {
         if let Ok(event) = xml_reader.read_event() {
-            if let quick_xml::events::Event::Start(ref e) = event {
-                if e.name().as_ref() == root_tag {
-                    break Ok(());
-                } else {
-                    break Err(format!(
-                        "Unexpected root element: {:?}",
-                        std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
-                    ));
+            match event {
+                Event::Start(ref e) | Event::Empty(ref e) => {
+                    if e.name().as_ref() == root_tag {
+                        break Ok(());
+                    } else {
+                        break Err(format!(
+                            "Unexpected root element: {:?}",
+                            std::str::from_utf8(e.name().as_ref()).unwrap_or_default(),
+                        ));
+                    }
                 }
+                Event::Eof => {
+                    break Err("Could not find root element".to_string());
+                }
+                _ => {}
             }
         } else {
             break Err("Could not find root element".to_string());
