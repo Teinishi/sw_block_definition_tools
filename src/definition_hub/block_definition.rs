@@ -106,8 +106,11 @@ impl BlockDefinition {
     pub fn load_meshes(&self, state: &State) -> Option<LazyMeshesContent> {
         if !self.meshes.has_loader() {
             self.use_data(|data| {
-                let path = self.mod_key.get_path(state).clone();
-                self.meshes.set_loader(data, &path);
+                let paths: Vec<PathBuf> = [self.mod_key.get_path(state), state.rom_path.clone()]
+                    .into_iter()
+                    .flatten()
+                    .collect();
+                self.meshes.set_loader(data, paths);
             });
         }
         self.meshes.try_get()

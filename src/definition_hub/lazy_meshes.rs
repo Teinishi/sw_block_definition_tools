@@ -11,12 +11,19 @@ pub struct LazyMeshes {
 }
 
 impl LazyMeshes {
-    pub fn set_loader(&self, data: &Definition, path: &Option<PathBuf>) {
+    pub fn set_loader(&self, data: &Definition, paths: Vec<PathBuf>) {
         let data = MeshConstructData::from_definition(data);
-        let path = path.clone();
         self.inner.set_loader(move || {
-            let path = path.clone();
-            SwBlockMeshes::new(&data, &move |name| path.clone().map(|p| p.join(name)))
+            let value = paths.clone();
+            SwBlockMeshes::new(&data, &move |name| {
+                for p in &value {
+                    let path = p.join(name);
+                    if path.is_file() {
+                        return Some(path);
+                    }
+                }
+                None
+            })
         });
     }
 
