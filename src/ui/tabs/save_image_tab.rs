@@ -1,8 +1,6 @@
 use super::Tab;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::definition_hub::ModKey;
 use crate::{
-    definition_hub::{BlockDefinition, DefinitionRegistory},
+    definition_hub::DefinitionRegistory,
     state::State,
     sw_gl_3d::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer},
     ui::{
@@ -120,30 +118,29 @@ impl Tab for SaveImageTab {
             });
 
         let key = self.definition_select_panel.single_selection().get();
-        let definition = key.as_ref().and_then(|key| registory.get(key)).cloned();
-        let data = definition
+        let definition = key.as_ref().and_then(|key| registory.get(key));
+        let definition_type = definition
             .as_ref()
-            .and_then(|d| d.load_data())
-            .and_then(|d| d.ok());
+            .and_then(|d| d.use_data(|d| d.definition_type))
+            .flatten();
 
         // 現在の選択に含まれるmeshの列挙
         let mut mesh_options = BlockViewStateMeshOptions::default();
-        if let Some(meshes) = definition.as_ref().map(|d| d.load_meshes(state)) {
-            let m = meshes.borrow();
-            if let Some(meshes) = m.as_ref() {
-                let options = BlockViewStateMeshOptions::from_definition_meshes(meshes, &data);
-                mesh_options.or(&options);
-            }
+        if let Some(meshes) = definition.and_then(|d| d.load_meshes(state)) {
+            let options =
+                BlockViewStateMeshOptions::from_definition_meshes(&meshes, definition_type);
+            mesh_options.or(&options);
         }
 
         // 複数選択してれば裏で選択しているものも選択肢を出す
         for key in self.definition_select_panel.multiple_selection().get() {
             if let Some(definition) = registory.get(&key) {
-                let (data, meshes) = definition.load_data_meshes(state);
+                let meshes = definition.load_meshes(state);
                 let options = meshes
-                    .borrow()
                     .as_ref()
-                    .map(|meshes| BlockViewStateMeshOptions::from_definition_meshes(meshes, &data))
+                    .map(|meshes| {
+                        BlockViewStateMeshOptions::from_definition_meshes(meshes, definition_type)
+                    })
                     .unwrap_or_default();
                 mesh_options.or(&options);
             }
@@ -152,7 +149,7 @@ impl Tab for SaveImageTab {
         // meshのロード検出
         let mesh_loaded = definition
             .as_ref()
-            .map(|d| d.load_meshes(state).borrow().is_some())
+            .map(|d| d.is_mesh_ready())
             .unwrap_or(false);
         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
         self.mesh_loaded = mesh_loaded;
@@ -242,12 +239,9 @@ impl Tab for SaveImageTab {
             });
         });
 
-        // 描画内容を更新
-        if !self.scene_update_done || mesh_loaded_now || scene_update {
-            if let Some(definition) = definition.as_ref() {
-                self.scene_update_done = self.scene.update(definition, registory, state);
-            }
-        }
+        // 自動カメラ
+        self.auto_camera
+            .update(key.as_ref(), registory, self.scene.state());
 
         // 出力中は進捗を表示
         if let Some(renderer) = &mut self.image_renderer {
@@ -261,15 +255,13 @@ impl Tab for SaveImageTab {
             }
         }
 
-        // 自動カメラ
-        if let Some(definition) = definition.as_ref() {
-            self.auto_camera
-                .update(definition, registory, self.scene.state());
-        }
-
-        // 選択変更時に描画内容変更
-        if self.selection.check_update() {
-            self.update_scene(definition.as_ref(), registory, state);
+        // 描画内容を更新
+        if !self.scene_update_done
+            || mesh_loaded_now
+            || scene_update
+            || self.selection.check_update()
+        {
+            self.scene_update_done = self.scene.update(key.as_ref(), registory, state);
         }
 
         None
@@ -277,19 +269,6 @@ impl Tab for SaveImageTab {
 }
 
 impl SaveImageTab {
-    fn update_scene(
-        &mut self,
-        definition: Option<&BlockDefinition>,
-        registory: &mut DefinitionRegistory,
-        state: &State,
-    ) {
-        if let Some(definition) = definition {
-            self.scene.update(definition, registory, state);
-        } else {
-            self.scene.clear();
-        }
-    }
-
     fn ui_camera_params(&mut self, ui: &mut egui::Ui, id: Id) {
         Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
             ui.label("Image size");
@@ -537,7 +516,7 @@ impl SaveImageTab {
     #[cfg(not(target_arch = "wasm32"))]
     fn save_image<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(
         &mut self,
-        definitions: HashSet<(ModKey, String)>,
+        definitions: HashSet<(crate::definition_hub::ModKey, String)>,
         registory: &DefinitionRegistory,
         dialog_parent: Option<&W>,
     ) {

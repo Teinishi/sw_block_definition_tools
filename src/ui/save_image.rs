@@ -1,6 +1,6 @@
 use super::{BlockViewAppearance, BlockViewScene, BlockViewState};
 use crate::{
-    definition_hub::{BlockDefinition, DefinitionRegistory},
+    definition_hub::{BlockDefinition, DefinitionRegistory, ModKey},
     state::State,
     sw_block_definition::{Definition, Voxel, VoxelLocationChild},
     sw_gl_3d::{Camera, OrbitCamera, RenderFramebuffer, SceneRenderer, SwBlockMeshes},
@@ -87,41 +87,45 @@ impl VoxelPosition {
     }
 
     fn get_voxels(
-        definition: &BlockDefinition,
+        key: Option<&(ModKey, String)>,
         registory: &mut DefinitionRegistory,
         include_child: bool,
     ) -> Vec<Self> {
-        if let Some(Ok(data)) = definition.load_data() {
-            let mut voxels = if let Some(voxels) = data.voxels.last() {
-                voxels.voxel.iter().map(Self::from).collect()
-            } else {
-                Vec::new()
-            };
+        key.and_then(|key| registory.get(key))
+            .cloned()
+            .and_then(|definition| {
+                definition.use_data(|data| {
+                    let mut voxels = if let Some(voxels) = data.voxels.last() {
+                        voxels.voxel.iter().map(Self::from).collect()
+                    } else {
+                        Vec::new()
+                    };
 
-            if !include_child {
-                return voxels;
-            }
-            if let Some(child) = data
-                .child_name
-                .as_ref()
-                .and_then(|name| registory.resolve(definition.mod_key(), name))
-            {
-                let child_position = data
-                    .voxel_location_child
-                    .last()
-                    .map(Self::from)
-                    .unwrap_or_default();
-                voxels.extend(
-                    Self::get_voxels(&child.clone(), registory, false)
-                        .iter()
-                        .map(|v| v.add(&child_position)),
-                );
-            }
+                    if !include_child {
+                        return voxels;
+                    }
+                    if let Some(child_key) = data
+                        .child_name
+                        .as_ref()
+                        .and_then(|name| registory.resolve(definition.mod_key(), name))
+                        .map(|c| c.key())
+                    {
+                        let child_position = data
+                            .voxel_location_child
+                            .last()
+                            .map(Self::from)
+                            .unwrap_or_default();
+                        voxels.extend(
+                            Self::get_voxels(Some(&child_key), registory, false)
+                                .iter()
+                                .map(|v| v.add(&child_position)),
+                        );
+                    }
 
-            voxels
-        } else {
-            vec![]
-        }
+                    voxels
+                })
+            })
+            .unwrap_or_default()
     }
 
     fn get_bounds(voxels: &[Self]) -> (Self, Self) {
@@ -221,7 +225,7 @@ impl AutoCamera {
 
     pub fn update(
         &mut self,
-        definition: &BlockDefinition,
+        key: Option<&(ModKey, String)>,
         registory: &mut DefinitionRegistory,
         state: &BlockViewState,
     ) {
@@ -240,7 +244,7 @@ impl AutoCamera {
         }
 
         if self.is_auto {
-            let voxels = VoxelPosition::get_voxels(definition, registory, state.show_child_body());
+            let voxels = VoxelPosition::get_voxels(key, registory, state.show_child_body());
             let (voxel_min, voxel_max) = VoxelPosition::get_bounds(&voxels);
             let corner_min = voxel_min.corner_min().world_pos_lh();
             let corner_max = voxel_max.corner_max().world_pos_lh();
@@ -369,21 +373,23 @@ impl ImageRenderer {
                 return;
             }
 
-            let definition = &self.definitions[self.i];
-            let filename = definition.filename();
-            if let Some(Err(err)) = definition.load_data() {
-                self.logs.push(format!(
-                    "Failed to save image of {} due to {}",
-                    filename, err
-                ));
-                self.i += 1;
-                self.progress.current = self.i;
-                continue;
+            let definition = self.definitions.get_mut(self.i).unwrap();
+            let key = definition.key();
+            let filename = definition.filename().to_string();
+            if let Some(result) = definition.load_data() {
+                if let Err(err) = result.as_ref() {
+                    self.logs.push(format!(
+                        "Failed to save image of {} due to {}",
+                        filename, err
+                    ));
+                    self.i += 1;
+                    self.progress.current = self.i;
+                    continue;
+                }
             }
 
-            let filename = definition.filename();
-            if self.scene.update(definition, registory, state) {
-                self.auto_camera.update(definition, registory, view_state);
+            if self.scene.update(Some(&key), registory, state) {
+                self.auto_camera.update(Some(&key), registory, view_state);
 
                 self.framebuffer.before_paint();
                 self.renderer.paint(

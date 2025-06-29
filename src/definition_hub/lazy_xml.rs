@@ -5,7 +5,7 @@ use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug)]
 pub struct LazyXml<T> {
-    inner: LazyLoad<T>,
+    inner: LazyLoad<Result<T, String>>,
 }
 
 impl<T> Clone for LazyXml<T> {
@@ -22,16 +22,32 @@ where
 {
     pub fn new(path: PathBuf, root_tag: String) -> Self {
         Self {
-            inner: LazyLoad::new(move || load_xml_file(&path, root_tag.as_bytes())),
+            inner: LazyLoad::with_loader(move || load_xml_file(&path, root_tag.as_bytes())),
         }
     }
 
-    pub fn get(&self) -> Option<Result<Arc<T>, String>> {
+    pub fn _get(&self) -> Option<Arc<Result<T, String>>> {
         self.inner.get()
+    }
+
+    pub fn try_load(&self) {
+        self.inner.try_load()
+    }
+
+    pub fn try_get(&self) -> Option<Arc<Result<T, String>>> {
+        self.inner.try_get()
     }
 
     pub fn refresh(&self) {
         self.inner.refresh();
+    }
+
+    pub fn is_loading(&self) -> bool {
+        self.inner.is_loading()
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.inner.is_ready()
     }
 }
 

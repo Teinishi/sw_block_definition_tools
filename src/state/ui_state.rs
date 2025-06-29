@@ -1,12 +1,6 @@
 use super::PlayingAudio;
+use crate::definition_hub::LoadingState;
 use std::path::PathBuf;
-
-#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
-pub enum LoadingState {
-    ModManifest(String),
-    Data(String),
-    Mesh(String),
-}
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
 pub struct State {
@@ -37,6 +31,10 @@ impl Default for State {
 }
 
 impl State {
+    pub fn start_frame(&mut self, loading_state: Option<LoadingState>) {
+        self.loading = loading_state;
+    }
+
     pub fn end_frame(&mut self, ctx: &egui::Context) {
         // 描画フレームごとに1回呼ぶ
         if let Some(playing_audio) = &self.playing_audio {

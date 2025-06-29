@@ -1,21 +1,20 @@
-use super::LazyXml;
-use crate::{
-    definition_hub::ModKey, state::State, sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes,
-};
+use super::{LazyMeshes, LazyXml, ModKey};
+use crate::{state::State, sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes};
 use core::fmt;
 use std::{
-    cell::RefCell,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::Arc,
 };
+
+type LazyDataContent = Arc<Result<Definition, String>>;
+type LazyMeshesContent = Arc<SwBlockMeshes>;
 
 pub struct BlockDefinition {
     mod_key: ModKey,
     path: PathBuf,
     filename: String,
     data: LazyXml<Definition>,
-    meshes: Rc<RefCell<Option<SwBlockMeshes>>>,
+    meshes: LazyMeshes,
 }
 
 impl fmt::Debug for BlockDefinition {
@@ -25,6 +24,18 @@ impl fmt::Debug for BlockDefinition {
             "BlockDefinition {{ mod_key: {:?}, path: {:?}, filename: {:?}, data: {:?}, meshes: ... }}",
             self.mod_key, self.path, self.filename, self.data
         )
+    }
+}
+
+impl Clone for BlockDefinition {
+    fn clone(&self) -> Self {
+        Self {
+            mod_key: self.mod_key.clone(),
+            path: self.path.clone(),
+            filename: self.filename.clone(),
+            data: self.data.clone(),
+            meshes: self.meshes.clone(),
+        }
     }
 }
 
@@ -43,7 +54,7 @@ impl BlockDefinition {
             path: pathbuf,
             filename,
             data,
-            meshes: Rc::new(RefCell::new(None)),
+            meshes: Default::default(),
         }
     }
 
@@ -63,46 +74,53 @@ impl BlockDefinition {
         &self.filename
     }
 
-    pub fn load_data(&self) -> Option<Result<Arc<Definition>, String>> {
-        self.data.get()
+    pub fn is_data_loading(&self) -> bool {
+        self.data.is_loading()
     }
 
-    pub fn load_meshes(&self, state: &State) -> Rc<RefCell<Option<SwBlockMeshes>>> {
-        if self.meshes.borrow().is_none() {
-            if let Some(Ok(data)) = self.load_data() {
-                let path = self.mod_key.get_path(state).clone();
-                let meshes = SwBlockMeshes::new(&data, &move |name| {
-                    <Option<PathBuf> as Clone>::clone(&path).map(|p| p.join(name))
-                });
-                *self.meshes.borrow_mut() = Some(meshes);
+    pub fn is_mesh_loading(&self) -> bool {
+        self.meshes.is_loading()
+    }
+
+    pub fn is_data_ready(&self) -> bool {
+        self.data.is_ready()
+    }
+
+    pub fn is_mesh_ready(&self) -> bool {
+        self.meshes.is_ready()
+    }
+
+    pub fn load_data(&self) -> Option<LazyDataContent> {
+        self.data.try_get()
+    }
+
+    pub fn use_data<R>(&self, f: impl FnOnce(&Definition) -> R) -> Option<R> {
+        if let Some(data) = self.load_data() {
+            if let Ok(data) = data.as_ref() {
+                return Some(f(data));
             }
         }
-        self.meshes.clone()
+        None
+    }
+
+    pub fn load_meshes(&self, state: &State) -> Option<LazyMeshesContent> {
+        if !self.meshes.has_loader() {
+            self.use_data(|data| {
+                let path = self.mod_key.get_path(state).clone();
+                self.meshes.set_loader(data, &path);
+            });
+        }
+        self.meshes.try_get()
     }
 
     pub fn load_data_meshes(
-        &self,
+        &mut self,
         state: &State,
-    ) -> (Option<Arc<Definition>>, Rc<RefCell<Option<SwBlockMeshes>>>) {
-        (
-            self.load_data().and_then(|d| d.ok()),
-            self.load_meshes(state),
-        )
+    ) -> Option<(LazyDataContent, LazyMeshesContent)> {
+        self.load_data().zip(self.load_meshes(state))
     }
 
     pub fn refresh(&self) {
         self.data.refresh()
-    }
-}
-
-impl Clone for BlockDefinition {
-    fn clone(&self) -> Self {
-        Self {
-            mod_key: self.mod_key.clone(),
-            path: self.path.clone(),
-            filename: self.filename.clone(),
-            data: self.data.clone(),
-            meshes: self.meshes.clone(),
-        }
     }
 }

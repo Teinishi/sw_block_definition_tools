@@ -19,7 +19,7 @@ impl ModDefinition {
     pub fn new<P: AsRef<Path>>(mod_key: ModKey, path: P) -> Self {
         let pathbuf = path.as_ref().to_path_buf();
         let manifest = LazyXml::new(pathbuf.join("mod.xml"), "mod".to_string());
-        manifest.get();
+        manifest.try_get();
         let mut s = Self {
             mod_key,
             path: pathbuf,
@@ -35,7 +35,20 @@ impl ModDefinition {
     }
 
     pub fn load_all(&self) -> usize {
-        0
+        0 //todo
+    }
+
+    pub fn use_manifest<R>(&self, f: impl FnOnce(&Mod) -> R) -> Option<R> {
+        if let Some(data) = self.manifest.try_get() {
+            if let Ok(data) = data.as_ref() {
+                return Some(f(data));
+            }
+        }
+        None
+    }
+
+    pub fn is_loading_manifest(&self) -> bool {
+        self.manifest.is_loading()
     }
 
     fn scan_definitions(&mut self) -> io::Result<()> {

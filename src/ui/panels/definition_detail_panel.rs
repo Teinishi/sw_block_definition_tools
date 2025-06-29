@@ -54,7 +54,7 @@ impl DefinitionDetailPanel {
             let filename = definition.filename().to_string();
             let mut refresh = false;
 
-            match definition.load_data() {
+            match definition.load_data().as_deref() {
                 Some(Ok(data)) => {
                     Sides::new().show(
                         ui,
@@ -86,7 +86,7 @@ impl DefinitionDetailPanel {
                     ui.separator();
 
                     if let Some(clicked_attribute) =
-                        ui_definition_detail(ui, state, &data, &attribute_filter)
+                        ui_definition_detail(ui, state, data, &attribute_filter)
                     {
                         new_window = Some(AttributeDetailWindow::new(
                             clicked_attribute,

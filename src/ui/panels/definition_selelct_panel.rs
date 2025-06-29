@@ -146,10 +146,8 @@ fn ui_list(
                         _ => &registory
                             .mods
                             .get(mod_key)
-                            .and_then(|m| m.manifest.get())
-                            .and_then(|m| m.ok())
-                            .map(|m| m.name.clone())
-                            .unwrap(),
+                            .and_then(|m| m.use_manifest(|m| m.name.clone()))
+                            .unwrap_or_default(),
                     };
 
                     strip.cell(|ui| {

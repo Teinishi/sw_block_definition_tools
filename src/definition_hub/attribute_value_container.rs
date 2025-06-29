@@ -21,13 +21,13 @@ impl AttributeValueContainer {
         let mut values = Vec::new();
 
         for (_, _, definition) in registory.definitions() {
-            if let Some(Ok(data)) = definition.load_data() {
-                for value in specifier.get_value_root(data.as_ref()) {
+            definition.use_data(|data| {
+                for value in specifier.get_value_root(data) {
                     if !hide_defalt || !value.is_default() {
                         values.push((definition.clone(), value));
                     }
                 }
-            }
+            });
         }
 
         Self { values }

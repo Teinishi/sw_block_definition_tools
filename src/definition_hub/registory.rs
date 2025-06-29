@@ -2,6 +2,23 @@ use super::{ModDefinition, ModKey};
 use crate::{definition_hub::BlockDefinition, state::State};
 use std::{collections::BTreeMap, fs::read_dir, io, path::Path};
 
+#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
+pub enum LoadingState {
+    ModManifest(String),
+    Data(String),
+    Mesh(String),
+}
+
+impl LoadingState {
+    pub fn get_text(&self) -> String {
+        match self {
+            Self::ModManifest(name) => format!("{} manifest", name),
+            Self::Data(name) => name.to_string(),
+            Self::Mesh(name) => format!("{} mesh", name),
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct DefinitionRegistory {
     #[serde(skip)]
@@ -72,5 +89,23 @@ impl DefinitionRegistory {
             loading_count += mod_definition.load_all();
         }
         loading_count
+    }
+
+    pub fn loading_state(&self) -> Option<LoadingState> {
+        for (mod_key, mod_definition) in &self.mods {
+            if mod_definition.is_loading_manifest() {
+                return Some(LoadingState::ModManifest(mod_key.get_folder_name()));
+            }
+            for (filename, definition) in &mod_definition.definitions {
+                if definition.is_data_loading() {
+                    return Some(LoadingState::Data(filename.to_string()));
+                }
+                if definition.is_mesh_loading() {
+                    return Some(LoadingState::Mesh(filename.to_string()));
+                }
+            }
+        }
+
+        None
     }
 }

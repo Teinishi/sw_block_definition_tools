@@ -97,7 +97,7 @@ impl eframe::App for MainApp {
     }
 
     fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
-        // self.state.start_frame(&self.registory);
+        self.state.start_frame(self.registory.loading_state());
 
         TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -109,8 +109,9 @@ impl eframe::App for MainApp {
                         ui.selectable_value(&mut self.tab, TabVariants::Settings, "Settings");
                     },
                     |ui| {
-                        if self.state.loading_state().is_some() {
+                        if let Some(loading_state) = self.state.loading_state() {
                             ui.spinner();
+                            ui.label(loading_state.get_text());
                         }
                     },
                 )

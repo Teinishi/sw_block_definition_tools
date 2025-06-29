@@ -5,7 +5,7 @@ use super::{
     BoundingBoxObjectBuilder,
 };
 use crate::{
-    definition_hub::{BlockDefinition, DefinitionRegistory},
+    definition_hub::{DefinitionRegistory, ModKey},
     state::State,
     sw_block_definition::{Definition, DefinitionVec3},
     sw_gl_3d::{
@@ -17,10 +17,8 @@ use core::f32;
 use egui::{DragValue, Grid, Slider};
 use glam::{Mat4, Vec3};
 use std::{
-    cell::RefCell,
     collections::BTreeSet,
     fmt::Debug,
-    rc::Rc,
     sync::{Arc, Mutex, MutexGuard},
 };
 use strum::VariantArray;
@@ -364,7 +362,7 @@ pub struct BlockViewStateMeshOptions {
 impl BlockViewStateMeshOptions {
     pub fn from_definition_meshes(
         block_meshes: &SwBlockMeshes,
-        data: &Option<Arc<Definition>>,
+        definition_type: Option<i32>,
     ) -> Self {
         let meshes = BTreeSet::from_iter(
             SwBlockMeshKey::VARIANTS
@@ -374,8 +372,7 @@ impl BlockViewStateMeshOptions {
         );
 
         let special_meshes = BTreeSet::from_iter(
-            data.as_ref()
-                .and_then(|d| d.definition_type)
+            definition_type
                 .and_then(SwBlockSpecialMesh::from_definition_type)
                 .iter()
                 .cloned(),
@@ -497,55 +494,67 @@ impl BlockViewScene {
 
     pub fn update(
         &mut self,
-        definition: &BlockDefinition,
+        key: Option<&(ModKey, String)>,
         registory: &mut DefinitionRegistory,
         state: &State,
     ) -> bool {
         self.use_scene(|mut scene| {
             scene.clear();
         });
+        let mut done = false;
 
-        if self.state.show_xyz_axes {
-            for (direction, color) in [
-                (Vec3::X, Color4::RED),
-                (Vec3::Y, Color4::GREEN),
-                (Vec3::Z, Color4::BLUE),
-            ] {
-                self.add_object(SceneObject::from_line(
-                    Line::single_stroke_lh(vec![Vec3::ZERO, 100.0 * direction], color, 2.0, false),
-                    None,
-                ));
-            }
-        }
-
-        let transform = Mat4::IDENTITY;
-        let (data, meshes) = definition.load_data_meshes(state);
-        let mut done = data.is_some() && meshes.borrow().is_some();
-        self.add_block_objects(&data, &meshes, &transform);
-
-        // 子パーツを追加
-        if self.state.show_child_body() {
-            if let Some(child) = data.and_then(|d| {
-                d.child_name
-                    .clone()
-                    .and_then(|name| registory.resolve(definition.mod_key(), &name))
-            }) {
-                let (child_data, child_meshes) = child.load_data_meshes(state);
-                done = done && child_data.is_some() && child_meshes.borrow().is_some();
-
-                let mut translation = Vec3::ZERO;
-                if let Some(ref child_data) = &child_data {
-                    if let Some(v) = child_data.voxel_location_child.last() {
-                        translation = std::convert::Into::<Vec3>::into(*v) * 0.25;
-                    }
+        if let Some(definition) = key.and_then(|key| registory.get(key)) {
+            if self.state.show_xyz_axes {
+                for (direction, color) in [
+                    (Vec3::X, Color4::RED),
+                    (Vec3::Y, Color4::GREEN),
+                    (Vec3::Z, Color4::BLUE),
+                ] {
+                    self.add_object(SceneObject::from_line(
+                        Line::single_stroke_lh(
+                            vec![Vec3::ZERO, 100.0 * direction],
+                            color,
+                            2.0,
+                            false,
+                        ),
+                        None,
+                    ));
                 }
-
-                self.add_block_objects(
-                    &child_data,
-                    &child_meshes,
-                    &Mat4::from_translation(translation).mul_mat4(&transform),
-                );
             }
+
+            let transform = Mat4::IDENTITY;
+            definition.use_data(|data| {
+                if definition.is_mesh_ready() {
+                    done = true;
+                }
+                self.add_block_objects(data, definition.load_meshes(state).as_deref(), &transform);
+            });
+
+            // 子パーツを追加
+            if self.state.show_child_body() {
+                let child_name = definition.use_data(|d| d.child_name.clone()).flatten();
+                let child =
+                    child_name.and_then(|name| registory.resolve(definition.mod_key(), &name));
+                if let Some(child) = child {
+                    if !child.is_data_ready() || !child.is_mesh_ready() {
+                        done = false;
+                    }
+                    child.use_data(|child_data| {
+                        let mut translation = Vec3::ZERO;
+                        if let Some(v) = child_data.voxel_location_child.last() {
+                            translation = std::convert::Into::<Vec3>::into(*v) * 0.25;
+                        }
+
+                        self.add_block_objects(
+                            child_data,
+                            child.load_meshes(state).as_deref(),
+                            &Mat4::from_translation(translation).mul_mat4(&transform),
+                        );
+                    });
+                }
+            }
+        } else {
+            self.clear();
         }
 
         done
@@ -553,12 +562,12 @@ impl BlockViewScene {
 
     fn add_block_objects(
         &mut self,
-        data: &Option<Arc<Definition>>,
-        meshes: &Rc<RefCell<Option<SwBlockMeshes>>>,
+        data: &Definition,
+        meshes: Option<&SwBlockMeshes>,
         transform: &Mat4,
     ) {
         // meshを追加
-        if let Some((meshes, data)) = meshes.borrow().as_ref().zip(data.as_ref()) {
+        if let Some(meshes) = meshes {
             for (mesh, mesh_transform) in self.state.mesh_builder.build(meshes, data) {
                 self.add_object(SceneObject::from_mesh(
                     mesh,
@@ -568,127 +577,115 @@ impl BlockViewScene {
         }
 
         // surface を追加
-        if let Some(data) = data {
-            if let Some(surfaces) = data.surfaces.last() {
-                for surface in &surfaces.surface {
-                    let position = surface.position.last();
+        if let Some(surfaces) = data.surfaces.last() {
+            for surface in &surfaces.surface {
+                let position = surface.position.last();
 
-                    let mut obj_builder = SurfaceObjectBuilder::new(
+                let mut obj_builder = SurfaceObjectBuilder::new(
+                    surface.shape,
+                    position,
+                    surface.orientation,
+                    surface.rotation,
+                );
+
+                if let Some(logic_nodes) = data.logic_nodes.last().map(|n| &n.logic_node) {
+                    let vec_default = DefinitionVec3::<i32>::default();
+
+                    let position = position.unwrap_or(&vec_default).as_array(0);
+                    let orientation = surface.orientation.unwrap_or(0);
+
+                    let node = logic_nodes.iter().find(|node| {
+                        node.position.last().unwrap_or(&vec_default).as_array(0) == position
+                            && node.orientation.unwrap_or(0) == orientation
+                    });
+                    match node.and_then(|n| n.node_type) {
+                        Some(2) => obj_builder.power_node(),
+                        Some(3) => obj_builder.fluid_node(),
+                        _ => {}
+                    }
+                }
+
+                let (mesh_obj, line_obj) = obj_builder.basic_objects(
+                    self.state.show_surfaces,
+                    self.state.show_surface_edges,
+                    self.appearance.surface,
+                );
+                if let Some(obj) = mesh_obj {
+                    self.add_object(obj.apply_transform_left(transform));
+                }
+                if let Some(obj) = line_obj {
+                    self.add_object(obj.apply_transform_left(transform).set_z_offset(-1.0));
+                }
+            }
+        }
+
+        // buoyancy surface を追加
+        if self.state.show_buoyancy_surfaces {
+            if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
+                let (mesh_color, line_color, line_width) = self.appearance.buoyancy_surface;
+                for surface in &buoyancy_surfaces.surface {
+                    let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
                         surface.shape,
-                        position,
+                        surface.position.last(),
                         surface.orientation,
                         surface.rotation,
-                    );
-
-                    if let Some(logic_nodes) = data.logic_nodes.last().map(|n| &n.logic_node) {
-                        let vec_default = DefinitionVec3::<i32>::default();
-
-                        let position = position.unwrap_or(&vec_default).as_array(0);
-                        let orientation = surface.orientation.unwrap_or(0);
-
-                        let node = logic_nodes.iter().find(|node| {
-                            node.position.last().unwrap_or(&vec_default).as_array(0) == position
-                                && node.orientation.unwrap_or(0) == orientation
-                        });
-                        match node.and_then(|n| n.node_type) {
-                            Some(2) => obj_builder.power_node(),
-                            Some(3) => obj_builder.fluid_node(),
-                            _ => {}
-                        }
-                    }
-
-                    let (mesh_obj, line_obj) = obj_builder.basic_objects(
-                        self.state.show_surfaces,
-                        self.state.show_surface_edges,
-                        self.appearance.surface,
-                    );
+                    )
+                    .translucent_objects(mesh_color, line_color, line_width);
                     if let Some(obj) = mesh_obj {
-                        self.add_object(obj.apply_transform_left(transform));
-                    }
-                    if let Some(obj) = line_obj {
                         self.add_object(obj.apply_transform_left(transform).set_z_offset(-1.0));
                     }
-                }
-            }
-
-            // buoyancy surface を追加
-            if self.state.show_buoyancy_surfaces {
-                if let Some(buoyancy_surfaces) = data.buoyancy_surfaces.last() {
-                    let (mesh_color, line_color, line_width) = self.appearance.buoyancy_surface;
-                    for surface in &buoyancy_surfaces.surface {
-                        let (mesh_obj, line_obj) = SurfaceObjectBuilder::new(
-                            surface.shape,
-                            surface.position.last(),
-                            surface.orientation,
-                            surface.rotation,
-                        )
-                        .translucent_objects(mesh_color, line_color, line_width);
-                        if let Some(obj) = mesh_obj {
-                            self.add_object(obj.apply_transform_left(transform).set_z_offset(-1.0));
-                        }
-                        if let Some(obj) = line_obj {
-                            self.add_object(obj.apply_transform_left(transform).set_z_offset(-2.0));
-                        }
+                    if let Some(obj) = line_obj {
+                        self.add_object(obj.apply_transform_left(transform).set_z_offset(-2.0));
                     }
                 }
             }
+        }
 
-            // voxel bouxing box を追加
-            if self.state.show_bounding_box_voxel {
-                if let Some((voxel_min, voxel_max)) =
-                    data.voxel_min.last().zip(data.voxel_max.last())
-                {
-                    let (mesh_color, line_color, line_width) = self.appearance.bounding_box_voxel;
-                    let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
-                            .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-4.0));
-                    if let Some(line_obj) = line_obj {
-                        self.add_object(
-                            line_obj.apply_transform_left(transform).set_z_offset(-5.0),
-                        );
-                    }
+        // voxel bouxing box を追加
+        if self.state.show_bounding_box_voxel {
+            if let Some((voxel_min, voxel_max)) = data.voxel_min.last().zip(data.voxel_max.last()) {
+                let (mesh_color, line_color, line_width) = self.appearance.bounding_box_voxel;
+                let (mesh_obj, line_obj) =
+                    BoundingBoxObjectBuilder::from_voxel(*voxel_min, *voxel_max)
+                        .objects(mesh_color, line_color, line_width);
+                self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-4.0));
+                if let Some(line_obj) = line_obj {
+                    self.add_object(line_obj.apply_transform_left(transform).set_z_offset(-5.0));
                 }
             }
+        }
 
-            // voxel physics bouxing box を追加
-            if self.state.show_bounding_box_voxel_physics {
-                if let Some((voxel_physics_min, voxel_physics_max)) = data
-                    .voxel_physics_min
-                    .last()
-                    .zip(data.voxel_physics_max.last())
-                {
-                    let (mesh_color, line_color, line_width) =
-                        self.appearance.bounding_box_voxel_physics;
-                    let (mesh_obj, line_obj) = BoundingBoxObjectBuilder::from_voxel(
-                        *voxel_physics_min,
-                        *voxel_physics_max,
-                    )
-                    .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-3.0));
-                    if let Some(line_obj) = line_obj {
-                        self.add_object(
-                            line_obj.apply_transform_left(transform).set_z_offset(-4.0),
-                        );
-                    }
+        // voxel physics bouxing box を追加
+        if self.state.show_bounding_box_voxel_physics {
+            if let Some((voxel_physics_min, voxel_physics_max)) = data
+                .voxel_physics_min
+                .last()
+                .zip(data.voxel_physics_max.last())
+            {
+                let (mesh_color, line_color, line_width) =
+                    self.appearance.bounding_box_voxel_physics;
+                let (mesh_obj, line_obj) =
+                    BoundingBoxObjectBuilder::from_voxel(*voxel_physics_min, *voxel_physics_max)
+                        .objects(mesh_color, line_color, line_width);
+                self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-3.0));
+                if let Some(line_obj) = line_obj {
+                    self.add_object(line_obj.apply_transform_left(transform).set_z_offset(-4.0));
                 }
             }
+        }
 
-            // physics bouxing box を追加
-            if self.state.show_bounding_box_physics {
-                if let Some((bb_physics_min, bb_physics_max)) =
-                    data.bb_physics_min.last().zip(data.bb_physics_max.last())
-                {
-                    let (mesh_color, line_color, line_width) = self.appearance.bounding_box_physics;
-                    let (mesh_obj, line_obj) =
-                        BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
-                            .objects(mesh_color, line_color, line_width);
-                    self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-2.0));
-                    if let Some(line_obj) = line_obj {
-                        self.add_object(
-                            line_obj.apply_transform_left(transform).set_z_offset(-3.0),
-                        );
-                    }
+        // physics bouxing box を追加
+        if self.state.show_bounding_box_physics {
+            if let Some((bb_physics_min, bb_physics_max)) =
+                data.bb_physics_min.last().zip(data.bb_physics_max.last())
+            {
+                let (mesh_color, line_color, line_width) = self.appearance.bounding_box_physics;
+                let (mesh_obj, line_obj) =
+                    BoundingBoxObjectBuilder::new(*bb_physics_min, *bb_physics_max)
+                        .objects(mesh_color, line_color, line_width);
+                self.add_object(mesh_obj.apply_transform_left(transform).set_z_offset(-2.0));
+                if let Some(line_obj) = line_obj {
+                    self.add_object(line_obj.apply_transform_left(transform).set_z_offset(-3.0));
                 }
             }
         }

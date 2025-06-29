@@ -49,7 +49,7 @@ impl SwBlockMeshKey {
         }
     }
 
-    pub fn get_filepath<'a>(&'_ self, data: &'a Definition) -> &'a Option<String> {
+    pub fn get_filepath<'a>(&'_ self, data: &'a MeshConstructData) -> &'a Option<String> {
         match self {
             Self::MeshData => &data.mesh_data_name,
             Self::Mesh0 => &data.mesh_0_name,
@@ -64,6 +64,7 @@ impl SwBlockMeshKey {
     serde::Deserialize,
     serde::Serialize,
     strum::VariantArray,
+    Debug,
     Clone,
     Copy,
     PartialEq,
@@ -94,7 +95,7 @@ impl SwWheelAdvancedMeshKey {
         }
     }
 
-    pub fn get_filepath(&self, data: &Definition) -> Option<String> {
+    pub fn get_filepath(&self, data: &MeshConstructData) -> Option<String> {
         data.mesh_0_name
             .as_ref()
             .map(|name| format!("{}_{}.mesh", name, self.name()))
@@ -183,7 +184,32 @@ impl SwBlockMeshBuilder {
 
 pub type FileResolverFn = dyn Fn(&str) -> Option<PathBuf>;
 
-#[derive(Default)]
+#[derive(Debug, Clone)]
+pub struct MeshConstructData {
+    definition_type: Option<i32>,
+    mesh_data_name: Option<String>,
+    mesh_0_name: Option<String>,
+    mesh_1_name: Option<String>,
+    mesh_2_name: Option<String>,
+    mesh_editor_only_name: Option<String>,
+    child_name: Option<String>,
+}
+
+impl MeshConstructData {
+    pub fn from_definition(definition: &Definition) -> Self {
+        Self {
+            definition_type: definition.definition_type,
+            mesh_data_name: definition.mesh_data_name.clone(),
+            mesh_0_name: definition.mesh_0_name.clone(),
+            mesh_1_name: definition.mesh_1_name.clone(),
+            mesh_2_name: definition.mesh_2_name.clone(),
+            mesh_editor_only_name: definition.mesh_editor_only_name.clone(),
+            child_name: definition.child_name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct SwBlockMeshes {
     special_mesh: Option<SwBlockSpecialMesh>,
     meshes: BTreeMap<SwBlockMeshKey, SwMeshResult>,
@@ -192,7 +218,7 @@ pub struct SwBlockMeshes {
 }
 
 impl SwBlockMeshes {
-    pub fn new(data: &Definition, file_loader: &FileResolverFn) -> Self {
+    pub fn new(data: &MeshConstructData, file_loader: &FileResolverFn) -> Self {
         let special_mesh =
             SwBlockSpecialMesh::from_definition_type(data.definition_type.unwrap_or(0));
 

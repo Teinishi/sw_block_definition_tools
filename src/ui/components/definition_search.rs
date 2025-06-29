@@ -8,28 +8,29 @@ fn search(
     block: &BlockDefinition,
     pat: &str,
 ) -> bool {
-    if let Some(Ok(manifest)) = mod_definition.manifest.get() {
-        if manifest.name.contains(pat) {
-            return true;
-        }
+    if mod_definition
+        .use_manifest(|manifest| manifest.name.contains(pat))
+        .unwrap_or(false)
+    {
+        return true;
     }
 
     if filename.contains(pat) {
         return true;
     }
 
-    if let Some(Ok(definition)) = block.load_data() {
-        if let Some(name) = &definition.name {
-            if name.contains(pat) {
-                return true;
-            }
-        }
-
-        if let Some(tags) = &definition.tags {
-            if tags.contains(pat) {
-                return true;
-            }
-        }
+    if block
+        .use_data(|definition| {
+            definition
+                .name
+                .as_ref()
+                .map(|s| s.contains(pat))
+                .or_else(|| definition.tags.as_ref().map(|s| s.contains(pat)))
+        })
+        .flatten()
+        .unwrap_or(false)
+    {
+        return true;
     }
 
     false
@@ -43,10 +44,6 @@ pub struct DefinitionSearch {
 }
 
 impl DefinitionSearch {
-    /*pub fn is_empty(&self) -> bool {
-        self.search_text.is_empty()
-    }*/
-
     fn clear(&mut self) {
         self.search_text.clear();
         self.search_result.clear();

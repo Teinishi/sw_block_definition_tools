@@ -110,12 +110,6 @@ impl Tab for MainTab {
                 self.definition_select_panel.ui(ui, registory);
             });
 
-        let definition = self
-            .definition_select_panel
-            .selection()
-            .get()
-            .and_then(|key| registory.get(&key))
-            .cloned();
         let selection_changed = self.selection.check_update();
 
         SidePanel::right("right_panel")
@@ -128,7 +122,7 @@ impl Tab for MainTab {
                     ui,
                     state,
                     registory,
-                    definition.as_ref(),
+                    self.selection.get().as_ref(),
                     selection_changed,
                 );
             });

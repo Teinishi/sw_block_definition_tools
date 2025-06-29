@@ -1,5 +1,7 @@
 mod lazy_xml;
 pub use lazy_xml::LazyXml;
+mod lazy_meshes;
+pub use lazy_meshes::LazyMeshes;
 mod mod_key;
 pub use mod_key::ModKey;
 mod mod_definition;
@@ -9,4 +11,4 @@ pub use block_definition::BlockDefinition;
 mod attribute_value_container;
 pub use attribute_value_container::AttributeValueContainer;
 mod registory;
-pub use registory::DefinitionRegistory;
+pub use registory::{DefinitionRegistory, LoadingState};

@@ -16,7 +16,8 @@ mod scene_renderer;
 pub use scene_renderer::{DrawArrayMode, GlConfig, SceneRenderer};
 mod block_mesh;
 pub use block_mesh::{
-    SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
+    MeshConstructData, SwBlockMeshBuilder, SwBlockMeshKey, SwBlockMeshes, SwBlockSpecialMesh,
+    SwWheelAdvancedType,
 };
 mod sw_mesh;
 pub use sw_mesh::{SwMesh, SwMeshResult, SwSubmesh};

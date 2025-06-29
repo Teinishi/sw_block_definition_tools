@@ -20,4 +20,12 @@ impl ModKey {
             }
         }
     }
+
+    pub fn get_folder_name(&self) -> String {
+        match self {
+            Self::Stormworks => "stormworks".to_string(),
+            Self::Local(folder_name) => folder_name.to_string(),
+            Self::Workshop(folder_name) => format!("workshop {}", folder_name),
+        }
+    }
 }

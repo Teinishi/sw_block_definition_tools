@@ -1,5 +1,5 @@
 use crate::{
-    definition_hub::{BlockDefinition, DefinitionRegistory},
+    definition_hub::{DefinitionRegistory, ModKey},
     state::State,
     sw_gl_3d::{OrbitCamera, SceneRenderer},
     ui::{paint_canvas_3d, BlockViewScene, BlockViewStateMeshOptions},
@@ -67,7 +67,7 @@ impl Definition3dPanel {
         ui: &mut egui::Ui,
         state: &State,
         registory: &mut DefinitionRegistory,
-        selected: Option<&BlockDefinition>,
+        selected_key: Option<&(ModKey, String)>,
         select_changed: bool,
     ) {
         TopBottomPanel::bottom("definition_3d_panel_bottom")
@@ -79,21 +79,25 @@ impl Definition3dPanel {
                     .show(ui, |ui| {
                         ui.add_space(4.0);
 
-                        let mesh_loaded = selected
-                            .map(|d| d.load_meshes(state).borrow().is_some())
+                        let mesh_loaded = selected_key
+                            .and_then(|key| registory.get(key))
+                            .map(|d| d.is_mesh_ready())
                             .unwrap_or(false);
                         let mesh_loaded_now = mesh_loaded != self.mesh_loaded;
                         self.mesh_loaded = mesh_loaded;
 
-                        let mesh_options = selected
-                            .and_then(|d| {
-                                let (data, meshes) = d.load_data_meshes(state);
-                                let x = meshes.borrow().as_ref().map(|meshes| {
-                                    BlockViewStateMeshOptions::from_definition_meshes(meshes, &data)
-                                });
-                                x
-                            })
-                            .unwrap_or_default();
+                        let mut mesh_options = BlockViewStateMeshOptions::default();
+                        if let Some(definition) = selected_key.and_then(|key| registory.get(key)) {
+                            if let Some(meshes) = definition.load_meshes(state) {
+                                let definition_type = definition
+                                    .use_data(|definition| definition.definition_type)
+                                    .flatten();
+                                mesh_options = BlockViewStateMeshOptions::from_definition_meshes(
+                                    &meshes,
+                                    definition_type,
+                                );
+                            }
+                        }
 
                         let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
                         if !self.scene_update_done
@@ -101,10 +105,8 @@ impl Definition3dPanel {
                             || select_changed
                             || scene_state_changed
                         {
-                            if let Some(definition) = &selected {
-                                self.scene_update_done =
-                                    self.scene.update(definition, registory, state);
-                            }
+                            self.scene_update_done =
+                                self.scene.update(selected_key, registory, state);
                         }
 
                         ui.add_space(4.0);

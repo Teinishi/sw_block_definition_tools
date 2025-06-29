@@ -1,44 +1,69 @@
 use std::{
     fmt,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     thread,
 };
 
-enum LoadState<T> {
-    NotStarted,
-    Loading,
-    Ready(Result<Arc<T>, String>),
+struct LazyLoadInner<T> {
+    content: Mutex<Option<Arc<T>>>,
+    is_loading: AtomicBool,
+    is_ready: AtomicBool,
+    loader: Mutex<Option<Arc<dyn Fn() -> T + Send + Sync>>>,
 }
 
-impl<T> fmt::Debug for LoadState<T> {
+impl<T> fmt::Debug for LazyLoadInner<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NotStarted => write!(f, "LoadState::NotStarted"),
-            Self::Loading => write!(f, "LoadState::Loading"),
-            Self::Ready(Ok(_)) => write!(f, "LoadState::Ready(Ok)"),
-            Self::Ready(Err(mes)) => write!(f, "LoadState::Ready(Err({}))", mes),
+        write!(f, "LazyLoadInner {{ content: ")?;
+        if self.content.lock().unwrap().is_some() {
+            write!(f, "Some(_)")?;
+        } else {
+            write!(f, "None")?;
+        }
+        write!(
+            f,
+            ", is_loading: {:?}, is_ready: {:?}, loader: ",
+            self.is_loading, self.is_ready
+        )?;
+        if self.loader.lock().unwrap().is_some() {
+            write!(f, "Some(_)")?;
+        } else {
+            write!(f, "None")?;
+        }
+        write!(f, " }}")
+    }
+}
+
+impl<T> Default for LazyLoadInner<T> {
+    fn default() -> Self {
+        Self {
+            content: Mutex::new(None),
+            is_loading: AtomicBool::new(false),
+            is_ready: AtomicBool::new(false),
+            loader: Mutex::new(None),
         }
     }
 }
 
-type LazyLoaderFn<T> = dyn Fn() -> Result<T, String> + Send + Sync + 'static;
-
+#[derive(Debug)]
 pub struct LazyLoad<T> {
-    loader: Arc<LazyLoaderFn<T>>,
-    state: Arc<Mutex<LoadState<T>>>,
-}
-
-impl<T> fmt::Debug for LazyLoad<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyLoad {{ state: {:?} }}", self.state)
-    }
+    inner: Arc<LazyLoadInner<T>>,
 }
 
 impl<T> Clone for LazyLoad<T> {
     fn clone(&self) -> Self {
         Self {
-            loader: self.loader.clone(),
-            state: Arc::clone(&self.state),
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<T> Default for LazyLoad<T> {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(LazyLoadInner::default()),
         }
     }
 }
@@ -47,40 +72,75 @@ impl<T> LazyLoad<T>
 where
     T: Send + Sync + 'static,
 {
-    pub fn new<F>(loader: F) -> Self
+    pub fn with_loader<F>(loader: F) -> Self
     where
-        F: Fn() -> Result<T, String> + Send + Sync + 'static,
+        F: Fn() -> T + Send + Sync + 'static,
     {
-        Self {
-            loader: Arc::new(loader),
-            state: Arc::new(Mutex::new(LoadState::NotStarted)),
-        }
+        let s = Self::default();
+        s.set_loader(loader);
+        s
     }
 
-    pub fn get(&self) -> Option<Result<Arc<T>, String>> {
-        let mut state = self.state.lock().unwrap();
-        match &*state {
-            LoadState::Ready(result) => Some(result.clone()),
-            LoadState::Loading => None,
-            LoadState::NotStarted => {
-                let loader = Arc::clone(&self.loader);
-                let state_clone = Arc::clone(&self.state);
+    pub fn set_loader<F>(&self, loader: F)
+    where
+        F: Fn() -> T + Send + Sync + 'static,
+    {
+        let mut guard = self.inner.loader.lock().unwrap();
+        *guard = Some(Arc::new(loader));
+    }
 
-                thread::spawn(move || {
-                    let result = loader().map(Arc::new);
-                    let mut state = state_clone.lock().unwrap();
-                    *state = LoadState::Ready(result);
-                });
+    pub fn get(&self) -> Option<Arc<T>> {
+        let guard = self.inner.content.lock().unwrap();
+        guard.as_ref().cloned()
+    }
 
-                *state = LoadState::Loading;
-                None
-            }
+    pub fn try_load(&self) {
+        if self.inner.is_ready.load(Ordering::SeqCst) {
+            return;
         }
+        if self.inner.is_loading.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        let state = Arc::clone(&self.inner);
+        thread::spawn(move || {
+            let loader = {
+                let guard = state.loader.lock().unwrap();
+                guard.clone()
+            };
+            if let Some(func) = loader {
+                let result = func();
+                let arc_val = Arc::new(result);
+                let mut guard = state.content.lock().unwrap();
+                *guard = Some(arc_val);
+                state.is_ready.store(true, Ordering::SeqCst);
+            }
+            state.is_loading.store(false, Ordering::SeqCst);
+        });
+    }
+
+    pub fn try_get(&self) -> Option<Arc<T>> {
+        self.try_load();
+        self.get()
     }
 
     pub fn refresh(&self) {
-        let mut state = self.state.lock().unwrap();
-        *state = LoadState::NotStarted;
-        self.get();
+        self.inner.is_ready.store(false, Ordering::SeqCst);
+        self.inner.is_loading.store(false, Ordering::SeqCst);
+        let mut guard = self.inner.content.lock().unwrap();
+        *guard = None;
+        self.try_load();
+    }
+
+    pub fn has_loader(&self) -> bool {
+        self.inner.loader.lock().unwrap().is_some()
+    }
+
+    pub fn is_loading(&self) -> bool {
+        self.inner.is_loading.load(Ordering::SeqCst)
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.inner.is_ready.load(Ordering::SeqCst)
     }
 }
