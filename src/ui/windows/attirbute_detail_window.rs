@@ -1,5 +1,5 @@
 use crate::{
-    definition_hub::{AttributeValueContainer, BlockDefinition, DefinitionRegistory},
+    definition_hub::{AttributeValueContainer, BlockDefinition, DefinitionRegistory, ModKey},
     state::State,
     sw_block_definition::{AttributeSpecifier, AttributeValue, GetAttributeValueRoot},
     ui::{app::BlockSingleSelection, components::ui_attribute_value, Selection},
@@ -177,6 +177,7 @@ impl AttributeDetailWindow {
                                     ui_attribute_value(
                                         ui,
                                         state,
+                                        definition.mod_key(),
                                         &self.specifier.get_type(),
                                         Some(value),
                                         false,
@@ -212,6 +213,11 @@ impl AttributeDetailWindow {
                         |mut row| {
                             let row_index = row.index();
                             let (value, definitions) = entries[row_index];
+                            let mod_key = definitions
+                                .values()
+                                .next()
+                                .map(|d| d.mod_key())
+                                .unwrap_or(&ModKey::Stormworks);
 
                             row.col(|ui| {
                                 let mut rect;
@@ -256,6 +262,7 @@ impl AttributeDetailWindow {
                                 ui_attribute_value(
                                     ui,
                                     state,
+                                    mod_key,
                                     &self.specifier.get_type(),
                                     Some(value),
                                     false,

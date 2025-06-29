@@ -1,5 +1,5 @@
 use crate::{
-    definition_hub::DefinitionRegistory,
+    definition_hub::{DefinitionRegistory, ModKey},
     state::State,
     sw_block_definition::{
         AttributeSpecifier, AttributeValue, BuoyancySurface, BuoyancySurfaceAttribute, Coupling,
@@ -85,9 +85,13 @@ impl DefinitionDetailPanel {
 
                     ui.separator();
 
-                    if let Some(clicked_attribute) =
-                        ui_definition_detail(ui, state, data, &attribute_filter)
-                    {
+                    if let Some(clicked_attribute) = ui_definition_detail(
+                        ui,
+                        state,
+                        definition.mod_key(),
+                        data,
+                        &attribute_filter,
+                    ) {
                         new_window = Some(AttributeDetailWindow::new(
                             clicked_attribute,
                             state.hide_default,
@@ -113,6 +117,7 @@ impl DefinitionDetailPanel {
 fn ui_definition_detail(
     ui: &mut Ui,
     state: &mut State,
+    mod_key: &ModKey,
     data: &Definition,
     attribute_filter: &AttributeFilter,
 ) -> Option<AttributeSpecifier> {
@@ -195,7 +200,7 @@ fn ui_definition_detail(
         CollapsingPanel::new("Definition attributes")
             .default_open(true)
             .ui(ui, |ui| {
-                list.ui(ui, state, &mut clicked_attribute);
+                list.ui(ui, state, mod_key, &mut clicked_attribute);
             });
     }
 
@@ -226,10 +231,10 @@ fn ui_definition_detail(
                 };
                 CollapsingPanel::new(&title).ui(ui, |ui| {
                     ui.push_id(2 * i, |ui| {
-                        attribute_list.ui(ui, state, &mut clicked_attribute);
+                        attribute_list.ui(ui, state, mod_key, &mut clicked_attribute);
                     });
                     ui.push_id(2 * i + 1, |ui| {
-                        layers_table.ui(ui, state, &mut clicked_attribute);
+                        layers_table.ui(ui, state, mod_key, &mut clicked_attribute);
                     });
                 });
             }
@@ -244,7 +249,7 @@ fn ui_definition_detail(
         data.surfaces.last().map(|s| s.surface.as_slice()),
     ) {
         CollapsingPanel::new(&format!("Surfaces ({})", table.len().unwrap_or(0))).ui(ui, |ui| {
-            table.ui(ui, state, &mut clicked_attribute);
+            table.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -262,7 +267,7 @@ fn ui_definition_detail(
         CollapsingPanel::new(&format!("Buoyancy surfaces ({})", table.len().unwrap_or(0))).ui(
             ui,
             |ui| {
-                table.ui(ui, state, &mut clicked_attribute);
+                table.ui(ui, state, mod_key, &mut clicked_attribute);
             },
         );
     }
@@ -275,7 +280,7 @@ fn ui_definition_detail(
         data.logic_nodes.last().map(|l| l.logic_node.as_slice()),
     ) {
         CollapsingPanel::new(&format!("Logic nodes ({})", table.len().unwrap_or(0))).ui(ui, |ui| {
-            table.ui(ui, state, &mut clicked_attribute);
+            table.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -287,7 +292,7 @@ fn ui_definition_detail(
         data.couplings.last().map(|c| c.coupling.as_slice()),
     ) {
         CollapsingPanel::new(&format!("Couplings ({})", table.len().unwrap_or(0))).ui(ui, |ui| {
-            table.ui(ui, state, &mut clicked_attribute);
+            table.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -299,7 +304,7 @@ fn ui_definition_detail(
         data.voxels.last().map(|v| v.voxel.as_slice()),
     ) {
         CollapsingPanel::new(&format!("Voxels ({})", table.len().unwrap_or(0))).ui(ui, |ui| {
-            table.ui(ui, state, &mut clicked_attribute);
+            table.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -329,7 +334,7 @@ fn ui_definition_detail(
     );
     if table.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Bouding boxes").ui(ui, |ui| {
-            table.ui(ui, state, &mut clicked_attribute);
+            table.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -343,7 +348,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Constraint").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -361,7 +366,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Seat").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -378,7 +383,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Force emitter").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -395,7 +400,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Wheel").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -412,7 +417,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Light").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -432,7 +437,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Door").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -446,7 +451,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Dynamic").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -458,10 +463,10 @@ fn ui_definition_detail(
     if show1 || show2 {
         CollapsingPanel::new("Reward").ui(ui, |ui| {
             ui.push_id("reward_1", |ui| {
-                list1.ui(ui, state, &mut clicked_attribute);
+                list1.ui(ui, state, mod_key, &mut clicked_attribute);
             });
             ui.push_id("reward_2", |ui| {
-                list2.ui(ui, state, &mut clicked_attribute);
+                list2.ui(ui, state, mod_key, &mut clicked_attribute);
             });
         });
     }
@@ -492,10 +497,10 @@ fn ui_definition_detail(
     if show1 || show2 {
         CollapsingPanel::new("Jet engine connection").ui(ui, |ui| {
             ui.push_id("jet_engine_1", |ui| {
-                list.ui(ui, state, &mut clicked_attribute);
+                list.ui(ui, state, mod_key, &mut clicked_attribute);
             });
             ui.push_id("jet_engine_2", |ui| {
-                table.ui(ui, state, &mut clicked_attribute);
+                table.ui(ui, state, mod_key, &mut clicked_attribute);
             });
         });
     }
@@ -509,7 +514,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Inventory").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -521,7 +526,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Electric").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -533,7 +538,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Radar").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -545,7 +550,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Connector").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -555,7 +560,7 @@ fn ui_definition_detail(
         CollapsingPanel::new("Tooltip properties")
             .default_open(true)
             .ui(ui, |ui| {
-                list.ui(ui, state, &mut clicked_attribute);
+                list.ui(ui, state, mod_key, &mut clicked_attribute);
             });
     }
 
@@ -568,7 +573,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Particle").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -587,7 +592,7 @@ fn ui_definition_detail(
     ]);
     if list.update(attribute_filter, Some(data)) {
         CollapsingPanel::new("Weapon").ui(ui, |ui| {
-            list.ui(ui, state, &mut clicked_attribute);
+            list.ui(ui, state, mod_key, &mut clicked_attribute);
         });
     }
 
@@ -675,6 +680,7 @@ impl<'a, T> AttributeList<'a, T> {
         &self,
         ui: &mut Ui,
         state: &mut State,
+        mod_key: &ModKey,
         clicked_attribute: &mut Option<AttributeSpecifier>,
     ) where
         T: GetAttributeValue<S> + Into<AttributeSpecifier>,
@@ -701,6 +707,7 @@ impl<'a, T> AttributeList<'a, T> {
                             ui_attribute_value(
                                 ui,
                                 state,
+                                mod_key,
                                 &attr.get_type(),
                                 value.as_ref(),
                                 false,
@@ -773,6 +780,7 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
         &self,
         ui: &mut Ui,
         state: &mut State,
+        mod_key: &ModKey,
         clicked_attribute: &mut Option<AttributeSpecifier>,
     ) {
         if let Some((show_columns, elements)) = &self.table_data {
@@ -820,6 +828,7 @@ impl<'a, T: GetAttributeValue<S>, S, const COUNT: usize> ElementsTable<'a, T, S,
                                 ui_attribute_value(
                                     ui,
                                     state,
+                                    mod_key,
                                     &attr_type,
                                     attr.get_value(item).as_ref(),
                                     true,
@@ -888,6 +897,7 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
         &self,
         ui: &mut Ui,
         state: &mut State,
+        mod_key: &ModKey,
         clicked_attribute: &mut Option<AttributeSpecifier>,
     ) where
         T: GetAttributeValue<S> + Copy,
@@ -951,6 +961,7 @@ impl<'a, T, const V_COUNT: usize, const E_COUNT: usize> MultipleVecTable<'a, T, 
                                 ui_attribute_value(
                                     ui,
                                     state,
+                                    mod_key,
                                     &element.get_type(),
                                     vec.as_ref(),
                                     true,

@@ -28,4 +28,19 @@ impl ModKey {
             Self::Workshop(folder_name) => format!("workshop {}", folder_name),
         }
     }
+
+    pub fn resolve_asset_path(&self, name: &str, state: &State) -> Option<PathBuf> {
+        if let Some(path) = self.get_path(state).map(|p| p.join(name)) {
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+        if let Some(path) = state.rom_path.as_ref().map(|p| p.join(name)) {
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+
+        None
+    }
 }

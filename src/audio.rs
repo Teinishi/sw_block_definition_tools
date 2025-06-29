@@ -2,41 +2,42 @@ use crate::state::{PlayingAudio, State};
 use std::{
     fs::File,
     io::{self, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{mpsc, Arc},
     thread,
 };
 
-pub fn play_stop_audio(path: String, state: &mut State) -> Result<(), PlayAudioError> {
+pub fn play_stop_audio(path: &PathBuf, state: &mut State) -> Result<(), PlayAudioError> {
     if let Some(playing_audio) = state.playing_audio() {
-        if playing_audio.path == path {
+        if playing_audio.path == *path {
             playing_audio.stop();
             return Ok(());
         }
     }
 
-    if let Some(rom_path) = &state.rom_path {
-        match spawn_audio(rom_path.join(path.clone()), state.audio_volume) {
+    if path.is_file() {
+        match spawn_audio(path, state.audio_volume) {
             Ok((sink, rx_done)) => {
-                state.set_playing_audio(Some(PlayingAudio::new(path, sink, rx_done)));
+                state.set_playing_audio(Some(PlayingAudio::new(path.clone(), sink, rx_done)));
                 Ok(())
             }
             Err(err) => Err(err),
         }
     } else {
-        Err(PlayAudioError::NoRomDirectory)
+        Err(PlayAudioError::NotAFile)
     }
 }
 
 fn spawn_audio(
-    path: PathBuf,
+    path: &Path,
     volume: f32,
 ) -> Result<(Arc<rodio::Sink>, mpsc::Receiver<bool>), PlayAudioError> {
     let (tx_init, rx_init) = mpsc::channel();
     let (tx_done, rx_done) = mpsc::channel();
 
+    let path = path.to_path_buf();
     thread::spawn(move || {
-        if let Err(err) = audio_thread(path, tx_init.clone(), tx_done) {
+        if let Err(err) = audio_thread(&path, tx_init.clone(), tx_done) {
             tx_init.send(Err(err)).unwrap();
         }
     });
@@ -51,7 +52,7 @@ fn spawn_audio(
 }
 
 fn audio_thread(
-    path: PathBuf,
+    path: &PathBuf,
     tx_init: mpsc::Sender<Result<Arc<rodio::Sink>, PlayAudioError>>,
     tx_done: mpsc::Sender<bool>,
 ) -> Result<(), PlayAudioError> {
@@ -72,7 +73,7 @@ pub enum PlayAudioError {
     Stream(rodio::StreamError),
     #[allow(dead_code)]
     Play(rodio::PlayError),
-    NoRomDirectory,
+    NotAFile,
 }
 
 impl From<io::Error> for PlayAudioError {
@@ -99,7 +100,7 @@ impl std::fmt::Display for PlayAudioError {
             Self::Io(err) => err.fmt(f),
             Self::Stream(err) => err.fmt(f),
             Self::Play(err) => err.fmt(f),
-            Self::NoRomDirectory => write!(f, "No rom directory"),
+            Self::NotAFile => write!(f, "No rom directory"),
         }
     }
 }

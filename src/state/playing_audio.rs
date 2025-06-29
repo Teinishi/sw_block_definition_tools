@@ -1,17 +1,18 @@
 use std::{
     fmt,
+    path::PathBuf,
     sync::{mpsc, Arc},
 };
 
 pub struct PlayingAudio {
-    pub path: String,
+    pub path: PathBuf,
     pub sink: Arc<rodio::Sink>,
     pub rx_done: mpsc::Receiver<bool>,
 }
 
 impl fmt::Debug for PlayingAudio {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PlayingAudio {{ path: {} }}", self.path)
+        write!(f, "PlayingAudio {{ path: {:?} }}", self.path)
     }
 }
 
@@ -22,7 +23,7 @@ impl PartialEq for PlayingAudio {
 }
 
 impl PlayingAudio {
-    pub fn new(path: String, sink: Arc<rodio::Sink>, rx_done: mpsc::Receiver<bool>) -> Self {
+    pub fn new(path: PathBuf, sink: Arc<rodio::Sink>, rx_done: mpsc::Receiver<bool>) -> Self {
         Self {
             path,
             sink,

@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use crate::{
     audio::play_stop_audio,
+    definition_hub::ModKey,
     state::State,
     sw_block_definition::{AttributeType, AttributeValue, DisplayAttributeValue},
 };
@@ -10,6 +13,7 @@ use egui::{
 pub fn ui_attribute_value(
     ui: &mut egui::Ui,
     state: &mut State,
+    mod_key: &ModKey,
     attribute_type: &AttributeType,
     value: Option<&AttributeValue>,
     number_right: bool,
@@ -31,8 +35,10 @@ pub fn ui_attribute_value(
             } else {
                 add_space(ui, margin1);
                 if attribute_type.is_audio_file() {
-                    if let Some(AttributeValue::String(path)) = value {
-                        audio_play_button(ui, state, path);
+                    if let Some(AttributeValue::String(name)) = value {
+                        if let Some(path) = mod_key.resolve_asset_path(name, state) {
+                            audio_play_button(ui, state, &path);
+                        }
                     }
                 }
                 value_display(ui, attribute_type, value);
@@ -42,7 +48,7 @@ pub fn ui_attribute_value(
     });
 }
 
-fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &String) {
+fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
     let is_playing = state
         .playing_audio()
         .as_ref()
@@ -53,7 +59,7 @@ fn audio_play_button(ui: &mut egui::Ui, state: &mut State, path: &String) {
         Button::new(if is_playing { "\u{23F8}" } else { "\u{25B6}" }).truncate(),
     );
     if button.clicked() {
-        if let Err(err) = play_stop_audio(path.clone(), state) {
+        if let Err(err) = play_stop_audio(path, state) {
             println!("{:?}", err); // TODO: GUI表示
         }
     }
