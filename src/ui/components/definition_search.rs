@@ -101,14 +101,6 @@ pub struct SharedDefinitionSearch {
 }
 
 impl SharedDefinitionSearch {
-    /*pub fn is_empty(&self) -> bool {
-        self.inner.borrow().is_empty()
-    }
-
-    fn clear(&self) {
-        self.inner.borrow_mut().clear();
-    }*/
-
     pub fn update_search(&self, registory: &mut DefinitionRegistory) {
         self.inner.borrow_mut().update_search(registory);
     }

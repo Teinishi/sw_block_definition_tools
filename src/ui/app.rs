@@ -5,7 +5,10 @@ use super::{
 use crate::{
     definition_hub::{DefinitionRegistory, ModDefinition, ModKey},
     state::State,
-    ui::{components::SharedDefinitionSearch, SharedMultipleSelection, SharedSingleSelection},
+    ui::{
+        components::SharedDefinitionSearch, panels::ModCollapsing, SharedMultipleSelection,
+        SharedSingleSelection,
+    },
 };
 use egui::{Sides, TopBottomPanel};
 use std::path::Path;
@@ -22,6 +25,7 @@ pub struct MainApp {
     search: SharedDefinitionSearch,
     #[serde(skip)]
     selection: BlockSingleSelection,
+    mod_collapsing: ModCollapsing,
     tab: TabVariants,
 
     main_tab: MainTab,
@@ -46,12 +50,24 @@ impl MainApp {
             })
             .unwrap_or_default();
 
-        app.main_tab
-            .creation_context(cc, app.search.clone(), app.selection.clone());
-        app.save_image_tab
-            .creation_context(cc, app.search.clone(), app.selection.clone());
-        app.settings_tab
-            .creation_context(cc, app.search.clone(), app.selection.clone());
+        app.main_tab.creation_context(
+            cc,
+            app.search.clone(),
+            app.selection.clone(),
+            app.mod_collapsing.clone(),
+        );
+        app.save_image_tab.creation_context(
+            cc,
+            app.search.clone(),
+            app.selection.clone(),
+            app.mod_collapsing.clone(),
+        );
+        app.settings_tab.creation_context(
+            cc,
+            app.search.clone(),
+            app.selection.clone(),
+            app.mod_collapsing.clone(),
+        );
 
         app
     }

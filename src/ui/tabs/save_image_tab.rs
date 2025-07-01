@@ -7,7 +7,7 @@ use crate::{
         app::BlockSingleSelection,
         components::SharedDefinitionSearch,
         paint_canvas_3d, paint_checker_pattern,
-        panels::DefinitionMultiSelectPanel,
+        panels::{DefinitionMultiSelectPanel, ModCollapsing},
         utils::{ui_center, ui_dragvalue_vec_z_inv},
         AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions, ImageRenderer,
     },
@@ -83,6 +83,7 @@ impl Tab for SaveImageTab {
         cc: &'a eframe::CreationContext<'a>,
         search: SharedDefinitionSearch,
         selection: BlockSingleSelection,
+        mod_collapsing: ModCollapsing,
     ) {
         if let Some(gl) = &cc.gl {
             let renderer = SceneRenderer::new(gl, self.scene.scene());
@@ -92,6 +93,8 @@ impl Tab for SaveImageTab {
         self.definition_select_panel.use_search(search);
         self.definition_select_panel
             .use_selection(selection.clone());
+        self.definition_select_panel
+            .use_mod_collapsing(mod_collapsing);
         self.selection = selection;
     }
 

@@ -5,7 +5,7 @@ use crate::{
     ui::{
         app::BlockSingleSelection,
         components::SharedDefinitionSearch,
-        panels::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel},
+        panels::{Definition3dPanel, DefinitionDetailPanel, DefinitionSelectPanel, ModCollapsing},
         utils::ui_center,
         windows::AttributeDetailWindow,
         AppAction,
@@ -49,11 +49,14 @@ impl Tab for MainTab {
         cc: &eframe::CreationContext<'_>,
         search: SharedDefinitionSearch,
         selection: BlockSingleSelection,
+        mod_collapsing: ModCollapsing,
     ) {
         self.definition_3d_panel.creation_context(cc);
         self.definition_select_panel.use_search(search);
         self.definition_select_panel
             .use_selection(selection.clone());
+        self.definition_select_panel
+            .use_mod_collapsing(mod_collapsing);
         self.selection = selection;
     }
 

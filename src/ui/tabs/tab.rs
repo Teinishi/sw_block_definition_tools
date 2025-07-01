@@ -1,7 +1,10 @@
 use crate::{
     definition_hub::DefinitionRegistory,
     state::State,
-    ui::{app::BlockSingleSelection, components::SharedDefinitionSearch, AppAction},
+    ui::{
+        app::BlockSingleSelection, components::SharedDefinitionSearch, panels::ModCollapsing,
+        AppAction,
+    },
 };
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
@@ -24,6 +27,7 @@ pub trait Tab: Default {
         cc: &eframe::CreationContext<'_>,
         search: SharedDefinitionSearch,
         selection: BlockSingleSelection,
+        mod_collapsing: ModCollapsing,
     ) {
     }
 
