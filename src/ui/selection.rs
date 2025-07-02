@@ -34,7 +34,7 @@ pub trait Selection<T> {
 #[derive(Debug)]
 pub struct SingleSelection<T: PartialEq> {
     selection: Rc<RefCell<Option<T>>>,
-    pub version: VersionCounter, //todo: pub外す
+    version: VersionCounter,
 }
 
 impl<T> Default for SingleSelection<T>
