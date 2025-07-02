@@ -1,4 +1,4 @@
-use super::{AttachVersion, VersionCounter};
+use super::{AttachVersion, CheckUpdate, VersionCounter};
 use std::collections::BTreeMap;
 
 // 追跡可能な BTreeMap
@@ -24,6 +24,12 @@ impl<K: Ord, V: AttachVersion> AttachVersion for TrackableBTreeMap<K, V> {
         for value in self.inner.values_mut() {
             value.attach_version(version);
         }
+    }
+}
+
+impl<K: Ord, V> CheckUpdate for TrackableBTreeMap<K, V> {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.version.check_update(last_version)
     }
 }
 
@@ -79,9 +85,5 @@ impl<K: Ord, V: AttachVersion> TrackableBTreeMap<K, V> {
 
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
-    }
-
-    pub fn current_version(&self) -> Option<u32> {
-        self.version.current()
     }
 }

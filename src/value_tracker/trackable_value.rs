@@ -5,6 +5,10 @@ pub trait AttachVersion {
     fn attach_version(&mut self, version: &VersionCounter);
 }
 
+pub trait CheckUpdate {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool;
+}
+
 // 追跡可能な値
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone)]
 pub struct TrackableValue<T> {
@@ -16,6 +20,12 @@ pub struct TrackableValue<T> {
 impl<T> AttachVersion for TrackableValue<T> {
     fn attach_version(&mut self, version: &VersionCounter) {
         self.version = version.clone();
+    }
+}
+
+impl<T> CheckUpdate for TrackableValue<T> {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.version.check_update(last_version)
     }
 }
 
@@ -39,10 +49,5 @@ impl<T: PartialEq> TrackableValue<T> {
             self.value = new_value;
             self.version.bump();
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn current_version(&self) -> Option<u32> {
-        self.version.current()
     }
 }

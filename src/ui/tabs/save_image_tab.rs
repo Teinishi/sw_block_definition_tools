@@ -1,6 +1,6 @@
 use super::Tab;
 use crate::{
-    definition_hub::DefinitionRegistory,
+    definition_hub::{DefinitionRegistory, ModKey},
     state::State,
     sw_gl_3d::{BasicRenderer, MultisampleRenderer, RenderFramebuffer, SceneRenderer},
     ui::{
@@ -12,6 +12,7 @@ use crate::{
         AppAction, AutoCamera, BlockViewScene, BlockViewStateMeshOptions, ImageRenderer,
     },
     utils::fit_size_aspect,
+    value_tracker::CheckUpdate,
 };
 use eframe::glow::Context;
 use egui::{
@@ -30,7 +31,7 @@ pub struct SaveImageTab {
     #[serde(skip)]
     definition_select_panel: DefinitionMultiSelectPanel,
     #[serde(skip)]
-    selection: BlockSingleSelection,
+    last_selection_version: Option<u32>,
 
     #[serde(skip)]
     gl: Option<Arc<Context>>,
@@ -50,14 +51,14 @@ pub struct SaveImageTab {
 impl Default for SaveImageTab {
     fn default() -> Self {
         let auto_camera = AutoCamera::default();
-        let definition_select_panel = DefinitionMultiSelectPanel::default();
-        let selection = definition_select_panel.single_selection().clone();
+        let mut definition_select_panel = DefinitionMultiSelectPanel::default();
+        definition_select_panel.auto_select = true;
 
         Self {
             auto_camera,
             msaa_samples: 8,
             definition_select_panel,
-            selection,
+            last_selection_version: None,
             gl: None,
             scene: Default::default(),
             renderer: None,
@@ -91,11 +92,9 @@ impl Tab for SaveImageTab {
             self.gl = Some(gl.clone());
         }
         self.definition_select_panel.use_search(search);
-        self.definition_select_panel
-            .use_selection(selection.clone());
+        self.definition_select_panel.use_selection(selection);
         self.definition_select_panel
             .use_mod_collapsing(mod_collapsing);
-        self.selection = selection;
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -120,8 +119,12 @@ impl Tab for SaveImageTab {
                 self.definition_select_panel.ui(ui, registory);
             });
 
-        let key = self.definition_select_panel.single_selection().get();
-        let definition = key.as_ref().and_then(|key| registory.get(key));
+        let key = self
+            .definition_select_panel
+            .single_selection()
+            .get()
+            .clone();
+        let definition = key.borrow().as_ref().and_then(|key| registory.get(key));
         let definition_type = definition
             .as_ref()
             .and_then(|d| d.use_data(|d| d.definition_type))
@@ -136,7 +139,11 @@ impl Tab for SaveImageTab {
         }
 
         // 複数選択してれば裏で選択しているものも選択肢を出す
-        for key in self.definition_select_panel.multiple_selection().get() {
+        for key in self
+            .definition_select_panel
+            .multiple_selection()
+            .inner_cloned()
+        {
             if let Some(definition) = registory.get(&key) {
                 let meshes = definition.load_meshes(state);
                 let options = meshes
@@ -244,7 +251,7 @@ impl Tab for SaveImageTab {
 
         // 自動カメラ
         self.auto_camera
-            .update(key.as_ref(), registory, self.scene.state());
+            .update(key.borrow().as_ref(), registory, self.scene.state());
 
         // 出力中は進捗を表示
         if let Some(renderer) = &mut self.image_renderer {
@@ -262,9 +269,12 @@ impl Tab for SaveImageTab {
         if !self.scene_update_done
             || mesh_loaded_now
             || scene_update
-            || self.selection.check_update()
+            || self
+                .definition_select_panel
+                .single_selection()
+                .check_update(&mut self.last_selection_version)
         {
-            self.scene_update_done = self.scene.update(key.as_ref(), registory, state);
+            self.scene_update_done = self.scene.update(key.borrow().as_ref(), registory, state);
         }
 
         None
@@ -426,21 +436,25 @@ impl SaveImageTab {
     ) {
         let multi_selector = self.definition_select_panel.multiple_selection();
         let count = multi_selector.count();
-        let mut save_definitions = None;
+        let mut save_definitions: Option<HashSet<(ModKey, String)>> = None;
 
         let size = egui::vec2(ui.available_width(), 60.0);
 
         if count > 0 {
             let button = ui.add_sized(size, Button::new(format!("Save {} images", count)));
             if button.clicked() {
-                save_definitions = Some(multi_selector.get());
+                save_definitions = Some(multi_selector.inner_cloned());
             }
-        } else if let Some((mod_key, definition)) =
-            self.definition_select_panel.single_selection().get()
+        } else if let Some((mod_key, filename)) = self
+            .definition_select_panel
+            .single_selection()
+            .get()
+            .borrow()
+            .as_ref()
         {
             let button = ui.add_sized(size, Button::new("Save image"));
             if button.clicked() {
-                save_definitions = Some(HashSet::from([(mod_key, definition)]));
+                save_definitions = Some(HashSet::from([(mod_key.clone(), filename.clone())]));
             }
         }
 

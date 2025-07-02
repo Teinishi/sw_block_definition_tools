@@ -24,5 +24,5 @@ mod selection;
 mod tabs;
 mod windows;
 pub use selection::{
-    MultipleSelection, Selection, SharedMultipleSelection, SharedSingleSelection, SingleSelection,
+    MultipleSelection, Selection, SingleSelection,
 };

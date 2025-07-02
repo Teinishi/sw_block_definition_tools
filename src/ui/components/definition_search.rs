@@ -60,11 +60,9 @@ impl DefinitionSearch {
     }
 
     pub fn update_search(&mut self, registory: &mut DefinitionRegistory) {
-        // registory を見て更新があったらキャッシュリセット
-        let current_version = registory.current_version();
-        if current_version != self.last_version {
+        // registory に更新があったらキャッシュリセット
+        if registory.check_update(&mut self.last_version) {
             self.search_cache.clear();
-            self.last_version = current_version;
         }
 
         let pat = self.search_text.to_lowercase();

@@ -2,7 +2,7 @@ use super::{ModDefinition, ModKey};
 use crate::{
     definition_hub::BlockDefinition,
     state::State,
-    value_tracker::{AttachVersion, TrackableBTreeMap, VersionCounter},
+    value_tracker::{AttachVersion, CheckUpdate, TrackableBTreeMap, VersionCounter},
 };
 use std::{fs::read_dir, io, path::Path};
 
@@ -122,7 +122,7 @@ impl DefinitionRegistory {
         None
     }
 
-    pub fn current_version(&self) -> Option<u32> {
-        self.mods.current_version()
+    pub fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.mods.check_update(last_version)
     }
 }

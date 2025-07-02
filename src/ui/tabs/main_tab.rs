@@ -10,6 +10,7 @@ use crate::{
         windows::AttributeDetailWindow,
         AppAction,
     },
+    value_tracker::CheckUpdate,
 };
 use egui::{Button, CentralPanel, Frame, Id, ScrollArea, SidePanel, TopBottomPanel};
 
@@ -18,27 +19,26 @@ use egui::{Button, CentralPanel, Frame, Id, ScrollArea, SidePanel, TopBottomPane
 pub struct MainTab {
     #[serde(skip)]
     definition_select_panel: DefinitionSelectPanel,
-    #[serde(skip)]
-    selection: BlockSingleSelection,
     definition_detail_panel: DefinitionDetailPanel,
     definition_3d_panel: Definition3dPanel,
     attribute_detail_windows: Vec<AttributeDetailWindow>,
     window_id: u32,
+    #[serde(skip)]
+    last_selection_version: Option<u32>,
 }
 
 impl Default for MainTab {
     fn default() -> Self {
         let definition_select_panel = DefinitionSelectPanel::default();
-        let selection = definition_select_panel.selection().clone();
         let definition_3d_panel = Definition3dPanel::new(None);
 
         Self {
             definition_select_panel,
-            selection,
             definition_detail_panel: DefinitionDetailPanel,
             definition_3d_panel,
             attribute_detail_windows: Vec::new(),
             window_id: 0,
+            last_selection_version: None,
         }
     }
 }
@@ -57,7 +57,6 @@ impl Tab for MainTab {
             .use_selection(selection.clone());
         self.definition_select_panel
             .use_mod_collapsing(mod_collapsing);
-        self.selection = selection;
     }
 
     fn destroy(&mut self, gl: Option<&eframe::glow::Context>) {
@@ -66,7 +65,6 @@ impl Tab for MainTab {
 
     fn reset(&mut self) {
         self.definition_select_panel = Default::default();
-        self.selection = self.definition_select_panel.selection().clone();
         self.definition_detail_panel = Default::default();
         self.definition_3d_panel.reset();
         self.attribute_detail_windows = Vec::new();
@@ -113,7 +111,7 @@ impl Tab for MainTab {
                 self.definition_select_panel.ui(ui, registory);
             });
 
-        let selection_changed = self.selection.check_update();
+        let selection = self.definition_select_panel.selection();
 
         SidePanel::right("right_panel")
             .frame(Frame::side_top_panel(&ctx.style()).inner_margin(0.0))
@@ -125,8 +123,8 @@ impl Tab for MainTab {
                     ui,
                     state,
                     registory,
-                    self.selection.get().as_ref(),
-                    selection_changed,
+                    selection.get().borrow().as_ref(),
+                    selection.check_update(&mut self.last_selection_version),
                 );
             });
 

@@ -1,7 +1,7 @@
 use crate::{
     lazy_load::LazyLoad,
     utils::check_xml_root_tag,
-    value_tracker::{AttachVersion, VersionCounter},
+    value_tracker::{AttachVersion, CheckUpdate, VersionCounter},
 };
 use quick_xml::de::from_str;
 use serde::de::DeserializeOwned;
@@ -23,6 +23,12 @@ impl<T> Clone for LazyXml<T> {
 impl<T> AttachVersion for LazyXml<T> {
     fn attach_version(&mut self, version: &VersionCounter) {
         self.inner.attach_version(version);
+    }
+}
+
+impl<T> CheckUpdate for LazyXml<T> {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.inner.check_update(last_version)
     }
 }
 

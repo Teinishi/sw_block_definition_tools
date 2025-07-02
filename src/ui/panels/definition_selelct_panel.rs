@@ -5,6 +5,7 @@ use crate::{
         components::SharedDefinitionSearch,
         BlockKey, Selection,
     },
+    value_tracker::CheckUpdate,
 };
 use egui::{
     Align2, Button, Checkbox, Label, Layout, RichText, Sense, Sides, Stroke, UiBuilder, Widget,
@@ -59,6 +60,7 @@ pub struct DefinitionMultiSelectPanel {
     multiple_selection: BlockMultipleSelection,
     mod_collapsing: ModCollapsing,
     pub auto_select: bool,
+    last_selection_version: Option<u32>,
 }
 
 impl DefinitionMultiSelectPanel {
@@ -93,10 +95,14 @@ impl DefinitionMultiSelectPanel {
         );
         self.search.update_search(registory);
 
-        let select_updated = self.single_selection.check_update();
-        if self.auto_select && !self.multiple_selection.is_empty() && select_updated {
-            if let Some(selected) = self.single_selection.get() {
-                self.multiple_selection.add(selected.clone());
+        if self.auto_select
+            && !self.multiple_selection.is_empty()
+            && self
+                .single_selection
+                .check_update(&mut self.last_selection_version)
+        {
+            if let Some(key) = self.single_selection.get().borrow().as_ref() {
+                self.multiple_selection.add(key.clone());
             }
         }
     }
@@ -115,7 +121,7 @@ fn ui_panel(
     search.ui(ui);
 
     let items = search.get_result_items();
-    if let Some(multi_selection) = multi_selection {
+    if let Some(multi_selection) = &multi_selection {
         ui_select_all(ui, &items, multi_selection);
     }
     ui.add_space(6.0);
@@ -307,7 +313,7 @@ fn ui_list_item(
         .horizontal(|mut strip| {
             let mut text = RichText::new(filename);
 
-            if let Some(multi_selection) = &multi_selection {
+            if let Some(multi_selection) = multi_selection {
                 if !multi_selection.is_empty() && !multi_selection.is_selected(&key) {
                     text = text.weak();
                 }

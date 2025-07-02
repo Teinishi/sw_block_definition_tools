@@ -1,4 +1,4 @@
-use super::value_tracker::{AttachVersion, VersionCounter};
+use super::value_tracker::{AttachVersion, CheckUpdate, VersionCounter};
 use std::{
     fmt,
     sync::{
@@ -75,6 +75,12 @@ impl<T> Default for LazyLoad<T> {
 impl<T> AttachVersion for LazyLoad<T> {
     fn attach_version(&mut self, version: &VersionCounter) {
         self.version = version.clone();
+    }
+}
+
+impl<T> CheckUpdate for LazyLoad<T> {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.version.check_update(last_version)
     }
 }
 

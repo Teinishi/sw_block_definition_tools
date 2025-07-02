@@ -2,7 +2,7 @@ use crate::{
     lazy_load::LazyLoad,
     sw_block_definition::Definition,
     sw_gl_3d::{MeshConstructData, SwBlockMeshes},
-    value_tracker::{AttachVersion, VersionCounter},
+    value_tracker::{AttachVersion, CheckUpdate, VersionCounter},
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -14,6 +14,12 @@ pub struct LazyMeshes {
 impl AttachVersion for LazyMeshes {
     fn attach_version(&mut self, version: &VersionCounter) {
         self.inner.attach_version(version);
+    }
+}
+
+impl CheckUpdate for LazyMeshes {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.inner.check_update(last_version)
     }
 }
 

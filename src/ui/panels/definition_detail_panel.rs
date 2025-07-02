@@ -50,7 +50,12 @@ impl DefinitionDetailPanel {
         let attribute_filter = AttributeFilter::from_state(state);
         let mut new_window = None;
 
-        if let Some(definition) = selection.get().and_then(|key| registory.get(&key)) {
+        if let Some(definition) = selection
+            .get()
+            .borrow()
+            .as_ref()
+            .and_then(|key| registory.get(key))
+        {
             let data = definition.load_data();
             let filename = definition.filename().to_string();
             let mut refresh = false;

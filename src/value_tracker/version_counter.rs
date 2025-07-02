@@ -34,4 +34,13 @@ impl VersionCounter {
             None
         }
     }
+
+    pub fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        if self.current() != *last_version {
+            *last_version = self.current();
+            true
+        } else {
+            false
+        }
+    }
 }

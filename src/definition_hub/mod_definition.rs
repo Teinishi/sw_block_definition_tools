@@ -2,7 +2,7 @@ use super::{BlockDefinition, LazyXml};
 use crate::{
     definition_hub::ModKey,
     sw_schema_lib::Mod,
-    value_tracker::{AttachVersion, TrackableBTreeMap, VersionCounter},
+    value_tracker::{AttachVersion, CheckUpdate, TrackableBTreeMap, VersionCounter},
 };
 use std::{
     fs::read_dir,
@@ -22,6 +22,12 @@ pub struct ModDefinition {
 impl AttachVersion for ModDefinition {
     fn attach_version(&mut self, version: &VersionCounter) {
         self.version = version.clone();
+    }
+}
+
+impl CheckUpdate for ModDefinition {
+    fn check_update(&self, last_version: &mut Option<u32>) -> bool {
+        self.version.check_update(last_version)
     }
 }
 

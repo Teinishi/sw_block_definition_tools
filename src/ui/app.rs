@@ -6,16 +6,17 @@ use crate::{
     definition_hub::{DefinitionRegistory, ModDefinition, ModKey},
     state::State,
     ui::{
-        components::SharedDefinitionSearch, panels::ModCollapsing, SharedMultipleSelection,
-        SharedSingleSelection,
+        components::SharedDefinitionSearch, panels::ModCollapsing, MultipleSelection,
+        SingleSelection,
     },
+    value_tracker::{AttachVersion, VersionCounter},
 };
 use egui::{Sides, TopBottomPanel};
 use std::path::Path;
 
 pub type BlockKey = (ModKey, String);
-pub type BlockSingleSelection = SharedSingleSelection<BlockKey>;
-pub type BlockMultipleSelection = SharedMultipleSelection<BlockKey>;
+pub type BlockSingleSelection = SingleSelection<BlockKey>;
+pub type BlockMultipleSelection = MultipleSelection<BlockKey>;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 #[serde(default)]
@@ -47,7 +48,7 @@ impl MainApp {
                 app
             })
             .map(|mut app| {
-                app.registory.init(&app.state);
+                app.init();
                 app
             })
             .unwrap_or_default();
@@ -74,11 +75,17 @@ impl MainApp {
         app
     }
 
+    pub fn init(&mut self) {
+        self.registory.init(&self.state);
+        self.selection.attach_version(&VersionCounter::zero());
+    }
+
     pub fn reset(&mut self) {
         self.state = Default::default();
         self.registory = Default::default();
         self.search = Default::default();
         self.selection = Default::default();
+        self.selection.attach_version(&VersionCounter::zero());
         self.tab = Default::default();
 
         self.main_tab.reset();
