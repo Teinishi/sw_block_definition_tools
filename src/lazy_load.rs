@@ -1,3 +1,4 @@
+use super::value_tracker::{AttachVersion, VersionCounter};
 use std::{
     fmt,
     sync::{
@@ -50,12 +51,14 @@ impl<T> Default for LazyLoadInner<T> {
 #[derive(Debug)]
 pub struct LazyLoad<T> {
     inner: Arc<LazyLoadInner<T>>,
+    version: VersionCounter,
 }
 
 impl<T> Clone for LazyLoad<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            version: self.version.clone(),
         }
     }
 }
@@ -64,7 +67,14 @@ impl<T> Default for LazyLoad<T> {
     fn default() -> Self {
         Self {
             inner: Arc::new(LazyLoadInner::default()),
+            version: Default::default(),
         }
+    }
+}
+
+impl<T> AttachVersion for LazyLoad<T> {
+    fn attach_version(&mut self, version: &VersionCounter) {
+        self.version = version.clone();
     }
 }
 
@@ -77,11 +87,11 @@ where
         F: Fn() -> T + Send + Sync + 'static,
     {
         let s = Self::default();
-        s.set_loader(loader);
+        s.attach_loader(loader);
         s
     }
 
-    pub fn set_loader<F>(&self, loader: F)
+    pub fn attach_loader<F>(&self, loader: F)
     where
         F: Fn() -> T + Send + Sync + 'static,
     {
@@ -103,6 +113,7 @@ where
         }
 
         let state = Arc::clone(&self.inner);
+        let version = self.version.clone();
         thread::spawn(move || {
             let loader = {
                 let guard = state.loader.lock().unwrap();
@@ -115,6 +126,7 @@ where
                 state.is_ready.store(true, Ordering::SeqCst);
             }
             state.is_loading.store(false, Ordering::SeqCst);
+            version.bump();
         });
     }
 
@@ -128,6 +140,7 @@ where
         self.inner.is_loading.store(false, Ordering::SeqCst);
         let mut guard = self.inner.content.lock().unwrap();
         *guard = None;
+        self.version.bump();
         self.try_load();
     }
 

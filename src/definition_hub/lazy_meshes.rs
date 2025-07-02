@@ -2,6 +2,7 @@ use crate::{
     lazy_load::LazyLoad,
     sw_block_definition::Definition,
     sw_gl_3d::{MeshConstructData, SwBlockMeshes},
+    value_tracker::{AttachVersion, VersionCounter},
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -10,10 +11,16 @@ pub struct LazyMeshes {
     inner: LazyLoad<SwBlockMeshes>,
 }
 
+impl AttachVersion for LazyMeshes {
+    fn attach_version(&mut self, version: &VersionCounter) {
+        self.inner.attach_version(version);
+    }
+}
+
 impl LazyMeshes {
     pub fn set_loader(&self, data: &Definition, paths: Vec<PathBuf>) {
         let data = MeshConstructData::from_definition(data);
-        self.inner.set_loader(move || {
+        self.inner.attach_loader(move || {
             let value = paths.clone();
             SwBlockMeshes::new(&data, &move |name| {
                 for p in &value {

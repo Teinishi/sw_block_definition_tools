@@ -1,5 +1,10 @@
 use super::{LazyMeshes, LazyXml, ModKey};
-use crate::{state::State, sw_block_definition::Definition, sw_gl_3d::SwBlockMeshes};
+use crate::{
+    state::State,
+    sw_block_definition::Definition,
+    sw_gl_3d::SwBlockMeshes,
+    value_tracker::{AttachVersion, TrackableValue, VersionCounter},
+};
 use core::fmt;
 use std::{
     path::{Path, PathBuf},
@@ -10,9 +15,9 @@ type LazyDataContent = Arc<Result<Definition, String>>;
 type LazyMeshesContent = Arc<SwBlockMeshes>;
 
 pub struct BlockDefinition {
-    mod_key: ModKey,
-    path: PathBuf,
-    filename: String,
+    mod_key: TrackableValue<ModKey>,
+    path: TrackableValue<PathBuf>,
+    filename: TrackableValue<String>,
     data: LazyXml<Definition>,
     meshes: LazyMeshes,
 }
@@ -39,6 +44,16 @@ impl Clone for BlockDefinition {
     }
 }
 
+impl AttachVersion for BlockDefinition {
+    fn attach_version(&mut self, version: &VersionCounter) {
+        self.mod_key.attach_version(version);
+        self.path.attach_version(version);
+        self.filename.attach_version(version);
+        self.data.attach_version(version);
+        self.meshes.attach_version(version);
+    }
+}
+
 impl BlockDefinition {
     pub fn new<P: AsRef<Path>>(mod_key: ModKey, path: P) -> Self {
         let pathbuf = path.as_ref().to_path_buf();
@@ -48,30 +63,32 @@ impl BlockDefinition {
             .to_os_string()
             .into_string()
             .unwrap();
-        let data = LazyXml::new(pathbuf.clone(), "definition".to_string());
+        let version = VersionCounter::default();
+        let mut data = LazyXml::new(pathbuf.clone(), "definition".to_string());
+        data.attach_version(&version);
         Self {
-            mod_key,
-            path: pathbuf,
-            filename,
+            mod_key: TrackableValue::new(mod_key, version.clone()),
+            path: TrackableValue::new(pathbuf, version.clone()),
+            filename: TrackableValue::new(filename, version),
             data,
             meshes: Default::default(),
         }
     }
 
     pub fn mod_key(&self) -> &ModKey {
-        &self.mod_key
+        self.mod_key.inner()
     }
 
     pub fn path(&self) -> &PathBuf {
-        &self.path
+        self.path.inner()
     }
 
     pub fn key(&self) -> (ModKey, String) {
-        (self.mod_key.clone(), self.filename().to_string())
+        (self.mod_key.inner().clone(), self.filename().to_string())
     }
 
     pub fn filename(&self) -> &str {
-        &self.filename
+        self.filename.inner()
     }
 
     pub fn is_data_loading(&self) -> bool {
@@ -106,10 +123,11 @@ impl BlockDefinition {
     pub fn load_meshes(&self, state: &State) -> Option<LazyMeshesContent> {
         if !self.meshes.has_loader() {
             self.use_data(|data| {
-                let paths: Vec<PathBuf> = [self.mod_key.get_path(state), state.rom_path.clone()]
-                    .into_iter()
-                    .flatten()
-                    .collect();
+                let paths: Vec<PathBuf> =
+                    [self.mod_key.inner().get_path(state), state.rom_path.clone()]
+                        .into_iter()
+                        .flatten()
+                        .collect();
                 self.meshes.set_loader(data, paths);
             });
         }

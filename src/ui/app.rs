@@ -21,7 +21,9 @@ pub type BlockMultipleSelection = SharedMultipleSelection<BlockKey>;
 #[serde(default)]
 pub struct MainApp {
     state: State,
+    #[serde(skip)]
     registory: DefinitionRegistory,
+    #[serde(skip)]
     search: SharedDefinitionSearch,
     #[serde(skip)]
     selection: BlockSingleSelection,

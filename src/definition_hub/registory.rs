@@ -1,6 +1,10 @@
 use super::{ModDefinition, ModKey};
-use crate::{definition_hub::BlockDefinition, state::State};
-use std::{collections::BTreeMap, fs::read_dir, io, path::Path};
+use crate::{
+    definition_hub::BlockDefinition,
+    state::State,
+    value_tracker::{AttachVersion, TrackableBTreeMap, VersionCounter},
+};
+use std::{fs::read_dir, io, path::Path};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
 pub enum LoadingState {
@@ -19,10 +23,9 @@ impl LoadingState {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct DefinitionRegistory {
-    #[serde(skip)]
-    pub mods: BTreeMap<ModKey, ModDefinition>,
+    mods: TrackableBTreeMap<ModKey, ModDefinition>,
 }
 
 impl DefinitionRegistory {
@@ -36,6 +39,7 @@ impl DefinitionRegistory {
         if let Some(path) = &state.workshop_path {
             let _ = self.add_mods_in_folder(path, ModKey::Workshop);
         }
+        self.mods.attach_version(&VersionCounter::zero());
     }
 
     pub fn add_mods_in_folder<P: AsRef<Path>, F: FnMut(String) -> ModKey>(
@@ -61,12 +65,20 @@ impl DefinitionRegistory {
             .insert(mod_definition.mod_key().clone(), mod_definition);
     }
 
+    pub fn mods(&self) -> &TrackableBTreeMap<ModKey, ModDefinition> {
+        &self.mods
+    }
+
+    pub fn mods_mut(&mut self) -> &mut TrackableBTreeMap<ModKey, ModDefinition> {
+        &mut self.mods
+    }
+
     pub fn definitions(
         &self,
     ) -> impl Iterator<Item = ((&ModKey, &String), &ModDefinition, &BlockDefinition)> {
         self.mods.iter().flat_map(|(mod_key, mod_definition)| {
             mod_definition
-                .definitions
+                .definitions()
                 .iter()
                 .map(move |(filename, block)| ((mod_key, filename), mod_definition, block))
         })
@@ -75,7 +87,7 @@ impl DefinitionRegistory {
     pub fn get(&self, key: &(ModKey, String)) -> Option<&BlockDefinition> {
         self.mods
             .get(&key.0)
-            .and_then(|mod_definition| mod_definition.definitions.get(&key.1))
+            .and_then(|mod_definition| mod_definition.definitions().get(&key.1))
     }
 
     pub fn resolve(&self, mod_key: &ModKey, name: &str) -> Option<&BlockDefinition> {
@@ -93,11 +105,11 @@ impl DefinitionRegistory {
     }
 
     pub fn loading_state(&self) -> Option<LoadingState> {
-        for (mod_key, mod_definition) in &self.mods {
+        for (mod_key, mod_definition) in self.mods.iter() {
             if mod_definition.is_loading_manifest() {
                 return Some(LoadingState::ModManifest(mod_key.get_folder_name()));
             }
-            for (filename, definition) in &mod_definition.definitions {
+            for (filename, definition) in mod_definition.definitions().iter() {
                 if definition.is_data_loading() {
                     return Some(LoadingState::Data(filename.to_string()));
                 }
@@ -108,5 +120,9 @@ impl DefinitionRegistory {
         }
 
         None
+    }
+
+    pub fn current_version(&self) -> Option<u32> {
+        self.mods.current_version()
     }
 }

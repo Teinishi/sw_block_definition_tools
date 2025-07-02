@@ -6,7 +6,9 @@ use crate::{
         BlockKey, Selection,
     },
 };
-use egui::{Align2, Checkbox, Label, Layout, RichText, Sense, UiBuilder, Widget};
+use egui::{
+    Align2, Button, Checkbox, Label, Layout, RichText, Sense, Sides, Stroke, UiBuilder, Widget,
+};
 use egui_extras::{Size, StripBuilder};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -102,7 +104,7 @@ impl DefinitionMultiSelectPanel {
 
 fn ui_panel(
     ui: &mut egui::Ui,
-    registory: &DefinitionRegistory,
+    registory: &mut DefinitionRegistory,
     search: &SharedDefinitionSearch,
     single_selection: &BlockSingleSelection,
     multi_selection: Option<&BlockMultipleSelection>,
@@ -154,7 +156,7 @@ fn ui_select_all(ui: &mut egui::Ui, items: &[BlockKey], multi_selection: &BlockM
 
 fn ui_list(
     ui: &mut egui::Ui,
-    registory: &DefinitionRegistory,
+    registory: &mut DefinitionRegistory,
     items: &[BlockKey],
     single_selection: &BlockSingleSelection,
     multi_selection: Option<&BlockMultipleSelection>,
@@ -183,7 +185,7 @@ fn ui_list(
                     let mod_name = match mod_key {
                         ModKey::Stormworks => "Stormworks".to_string(),
                         _ => registory
-                            .mods
+                            .mods()
                             .get(mod_key)
                             .and_then(|m| m.use_manifest(|m| m.name.clone()))
                             .flatten()
@@ -192,7 +194,11 @@ fn ui_list(
 
                     strip.cell(|ui| {
                         let mut collapse = mod_collapsing.get(mod_key);
-                        ui_list_mod_label(ui, &mod_name, &mut collapse);
+                        if ui_list_mod_label(ui, &mod_name, &mut collapse) {
+                            if let Some(mod_definition) = registory.mods_mut().get_mut(mod_key) {
+                                mod_definition.refresh();
+                            }
+                        }
                         mod_collapsing.set(mod_key.clone(), collapse);
                     });
 
@@ -218,7 +224,8 @@ fn ui_list(
     mod_collapsing.apply();
 }
 
-fn ui_list_mod_label(ui: &mut egui::Ui, mod_name: &str, collapse: &mut bool) {
+fn ui_list_mod_label(ui: &mut egui::Ui, mod_name: &str, collapse: &mut bool) -> bool {
+    let mut refresh = false;
     let res = ui
         .scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
             ui.painter().rect_filled(
@@ -226,17 +233,30 @@ fn ui_list_mod_label(ui: &mut egui::Ui, mod_name: &str, collapse: &mut bool) {
                 0.0,
                 ui.visuals().widgets.inactive.bg_fill,
             );
-            ui.horizontal_centered(|ui| {
-                ui.add_space(4.0);
-                ui_collapsing_icon(ui, !*collapse);
-                Label::new(mod_name).selectable(false).ui(ui);
-            });
-            ui.allocate_space(ui.available_size());
+            Sides::new().show(
+                ui,
+                |ui| {
+                    ui.add_space(4.0);
+                    ui_collapsing_icon(ui, !*collapse);
+                    Label::new(mod_name).selectable(false).ui(ui);
+                },
+                |ui| {
+                    ui.add_space(4.0);
+                    let res = ui.add_sized(
+                        egui::vec2(16.0, 16.0),
+                        Button::new("\u{1F503}").stroke(Stroke::NONE),
+                    );
+                    if res.clicked() {
+                        refresh = true;
+                    }
+                },
+            );
         })
         .response;
     if res.clicked() {
         *collapse = !*collapse;
     }
+    refresh
 }
 
 fn ui_collapsing_icon(ui: &mut egui::Ui, open: bool) {

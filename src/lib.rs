@@ -1,6 +1,7 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod audio;
+mod value_tracker;
 mod definition_hub;
 mod file_dialog;
 mod lazy_load;

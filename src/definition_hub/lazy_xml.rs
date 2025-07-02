@@ -1,4 +1,8 @@
-use crate::{lazy_load::LazyLoad, utils::check_xml_root_tag};
+use crate::{
+    lazy_load::LazyLoad,
+    utils::check_xml_root_tag,
+    value_tracker::{AttachVersion, VersionCounter},
+};
 use quick_xml::de::from_str;
 use serde::de::DeserializeOwned;
 use std::{path::PathBuf, sync::Arc};
@@ -13,6 +17,12 @@ impl<T> Clone for LazyXml<T> {
         Self {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<T> AttachVersion for LazyXml<T> {
+    fn attach_version(&mut self, version: &VersionCounter) {
+        self.inner.attach_version(version);
     }
 }
 
