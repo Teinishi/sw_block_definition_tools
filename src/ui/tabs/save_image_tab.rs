@@ -186,16 +186,20 @@ impl Tab for SaveImageTab {
                                 ui.separator();
                                 ui.add_space(4.0);
 
-                                scene_update =
-                                    self.scene.state_ui(ui, &mesh_options) || scene_update;
+                                if self.scene.state_ui(ui, &mesh_options) {
+                                    scene_update = true;
+                                }
 
                                 ui.add_space(4.0);
                                 ui.separator();
                                 ui.add_space(4.0);
 
-                                scene_update =
-                                    self.scene.appearance_ui(ui, Id::new("save_image_colors"))
-                                        || scene_update;
+                                if self
+                                    .scene
+                                    .appearance_ui(ui, Id::new("save_image_colors"), false)
+                                {
+                                    scene_update = true;
+                                }
 
                                 #[cfg(not(target_arch = "wasm32"))]
                                 {

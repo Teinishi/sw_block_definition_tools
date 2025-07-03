@@ -85,15 +85,15 @@ impl SceneRenderer {
         &mut self,
         gl: &glow::Context,
         camera: &impl Camera,
-        colors: &BlockViewAppearance,
+        appearance: &BlockViewAppearance,
     ) {
         use glow::HasContext as _;
 
-        let override_color: i32 = colors.override_color.into();
-        let override_color_1 = colors.override_1.into();
-        let override_color_2 = colors.override_2.into();
-        let override_color_3 = colors.override_3.into();
-        let additive_color = colors.additive.into();
+        let override_color: i32 = appearance.override_color.into();
+        let override_color_1 = appearance.override_1.into();
+        let override_color_2 = appearance.override_2.into();
+        let override_color_3 = appearance.override_3.into();
+        let additive_color = appearance.additive.into();
 
         let mat_view_proj = camera.mat_view_proj();
         let camera_position = camera.position();

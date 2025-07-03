@@ -121,6 +121,7 @@ impl Tab for MainTab {
             .show(ctx, |ui| {
                 self.definition_3d_panel.ui(
                     ui,
+                    Id::new("main_tab_right_panel"),
                     state,
                     registory,
                     selection.get().borrow().as_ref(),

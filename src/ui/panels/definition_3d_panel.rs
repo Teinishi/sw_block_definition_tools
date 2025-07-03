@@ -4,7 +4,7 @@ use crate::{
     sw_gl_3d::{OrbitCamera, SceneRenderer},
     ui::{paint_canvas_3d, BlockViewScene, BlockViewStateMeshOptions},
 };
-use egui::{CentralPanel, ScrollArea, TopBottomPanel};
+use egui::{CentralPanel, Id, ScrollArea, TopBottomPanel};
 use glam::Vec3;
 use std::sync::Arc;
 
@@ -65,12 +65,14 @@ impl Definition3dPanel {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        id: Id,
         state: &State,
         registory: &mut DefinitionRegistory,
         selected_key: Option<&(ModKey, String)>,
         select_changed: bool,
     ) {
-        TopBottomPanel::bottom("definition_3d_panel_bottom")
+        let id_bottom = id.with("definition_3d_panel_bottom");
+        TopBottomPanel::bottom(id_bottom)
             .default_height(250.0)
             .resizable(true)
             .show_inside(ui, |ui| {
@@ -100,16 +102,25 @@ impl Definition3dPanel {
                         }
 
                         let scene_state_changed = self.scene.state_ui(ui, &mesh_options);
+
+                        ui.add_space(4.0);
+                        ui.separator();
+                        ui.add_space(4.0);
+
+                        let scene_appearance_changed =
+                            self.scene.appearance_ui(ui, id.with("appearance"), true);
+
+                        ui.add_space(4.0);
+
                         if !self.scene_update_done
                             || mesh_loaded_now
                             || select_changed
                             || scene_state_changed
+                            || scene_appearance_changed
                         {
                             self.scene_update_done =
                                 self.scene.update(selected_key, registory, state);
                         }
-
-                        ui.add_space(4.0);
                     });
             });
 
@@ -130,7 +141,7 @@ impl Definition3dPanel {
                         rect,
                         self.camera.clone(),
                         renderer.clone(),
-                        &Default::default(),
+                        self.scene.appearance(),
                     );
                 }
             });

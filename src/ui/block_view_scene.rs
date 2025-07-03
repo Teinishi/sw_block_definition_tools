@@ -282,69 +282,87 @@ impl Default for BlockViewAppearance {
 }
 
 impl BlockViewAppearance {
-    fn ui(&mut self, ui: &mut egui::Ui, id: egui::Id, state: &BlockViewState) -> bool {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        id: egui::Id,
+        state: &BlockViewState,
+        simple_mode: bool,
+    ) -> bool {
         let before_change = self.clone();
 
         Grid::new(id).spacing([10.0, 8.0]).show(ui, |ui| {
-            ui.label("Surface color");
-            ui_color_picker_rgb(ui, &mut self.surface);
-            ui.end_row();
-
-            ui.checkbox(&mut self.override_color, "Override color");
-            ui.end_row();
-
-            if self.override_color {
-                ui.label("Override color 1");
-                ui_color_picker_rgb(ui, &mut self.override_1);
+            if simple_mode {
+                ui.label("Color");
+                ui_color_picker_rgb(ui, &mut self.surface);
                 ui.end_row();
 
-                ui.label("Override color 2");
-                ui_color_picker_rgb(ui, &mut self.override_2);
+                self.override_color = true;
+                self.override_1 = self.surface;
+                self.override_2 = self.surface;
+                self.override_3 = self.surface;
+                self.additive = self.surface;
+            } else {
+                ui.label("Surface color");
+                ui_color_picker_rgb(ui, &mut self.surface);
                 ui.end_row();
 
-                ui.label("Override color 3");
-                ui_color_picker_rgb(ui, &mut self.override_3);
+                ui.checkbox(&mut self.override_color, "Override color");
                 ui.end_row();
-            }
 
-            ui.label("Additive color");
-            ui_color_picker_rgb(ui, &mut self.additive);
-            ui.end_row();
+                if self.override_color {
+                    ui.label("Override color 1");
+                    ui_color_picker_rgb(ui, &mut self.override_1);
+                    ui.end_row();
 
-            for (show, text, appearance) in [
-                (
-                    state.show_buoyancy_surfaces,
-                    "Buoyancy surfaces",
-                    &mut self.buoyancy_surface,
-                ),
-                (
-                    state.show_bounding_box_voxel,
-                    "Bounding box (voxel)",
-                    &mut self.bounding_box_voxel,
-                ),
-                (
-                    state.show_bounding_box_voxel_physics,
-                    "Bounding box (voxel physics)",
-                    &mut self.bounding_box_voxel_physics,
-                ),
-                (
-                    state.show_bounding_box_physics,
-                    "Bounding box (physics)",
-                    &mut self.bounding_box_physics,
-                ),
-            ] {
-                if !show {
-                    continue;
+                    ui.label("Override color 2");
+                    ui_color_picker_rgb(ui, &mut self.override_2);
+                    ui.end_row();
+
+                    ui.label("Override color 3");
+                    ui_color_picker_rgb(ui, &mut self.override_3);
+                    ui.end_row();
                 }
-                ui.label(text);
-                ui_color_picker_rgba(ui, &mut appearance.0);
-                ui_color_picker_rgba(ui, &mut appearance.1);
-                ui.add(
-                    DragValue::new(&mut appearance.2)
-                        .range(0.0..=10.0)
-                        .speed(0.1),
-                );
+
+                ui.label("Additive color");
+                ui_color_picker_rgb(ui, &mut self.additive);
                 ui.end_row();
+
+                for (show, text, appearance) in [
+                    (
+                        state.show_buoyancy_surfaces,
+                        "Buoyancy surfaces",
+                        &mut self.buoyancy_surface,
+                    ),
+                    (
+                        state.show_bounding_box_voxel,
+                        "Bounding box (voxel)",
+                        &mut self.bounding_box_voxel,
+                    ),
+                    (
+                        state.show_bounding_box_voxel_physics,
+                        "Bounding box (voxel physics)",
+                        &mut self.bounding_box_voxel_physics,
+                    ),
+                    (
+                        state.show_bounding_box_physics,
+                        "Bounding box (physics)",
+                        &mut self.bounding_box_physics,
+                    ),
+                ] {
+                    if !show {
+                        continue;
+                    }
+                    ui.label(text);
+                    ui_color_picker_rgba(ui, &mut appearance.0);
+                    ui_color_picker_rgba(ui, &mut appearance.1);
+                    ui.add(
+                        DragValue::new(&mut appearance.2)
+                            .range(0.0..=10.0)
+                            .speed(0.1),
+                    );
+                    ui.end_row();
+                }
             }
         });
 
@@ -456,8 +474,8 @@ impl BlockViewScene {
         self.state.ui(ui, mesh_options)
     }
 
-    pub fn appearance_ui(&mut self, ui: &mut egui::Ui, id: egui::Id) -> bool {
-        self.appearance.ui(ui, id, &self.state)
+    pub fn appearance_ui(&mut self, ui: &mut egui::Ui, id: egui::Id, simple_mode: bool) -> bool {
+        self.appearance.ui(ui, id, &self.state, simple_mode)
     }
 
     pub fn scene(&self) -> Arc<Mutex<Scene>> {
