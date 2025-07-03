@@ -21,8 +21,6 @@ pub use bounding_box_mesh::BoundingBoxObjectBuilder;
 mod components;
 mod panels;
 mod selection;
+pub use selection::{MultipleSelection, Selection, SingleSelection};
 mod tabs;
 mod windows;
-pub use selection::{
-    MultipleSelection, Selection, SingleSelection,
-};

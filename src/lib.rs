@@ -1,7 +1,6 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod audio;
-mod value_tracker;
 mod definition_hub;
 mod file_dialog;
 mod lazy_load;
@@ -11,3 +10,4 @@ mod sw_gl_3d;
 mod sw_schema_lib;
 pub mod ui;
 mod utils;
+mod value_tracker;
