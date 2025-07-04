@@ -15,12 +15,10 @@ mod block_view_scene;
 pub use block_view_scene::{
     BlockViewAppearance, BlockViewScene, BlockViewState, BlockViewStateMeshOptions,
 };
-mod bounding_box_mesh;
-mod utils;
-pub use bounding_box_mesh::BoundingBoxObjectBuilder;
 mod components;
 mod panels;
 mod selection;
+mod utils;
 pub use selection::{MultipleSelection, Selection, SingleSelection};
 mod tabs;
 mod windows;

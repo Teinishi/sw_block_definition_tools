@@ -11,3 +11,4 @@ mod sw_schema_lib;
 pub mod ui;
 mod utils;
 mod value_tracker;
+mod voxel_mesh_builder;

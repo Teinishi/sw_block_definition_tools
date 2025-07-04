@@ -1,8 +1,5 @@
-use super::{
-    utils::{
-        ui_checkbox_btreeset, ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv,
-    },
-    BoundingBoxObjectBuilder,
+use super::utils::{
+    ui_checkbox_btreeset, ui_color_picker_rgb, ui_color_picker_rgba, ui_dragvalue_vec_z_inv,
 };
 use crate::{
     definition_hub::{DefinitionRegistory, ModKey},
@@ -12,6 +9,7 @@ use crate::{
         Color4, Line, Scene, SceneObject, SurfaceObjectBuilder, SwBlockMeshBuilder, SwBlockMeshKey,
         SwBlockMeshes, SwBlockSpecialMesh, SwWheelAdvancedType,
     },
+    voxel_mesh_builder::{BoundingBoxObjectBuilder, VoxelMeshBuilder},
 };
 use core::f32;
 use egui::{DragValue, Grid, Slider};
@@ -33,6 +31,18 @@ const BUOYANCY_SURFACE_LINE_COLOR: Color4 = Color4 {
     r: 0.2,
     g: 0.7,
     b: 1.0,
+    a: 1.0,
+};
+const VOXEL_MESH_COLOR: Color4 = Color4 {
+    r: 0.5,
+    g: 0.2,
+    b: 0.2,
+    a: 0.3,
+};
+const VOXEL_LINE_COLOR: Color4 = Color4 {
+    r: 1.0,
+    g: 0.4,
+    b: 0.4,
     a: 1.0,
 };
 const BOUNDING_BOX_VOXEL_MESH_COLOR: Color4 = Color4 {
@@ -78,6 +88,7 @@ pub struct BlockViewState {
     pub show_surfaces: bool,
     pub show_surface_edges: bool,
     pub show_buoyancy_surfaces: bool,
+    pub show_voxel: bool,
     pub show_bounding_box_voxel: bool,
     pub show_bounding_box_voxel_physics: bool,
     pub show_bounding_box_physics: bool,
@@ -91,6 +102,7 @@ impl Default for BlockViewState {
             show_surfaces: true,
             show_surface_edges: true,
             show_buoyancy_surfaces: false,
+            show_voxel: false,
             show_bounding_box_voxel: false,
             show_bounding_box_voxel_physics: false,
             show_bounding_box_physics: false,
@@ -111,6 +123,7 @@ impl BlockViewState {
         ui.checkbox(&mut self.show_surfaces, "Surfaces");
         ui.checkbox(&mut self.show_surface_edges, "Surface edge lines");
         ui.checkbox(&mut self.show_buoyancy_surfaces, "Buoyancy surfaces");
+        ui.checkbox(&mut self.show_voxel, "Voxels");
         ui.checkbox(&mut self.show_bounding_box_voxel, "Bounding box (voxel)");
         ui.checkbox(
             &mut self.show_bounding_box_voxel_physics,
@@ -243,6 +256,7 @@ pub struct BlockViewAppearance {
     pub override_3: Color4,
     pub additive: Color4,
     pub buoyancy_surface: (Color4, Color4, f32),
+    pub voxel: (Color4, Color4, f32),
     pub bounding_box_voxel: (Color4, Color4, f32),
     pub bounding_box_voxel_physics: (Color4, Color4, f32),
     pub bounding_box_physics: (Color4, Color4, f32),
@@ -262,6 +276,7 @@ impl Default for BlockViewAppearance {
                 BUOYANCY_SURFACE_LINE_COLOR,
                 4.0,
             ),
+            voxel: (VOXEL_MESH_COLOR, VOXEL_LINE_COLOR, 4.0),
             bounding_box_voxel: (
                 BOUNDING_BOX_VOXEL_MESH_COLOR,
                 BOUNDING_BOX_VOXEL_LINE_COLOR,
@@ -334,6 +349,7 @@ impl BlockViewAppearance {
                         "Buoyancy surfaces",
                         &mut self.buoyancy_surface,
                     ),
+                    (state.show_voxel, "Voxels", &mut self.voxel),
                     (
                         state.show_bounding_box_voxel,
                         "Bounding box (voxel)",
@@ -508,6 +524,12 @@ impl BlockViewScene {
         self.use_scene(|mut scene| {
             scene.add_object(object);
         });
+    }
+
+    fn add_objects(&mut self, objects: impl Iterator<Item = SceneObject>) {
+        for object in objects {
+            self.add_object(object);
+        }
     }
 
     pub fn update(
@@ -710,6 +732,25 @@ impl BlockViewScene {
                 if let Some(line_obj) = line_obj {
                     self.add_object(line_obj.apply_transform_left(transform).set_z_offset(-3.0));
                 }
+            }
+        }
+
+        // voxel を追加
+        if self.state.show_voxel {
+            if let Some(voxels) = data.voxels.last() {
+                let (mesh_color, line_color, line_width) = self.appearance.voxel;
+                let voxel_positions: Vec<(i32, i32, i32)> = voxels
+                    .voxel
+                    .iter()
+                    .map(|v| v.position.last().map(|p| p.as_tuple(0)).unwrap_or_default())
+                    .collect();
+                let objects = VoxelMeshBuilder::new(&voxel_positions)
+                    .objects(mesh_color, line_color, line_width, -3.5);
+                self.add_objects(
+                    objects
+                        .into_iter()
+                        .map(|o| o.apply_transform_left(transform)),
+                );
             }
         }
     }
